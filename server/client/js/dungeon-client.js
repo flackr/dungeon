@@ -6,6 +6,10 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   initialize: function() {
     dungeon.Game.prototype.initialize.call(this);
 
+    this.ui = {
+      selected: undefined,
+    };
+
     this.canvas = $('game-canvas');
     this.blockSize = 32;
     this.socket = io.connect('http://' + location.host);
@@ -27,11 +31,25 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
   onClick: function(e) {
     var evt = {
-      type: 'change',
       x: Math.floor((e.clientX - this.canvas.offsetLeft) / this.blockSize),
       y: Math.floor((e.clientY - this.canvas.offsetTop) / this.blockSize),
     };
+
+    if (this.ui.selected !== undefined) {
+      evt.type = 'move';
+      evt.index = this.ui.selected;
+      this.ui.selected = undefined;
+      this.sendEvent(evt);
+      return;
+    }
+    for (var i = 0; i < this.characters.length; i++) {
+      if (this.characters[i].x == evt.x && this.characters[i].y == evt.y) {
+        this.ui.selected = i;
+        return;
+      }
+    }
     if (this.map.length > evt.y && this.map[evt.y].length > evt.x) {
+      evt.type = 'change';
       evt.value = !this.map[evt.y][evt.x];
       this.sendEvent(evt);
     }
@@ -46,10 +64,11 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
             this.blockSize);
       }
     }
-	for (var i = 0; i < this.characters.length; i++) {
-        ctx.fillStyle = '#f00';
-        ctx.fillText(this.characters[i].name, this.characters[i].x * this.blockSize, this.characters[i].y * this.blockSize);
-      }
+    ctx.font = (this.blockSize - 5) + 'px Arial';
+    for (var i = 0; i < this.characters.length; i++) {
+      ctx.fillStyle = '#f00';
+      ctx.fillText(this.characters[i].name, this.characters[i].x * this.blockSize, (this.characters[i].y + 1) * this.blockSize);
+    }
   },
 });
 

@@ -41,6 +41,9 @@ dungeon.Game.prototype = {
       this.map = eventData.map;
     } else if (eventData.type == 'change') {
       this.map[eventData.y][eventData.x] = eventData.value;
+    } else if (eventData.type == 'move') {
+      this.characters[eventData.index].x = eventData.x;
+      this.characters[eventData.index].y = eventData.y;
     }
     this.update();
     return true;
