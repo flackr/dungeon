@@ -46,6 +46,10 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
             this.blockSize);
       }
     }
+	for (var i = 0; i < this.characters.length; i++) {
+        ctx.fillStyle = '#f00';
+        ctx.fillText(this.characters[i].name, this.characters[i].x * this.blockSize, this.characters[i].y * this.blockSize);
+      }
   },
 });
 

@@ -17,6 +17,22 @@ dungeon.Game.prototype = {
         this.map[i].push(false);
       }
     }
+	this.characters = [];
+	this.characters.push({
+	  x: 1,
+	  y: 1,
+	  name: 'A',
+	  });
+	this.characters.push({
+	  x: 5,
+	  y: 5,
+	  name: 'B',
+	  });
+	this.characters.push({
+	  x: 8,
+	  y: 4,
+	  name: 'X',
+	  });
   },
 
   processEvent: function(eventData) {
