@@ -31,7 +31,7 @@ dungeon.Game.prototype = {
   },
 
   /**
-   * This function is caled when a change causes the current state to be stale
+   * This function is called when a change causes the current state to be stale
    * and can be overridden to redraw the game when something changes.
    * TODO(flackr): Eventually we should probably use events to trigger changes.
    */
