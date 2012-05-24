@@ -1,14 +1,14 @@
 /**
  * Dungeon Server
  */
+var socketio = process.platform == 'win32' ? 'socket' : 'socket.io';
 
 var app = require('http').createServer(handler),
-  io = require('socket.io').listen(app),
+  io = require(socketio).listen(app),
   fs = require('fs'),
   path = require('path');
 
-require.paths.unshift('.');
-var dungeon = require('client/js/dungeon-common.js');
+var dungeon = require('./client/js/dungeon-common.js');
 
 app.listen(1337);
 
