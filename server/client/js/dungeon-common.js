@@ -17,22 +17,22 @@ dungeon.Game.prototype = {
         this.map[i].push(false);
       }
     }
-	this.characters = [];
-	this.characters.push({
-	  x: 1,
-	  y: 1,
-	  name: 'A',
-	  });
-	this.characters.push({
-	  x: 5,
-	  y: 5,
-	  name: 'B',
-	  });
-	this.characters.push({
-	  x: 8,
-	  y: 4,
-	  name: 'X',
-	  });
+    this.characters = [];
+    this.characters.push({
+      x: 1,
+      y: 1,
+      name: 'A',
+      });
+    this.characters.push({
+      x: 5,
+      y: 5,
+      name: 'B',
+      });
+    this.characters.push({
+      x: 8,
+      y: 4,
+      name: 'X',
+      });
   },
 
   processEvent: function(eventData) {
@@ -44,6 +44,8 @@ dungeon.Game.prototype = {
     } else if (eventData.type == 'move') {
       this.characters[eventData.index].x = eventData.x;
       this.characters[eventData.index].y = eventData.y;
+    } else if (eventData.type == 'add-character') {
+      this.characters.push(eventData.character);
     }
     this.update();
     return true;
