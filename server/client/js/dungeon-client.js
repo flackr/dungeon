@@ -154,51 +154,14 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var self = this;
     reader.onload = function(evt) {
       var xmlContent = evt.target.result;
-      self.parseCharacter(xmlContent);
+      var json = dungeon.ParseCharacter(xmlContent);
+      var evt = {
+        type: 'add-character',
+        character: json
+      };
+      self.sendEvent(evt);
     }
     reader.readAsText(file);
-  },
-
-  // TODO(kellis): Pull parser out into a separate class.
-
-  parseCharacter: function(xmlContent) {
-    var parser=new DOMParser();
-    var xmlDoc = parser.parseFromString(xmlContent,"text/xml");
-    // Relevant sections in the D&D character sheet.
-    var characterSheet = xmlDoc.getElementsByTagName('CharacterSheet')[0];
-    var details = characterSheet.getElementsByTagName('Details')[0];
-    var ruleSet = xmlDoc.getElementsByTagName('RulesElementTally')[0];
-    // Set of rules that apply to the character
-    var rules = ruleSet.getElementsByTagName('RulesElement');
-
-    var evt = {
-       type: 'add-character',
-       character: {
-         name: this.extractBasicAttribute(details, 'name'),
-         player: this.extractBasicAttribute(details, 'Player'),
-         level: Number(this.extractBasicAttribute(details, 'Level')),
-         charClass: this.extractRulesByType(rules, 'Class')[0],
-       }
-    };
-    this.sendEvent(evt);
-  },
-
-  extractBasicAttribute: function(el, tag) {
-    var matches = el.getElementsByTagName(tag);
-    if (matches && matches.length == 1)
-      return matches[0].textContent;
-  },
-
-  extractRulesByType: function(rules, targetType) {
-    var results = [];
-    for (var i = 0; i < rules.length; i++) {
-       var r = rules[i];
-       var type = r.getAttribute('type');
-       if (type == targetType) {
-         results.push(r.getAttribute('name'));
-       }
-    }
-    return results;
   },
 
   update: function() {
