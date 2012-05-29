@@ -9,11 +9,13 @@ dungeon.Game = function() {
 
 dungeon.Game.prototype = {
   initialize: function() {
+    var mapWidth = 60;
+    var mapHeight = 60;
     this.events = [];
     this.map = [];
-    for (var i = 0; i < 20; i++) {
+    for (var i = 0; i < mapHeight; i++) {
       this.map.push([]);
-      for (var j = 0; j < 20; j++) {
+      for (var j = 0; j < mapWidth; j++) {
         this.map[i].push(false);
       }
     }
