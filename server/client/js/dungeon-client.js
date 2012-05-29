@@ -11,13 +11,17 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     };
 
     this.characterList = {};
+    this.viewport = {
+      x: 30,
+      y: 30,
+      tileSize: 32,
+    };
 
     this.canvas = $('game-canvas');
-    this.blockSize = 32;
     this.socket = io.connect('http://' + location.host);
 
     this.socket.on('e', this.receiveEvent.bind(this));
-    this.canvas.addEventListener('click', this.onClick.bind(this));
+    this.canvas.addEventListener('mousedown', this.onPointerDown.bind(this));
 
     // Drag-n-drop of character files.
     var dropZone = $('sidebar-character-list');
@@ -43,7 +47,47 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.processEvent(eventData);
   },
 
-  onClick: function(e) {
+  onPointerDown: function(e) {
+    e.preventDefault();
+    this.pointer = {
+      x1: e.clientX,
+      y1: e.clientY,
+      listeners: {
+        mouseup: this.onPointerUp.bind(this),
+        mouseout: this.onPointerOut.bind(this),
+        mousemove: this.onPointerMove.bind(this)},
+      mapX: this.viewport.x,
+      mapY: this.viewport.y};
+    for (var i in this.pointer.listeners)
+      this.canvas.addEventListener(i, this.pointer.listeners[i]);
+  },
+
+  onPointerMove: function(e) {
+    var deltaX = e.clientX - this.pointer.x1;
+    var deltaY = e.clientY - this.pointer.y1;
+    var dragThreshold = 10;
+    if (this.pointer.dragStarted || Math.abs(deltaX) + Math.abs(deltaY) > dragThreshold) {
+      this.pointer.dragStarted = true;
+      this.viewport.x = (this.pointer.mapX - deltaX / this.viewport.tileSize);
+      this.viewport.y = (this.pointer.mapY - deltaY / this.viewport.tileSize);
+      this.update();
+    }
+  },
+
+  onPointerOut: function(e) {
+    for (var i in this.pointer.listeners)
+      this.canvas.removeEventListener(i, this.pointer.listeners[i]);
+    this.pointer = null;
+  },
+
+  onPointerUp: function(e) {
+    for (var i in this.pointer.listeners)
+      this.canvas.removeEventListener(i, this.pointer.listeners[i]);
+    if (this.pointer.dragStarted) {
+      this.pointer = null;
+      return;
+    }
+    this.pointer = null;
     var x = e.clientX;
     var y = e.clientY;
     var element = this.canvas;
@@ -52,11 +96,15 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       y -= element.offsetTop;
       element = element.parentNode;
     }
+    var w = parseInt(this.canvas.getAttribute('width'));
+    var h = parseInt(this.canvas.getAttribute('height'));
     var evt = {
-      x: Math.floor(x/this.blockSize),
-      y: Math.floor(y/this.blockSize)
+      x: Math.floor((x - w/2)/this.viewport.tileSize + this.viewport.x),
+      y: Math.floor((y - h/2)/this.viewport.tileSize + this.viewport.y)
     };
 
+    if (evt.x < 0 || evt.y < 0 || evt.x >= this.map[0].length || evt.y >= this.map.length)
+      return;
     if (this.ui.selected !== undefined) {
       evt.type = 'move';
       evt.index = this.ui.selected;
@@ -155,14 +203,25 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
   update: function() {
     var ctx = this.canvas.getContext('2d');
-    for (var i = 0; i < this.map.length; i++) {
-      for (var j = 0; j < this.map[i].length; j++) {
+    var w = parseInt(this.canvas.getAttribute('width'));
+    var h = parseInt(this.canvas.getAttribute('height'));
+    var view = {
+      x1: Math.max(0, Math.floor(this.viewport.x - w / this.viewport.tileSize / 2)),
+      y1: Math.max(0, Math.floor(this.viewport.y - h / this.viewport.tileSize / 2)),
+      x2: Math.min(this.map[0].length, Math.ceil(this.viewport.x + w / this.viewport.tileSize / 2)),
+      y2: Math.min(this.map.length, Math.ceil(this.viewport.y + h / this.viewport.tileSize / 2)),
+    };
+    var baseX = w / 2 - (this.viewport.x - view.x1) * this.viewport.tileSize;
+    var baseY = h / 2 - (this.viewport.y - view.y1) * this.viewport.tileSize;
+    for (var i = view.y1; i < view.y2; i++) {
+      for (var j = view.x1; j < view.x2; j++) {
         ctx.fillStyle = this.map[i][j] ? '#000' : '#ccc';
-        ctx.fillRect(j * this.blockSize, i * this.blockSize, this.blockSize,
-            this.blockSize);
+        ctx.fillRect(baseX + (j - view.x1) * this.viewport.tileSize,
+                     baseY + (i - view.y1) * this.viewport.tileSize,
+                     this.viewport.tileSize, this.viewport.tileSize);
       }
     }
-    ctx.font = (this.blockSize - 5) + 'px Arial';
+    ctx.font = (this.viewport.tileSize - 5) + 'px Arial';
     for (var i = 0; i < this.characters.length; i++) {
       var character = this.characters[i];
       var name = character.name;
@@ -175,7 +234,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       if (character.x == undefined)
         continue;
       ctx.fillStyle = '#f00';
-      ctx.fillText(name, character.x * this.blockSize, (character.y + 1) * this.blockSize);
+      ctx.fillText(name,
+                   baseX + (character.x - view.x1) * this.viewport.tileSize,
+                   baseY + ((character.y + 1) - view.y1) * this.viewport.tileSize);
     }
 
   },
