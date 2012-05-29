@@ -217,7 +217,8 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   addCharacter: function(characterData) {
-    var element = new dungeon.CharacterButton(characterData);
+    var element = dungeon.CharacterButton(characterData);
+    this.characterList[characterData.name] = element;
     $('sidebar-character-list').appendChild(element);
   },
 
