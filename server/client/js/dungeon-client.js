@@ -32,7 +32,14 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
     // TODO(kellis): Drag-n-drop of a character from the sidebar onto the map.
 
-    // Force a refresh.
+    window.addEventListener('resize', this.resize.bind(this));
+    this.resize();
+  },
+
+  resize: function() {
+    var element = this.canvas.parentNode;
+    this.canvas.setAttribute('width', element.clientWidth);
+    this.canvas.setAttribute('height', element.clientHeight);
     this.update();
   },
 
@@ -174,8 +181,13 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       x2: Math.min(this.map[0].length, Math.ceil(this.viewport.x + w / this.viewport.tileSize / 2)),
       y2: Math.min(this.map.length, Math.ceil(this.viewport.y + h / this.viewport.tileSize / 2)),
     };
-    var baseX = w / 2 - (this.viewport.x - view.x1) * this.viewport.tileSize;
-    var baseY = h / 2 - (this.viewport.y - view.y1) * this.viewport.tileSize;
+    var baseX = Math.floor(w / 2 - (this.viewport.x - view.x1) * this.viewport.tileSize);
+    var baseY = Math.floor(h / 2 - (this.viewport.y - view.y1) * this.viewport.tileSize);
+
+    // Draw a black background
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+
     for (var i = view.y1; i < view.y2; i++) {
       for (var j = view.x1; j < view.x2; j++) {
         ctx.fillStyle = this.map[i][j] ? '#000' : '#ccc';
