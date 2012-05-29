@@ -80,3 +80,16 @@
 .character-button-subtitle > * {
   -webkit-padding-end: 5px;
 }
+
+#action-bar {
+  border-top: 1px solid #777;
+  bottom: 0;
+  left: 0;
+  position: absolute;
+  right: 0;
+}
+
+#close-button {
+  float: right;
+  margin: 5px;
+}
