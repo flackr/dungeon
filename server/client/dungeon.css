@@ -1,4 +1,13 @@
 
+#combat-page,
+#character-page {
+  bottom: 0;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
 #sidebar {
   -webkit-box-orient: vertical;
   display: -webkit-box;

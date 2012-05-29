@@ -13,28 +13,32 @@
   <script type="text/javascript" src="js/dungeon-client.js"></script>
 </head>
 <body>
-  <div id="sidebar">
-    <div id="sidebar-character-list">
-      <div id="character-template" class="character-button">
-        <div class="character-button-title">
-          <div class="character-button-name"></div>
-          <div class="character-button-player"></div>
-        </div>
-        <div class="character-button-subtitle">
-          <span>Level:</span>
-          <span class="character-button-level"></span>
-          <span>Class:</span>
-          <span class="character-button-class"></span>
+  <div id="combat-page">
+    <div id="sidebar">
+      <div id="sidebar-character-list">
+        <div id="character-template" class="character-button">
+          <div class="character-button-title">
+            <div class="character-button-name"></div>
+            <div class="character-button-player"></div>
+          </div>
+          <div class="character-button-subtitle">
+            <span>Level:</span>
+            <span class="character-button-level"></span>
+            <span>Class:</span>
+            <span class="character-button-class"></span>
+          </div>
         </div>
       </div>
+      <div id="sidebar-controls">
+        <div class="section-title">Character Import</div>
+        <input id="files" type="file" name="files[]" multiple></input>
+      </div>
     </div>
-    <div id="sidebar-controls">
-      <div class="section-title">Character Import</div>
-      <input id="files" type="file" name="files[]" multiple></input>
+    <div id="content-area">
+      <canvas width="800" height="600" id="game-canvas">
     </div>
   </div>
-  <div id="content-area">
-    <canvas width="800" height="600" id="game-canvas">
+  <div id="character-page" hidden>
   </div>
 </body>
 </html>
