@@ -1,5 +1,7 @@
 dungeon.CharacterButton = (function() {
 
+  var initialized_ = false;
+
   function characterButton_(characterData) {
     var template = $('character-template');
     var element = template.cloneNode(true);
@@ -12,7 +14,7 @@ dungeon.CharacterButton = (function() {
     // TODO(kellis): Option to sensor info for the bad guys.
     setCharacterAttribute_(element, 'level', characterData.level);
     setCharacterAttribute_(element, 'class', characterData.charClass);
-    element.addEventListener('click', showCharacterSheet_);
+    element.addEventListener('click', showCharacterSheet_.bind(undefined, characterData));
     $('close-button').addEventListener('click', showCombatSheet_);
     return element;
   }
@@ -24,7 +26,12 @@ dungeon.CharacterButton = (function() {
     characterElement.getElementsByClassName(className)[0].textContent = attributeValue;
   }
 
-  function showCharacterSheet_() {
+  function showCharacterSheet_(characterData) {
+    if (!initialized_) {
+      createCharacterSheet_(characterData);
+      initialized_ = true;
+    }
+    populateCharacterSheet_(characterData);
     // TODO(kellis): initialize page content.
     $('combat-page').hidden = true;
     $('character-page').hidden = false;
@@ -33,6 +40,27 @@ dungeon.CharacterButton = (function() {
   function showCombatSheet_() {
     $('character-page').hidden = true;
     $('combat-page').hidden = false;
+  }
+
+  function createCharacterSheet_(characterData) {
+    var abilityScores = document.createElement('div');
+    abilityScores.className = 'stat-block';
+    abilityScores.id = 'ability-scores';
+    for (var name in characterData.abilityScores) {
+      var ability = $('character-stat-template').cloneNode(true);
+      ability.id = name + '-stat';
+      abilityScores.appendChild(ability);
+    }
+    $('character-attribute').appendChild(abilityScores);
+  }
+
+  function populateCharacterSheet_(characterData) {
+    for (var name in characterData.abilityScores) {
+      var ability = $(name + '-stat');
+      var value = characterData.abilityScores[name];
+      ability.getElementsByClassName('stat-name')[0].textContent = name + ':';
+      ability.getElementsByClassName('stat-value')[0].textContent = value;
+    }
   }
 
   return characterButton_;
