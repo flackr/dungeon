@@ -36,6 +36,10 @@
   position: absolute;
 }
 
+#content-area > canvas {
+  position: absolute;
+}
+
 .section-title {
   color: #555;
   font-family: 'sans';
