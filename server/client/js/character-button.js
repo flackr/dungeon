@@ -83,8 +83,20 @@ dungeon.CharacterButton = (function() {
         var name = list[i];
         var stat = $(name + '-stat');
         var value = characterData.stats[name];
+        if (value == undefined)
+          value = '?';
+        var modifier = characterData.stats[name + ' modifier'];
         stat.getElementsByClassName('stat-name')[0].textContent = name + ':';
         stat.getElementsByClassName('stat-value')[0].textContent = value;
+        var modifierField = stat.getElementsByClassName('stat-modifier')[0];
+        if (modifier) {
+          if (Number(modifier) > 0)
+            modifier = '+' + modifier;
+          modifierField.textContent = modifier;
+          modifierField.hidden = false;
+        } else  {
+          modifierField.hidden = true;
+        }
       }
     }
     populateStatEntries('attributes');

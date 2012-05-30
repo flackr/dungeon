@@ -164,18 +164,27 @@
 }
 
 .stat-name,
-.stat-value {
+.stat-value,
+.stat-modifier {
   -webkit-padding-start: 10px;
   display: table-cell;
   font-family: 'sans';
+}
+
+.stat-modifier {
+  color: #777;
 }
 
 .stat-name {
   font-weight: bold;
 }
 
-.stat-value {
+.stat-value,
+.stat-modifier {
   text-align: right;
 }
 
+#other-list .stat-value {
+  text-align: left;
+}
 

@@ -6,7 +6,8 @@ dungeon.ParseCharacter = (function() {
   var aliasMap_ = {
     'Fortitude Defense': 'Fortitude',
     'Reflex Defense': 'Reflex',
-    'Will Defense': 'Will' 
+    'Will Defense': 'Will',
+    'Intelligence Modifier': 'Intelligence modifier' 
   };
   
   function parseCharacter_(filename, xmlContent) {
@@ -24,6 +25,7 @@ dungeon.ParseCharacter = (function() {
     // Set of rules that apply to the character
     var rules = ruleSet.getElementsByTagName('RulesElement');
 
+    var charClass = extractRulesByType_(rules, 'Class')[0];
     var stats =  extractStats(characterSheet);
     var index = filename.indexOf('.');
     var defaultName = filename.substring(0, index);
@@ -34,17 +36,18 @@ dungeon.ParseCharacter = (function() {
     if (size != undefined) {
       stats['Size'] = size;
     }
+    stats['Class'] = charClass;
     var json = {
        name: name,
        player: player,
        level: level,
-       charClass: extractRulesByType_(rules, 'Class')[0],
+       charClass: charClass,
        stats: stats, // (name,value) set of all character stats (includes aliases).
        attributes: extractAttributes_(characterSheet), // List of ability/attribute names.
        skills: extractRulesByType_(rules, 'Skill'), // List of skill names
        defenses: ['AC', 'Fortitude', 'Reflex', 'Will'],
        health: ['Hit Points', 'Bloodied', 'Surge Amount', 'Healing Surges'],
-       other: ['Initiative', 'Speed', 'Passive Perception', 'Passive Insight', 'Size'],
+       other: ['Class', 'Level', 'Initiative', 'Speed', 'Passive Perception', 'Passive Insight', 'Size'],
     };
     return json;
   }
