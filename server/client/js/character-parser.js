@@ -28,7 +28,7 @@ dungeon.ParseCharacter = (function() {
     var charClass = extractRulesByType_(rules, 'Class')[0];
     var stats =  extractStats(characterSheet);
     var index = filename.indexOf('.');
-    var defaultName = filename.substring(0, index);
+    var defaultName = convertFromCamelCase_(filename.substring(0, index));
     var name = details ? extractBasicAttribute_(details, 'name') : defaultName;
     var player = details ? extractBasicAttribute_(details, 'Player') : '';
     var level = details ?  Number(extractBasicAttribute_(details, 'Level')) : '?';
@@ -37,6 +37,7 @@ dungeon.ParseCharacter = (function() {
       stats['Size'] = size;
     }
     stats['Class'] = charClass;
+    stats['Name'] = name;
     var json = {
        name: name,
        player: player,
@@ -47,7 +48,8 @@ dungeon.ParseCharacter = (function() {
        skills: extractRulesByType_(rules, 'Skill'), // List of skill names
        defenses: ['AC', 'Fortitude', 'Reflex', 'Will'],
        health: ['Hit Points', 'Bloodied', 'Surge Amount', 'Healing Surges'],
-       other: ['Class', 'Level', 'Initiative', 'Speed', 'Passive Perception', 'Passive Insight', 'Size'],
+       other: ['Name', 'Class', 'Level', 'Initiative', 'Speed', 'Passive Perception', 
+               'Passive Insight', 'Size'],
     };
     return json;
   }
@@ -120,6 +122,25 @@ dungeon.ParseCharacter = (function() {
     if (!('Passive Perception' in statMap))
       statMap['Passive Perception'] = Number(statMap['Perception']) + 10;
     return statMap;
+  }
+
+  function convertFromCamelCase_(name) {
+    var chars = [];
+    var armInsertSpace = false;
+    for (var i = 0; i < name.length; i++) {
+      var ch = name.charAt(i);
+      var isUpperCase = (ch == ch.toUpperCase());
+      if (isUpperCase) {
+        if (armInsertSpace) {
+          chars.push(' ');
+          armInsertSpace = false;
+        }
+      } else {
+        armInsertSpace = true;
+      }
+      chars.push(ch);
+    }
+    return chars.join('');
   }
  
   return parseCharacter_;
