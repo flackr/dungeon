@@ -157,11 +157,12 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   loadCharacter: function(file) {
+    var filename = file.name;
     var reader = new FileReader();
     var self = this;
     reader.onload = function(evt) {
       var xmlContent = evt.target.result;
-      var json = dungeon.ParseCharacter(xmlContent);
+      var json = dungeon.ParseCharacter(filename, xmlContent);
       var evt = {
         type: 'add-character',
         character: json

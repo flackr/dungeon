@@ -41,16 +41,38 @@
   </div>
   <div id="character-page" hidden>
     <div id="character-navbar">
-      <button id="attributes-button" active="true">Attributes</button>
-      <button id="skills-button" active="false">Skills</button>
+      <button id="stats-button" active="true">Stats</button>
+      <button id="powers-button" active="false">Powers</button>
     </div>
     <div id="character-stat-template" class="character-stat">
       <div class="stat-name"></div>
       <div class="stat-value"></div>
     </div>
-    <section id="character-attribute">
+    <section id="stats-tab">
+      <div class="stat-column">
+        <div id="attributes-list" class="stat-block">
+          <h2>Attributes</h2>
+        </div>
+        <div id="defenses-list" class="stat-block">
+          <h2>Defenses</h2>
+        </div>
+        <div id="health-list" class="stat-block">
+          <h2>Health</h2>
+        </div>
+      </div>
+      <div class="stat-column">
+        <div id="skills-list" class="stat-block">
+          <h2>Skills</h2>
+        </div>
+      </div>
+      <div class="stat-column">
+        <div id="other-list" class="stat-block">
+          <h2>Miscellaneous</h2>
+        </div>
+      </div>
+
     </section>
-    <section id="character-skills" hidden>
+    <section id="powers-tab" hidden>
     </section>
     <div id="action-bar">
       <button id="close-button">Close</button>

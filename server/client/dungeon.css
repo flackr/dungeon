@@ -139,13 +139,28 @@
   margin: 5px;
 }
 
+.stat-column {
+  -webkit-margin-end: 20px;
+  float: left;
+  position: relative;
+}
+
 .stat-block {
   display: table;
+  font: 14px 'sans';
+  width: 100%;
+}
+
+.stat-block h2 {
+  display: table-cell;
+  font: 18px 'sans' bold;
+  line-height 28px;
+  padding: 10px;
 }
 
 .character-stat {
   display: table-row;
-  line-height: 32px;
+  line-height: 28px;
 }
 
 .stat-name,

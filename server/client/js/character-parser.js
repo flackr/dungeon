@@ -1,25 +1,50 @@
 dungeon.ParseCharacter = (function() {
+
+  // Canonical form for stat names, mapping from a given
+  // stat to a preferred alias that may be missing from
+  // older XML representations.
+  var aliasMap_ = {
+    'Fortitude Defense': 'Fortitude',
+    'Reflex Defense': 'Reflex',
+    'Will Defense': 'Will' 
+  };
   
-  function parseCharacter_(xmlContent) {
+  function parseCharacter_(filename, xmlContent) {
     var parser=new DOMParser();
     var xmlDoc = parser.parseFromString(xmlContent,"text/xml");
     // Relevant sections in the D&D character sheet.
     var characterSheet = xmlDoc.getElementsByTagName('CharacterSheet')[0];
+    if (characterSheet == undefined) {
+      // Could be generic/sample character.
+      // Try simply parsing the root node.
+      characterSheet = xmlDoc;
+    }
     var details = characterSheet.getElementsByTagName('Details')[0];
     var ruleSet = xmlDoc.getElementsByTagName('RulesElementTally')[0];
     // Set of rules that apply to the character
     var rules = ruleSet.getElementsByTagName('RulesElement');
 
     var stats =  extractStats(characterSheet);
-    var abilityScores = extractAbilityScores_(characterSheet, stats);
-    var abilityModifiers = extractAbilityModifiers_(characterSheet, abilityScores, stats);
+    var index = filename.indexOf('.');
+    var defaultName = filename.substring(0, index);
+    var name = details ? extractBasicAttribute_(details, 'name') : defaultName;
+    var player = details ? extractBasicAttribute_(details, 'Player') : '';
+    var level = details ?  Number(extractBasicAttribute_(details, 'Level')) : '?';
+    var size = extractRulesByType_(rules, 'Size')[0];
+    if (size != undefined) {
+      stats['Size'] = size;
+    }
     var json = {
-       name: extractBasicAttribute_(details, 'name'),
-       player: extractBasicAttribute_(details, 'Player'),
-       level: Number(extractBasicAttribute_(details, 'Level')),
+       name: name,
+       player: player,
+       level: level,
        charClass: extractRulesByType_(rules, 'Class')[0],
-       abilityScores: abilityScores,
-       abilityModifiers: abilityModifiers
+       stats: stats, // (name,value) set of all character stats (includes aliases).
+       attributes: extractAttributes_(characterSheet), // List of ability/attribute names.
+       skills: extractRulesByType_(rules, 'Skill'), // List of skill names
+       defenses: ['AC', 'Fortitude', 'Reflex', 'Will'],
+       health: ['Hit Points', 'Bloodied', 'Surge Amount', 'Healing Surges'],
+       other: ['Initiative', 'Speed', 'Passive Perception', 'Passive Insight', 'Size'],
     };
     return json;
   }
@@ -42,8 +67,8 @@ dungeon.ParseCharacter = (function() {
     return results;
   }
 
-  function extractAbilityScores_(node, stats) {
-    var attributes = {};
+  function extractAttributes_(node) {
+    var attributes = [];
     var baseAbilities = node.getElementsByTagName('AbilityScores')[0];
     var children = baseAbilities.childNodes;
     for (var i = 0; i < children.length; i++) {
@@ -51,35 +76,46 @@ dungeon.ParseCharacter = (function() {
       if (node.nodeType != 1)
         continue;
       var name = node.tagName;
-      var score = node.getAttribute('score');
-      attributes[name] = (name in stats) ? stats[name] : score;
+      attributes.push(name);
     }
     return attributes;
   }
 
-  function extractAbilityModifiers_(node, abilities, stats) {
-    var modifiers = {};
-    for (var name in abilities) {
-      var modifierStat = name + ' modifier';
-      if (modifierStat in stats)
-        modifiers[modifierStat] = stats[modifierStat];
-    }
-    return modifiers;
+  function extractSkills_(rules) {
+    return extractRulesByType_(rules, 'skill');
   }
 
   function extractStats(node) {
     var statMap = {};
     var statBlock = node.getElementsByTagName('StatBlock')[0];
+    if (statBlock == undefined) 
+      statBlock = node; // older file format stores stats in the root node.
     var stats = statBlock.getElementsByTagName('Stat');
     for (var i = 0; i < stats.length; i++) {
       var stat = stats[i];
       var value = stat.getAttribute('value');
       var aliases = stats[i].getElementsByTagName('alias');
+      // TODO(kellis): Check for duplication within aliases.
       for (var j = 0; j < aliases.length; j++) {
          var name = aliases[j].getAttribute('name');
          statMap[name] = value;
       }
     }
+    // Ensure that preferred alias for a stat is in the map.
+    for (key in aliasMap_) {
+      var target = aliasMap_[key];
+      if (!(target in statMap) && key in statMap) {
+         statMap[target] = statMap[key];
+      }
+    }
+    // Add derived stats that are not part of the XML save format.
+    var hp = Number(statMap['Hit Points']);
+    statMap['Bloodied'] = Math.floor(hp/2);
+    statMap['Surge Amount'] = Math.floor(hp/4);
+    if (!('Passive Insight' in statMap))
+      statMap['Passive Insight'] = Number(statMap['Insight']) + 10;
+    if (!('Passive Perception' in statMap))
+      statMap['Passive Perception'] = Number(statMap['Perception']) + 10;
     return statMap;
   }
  
