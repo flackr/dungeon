@@ -2,6 +2,16 @@ dungeon.CharacterButton = (function() {
 
   var initialized_ = false;
 
+  /* @const */ var POWER_ORDERING_PREFERENCE = [
+    'No Action',
+    'Immediate Interrupt',
+    'Immediate Reaction',
+    'Free Action',
+    'Minor Action',
+    'Move Action',
+    'Standard Action'
+  ];
+
   function characterButton_(characterData) {
     var template = $('character-template');
     var element = template.cloneNode(true);
@@ -76,6 +86,27 @@ dungeon.CharacterButton = (function() {
     createStatEntries('other');
   }
 
+  function sortPowers_(characterData) {
+     var sortIndices = {};
+     for (var i = 0; i < POWER_ORDERING_PREFERENCE.length; i++) {
+       sortIndices[POWER_ORDERING_PREFERENCE[i]] = i;
+     }
+     var getIndex = function(power) {
+       var action = power['Action Type'];
+       return (action in sortIndices) ? sortIndices[action] : 
+         POWER_ORDERING_PREFERENCE.length;
+     }
+     var sortFunction = function(a, b) {
+       var diff = getIndex(a) - getIndex(b);
+       if (diff == 0)
+         diff = a.name < b.name ? -1 : 1;
+       return diff;
+     }
+     var list = characterData.powers;
+     list = list.slice(0,list.length);
+     return list.sort(sortFunction);
+  }
+
   function populateCharacterSheet_(characterData) {
     var populateField = function(parent, name, value) {
       parent.getElementsByClassName(name)[0].textContent = value;
@@ -112,7 +143,7 @@ dungeon.CharacterButton = (function() {
     $('encounter-list').textContent = '';
     $('daily-list').textContent = '';
 
-    var list = characterData.powers;
+    var list = sortPowers_(characterData);
     for (var i = 0; i < list.length; i++) {
       var power = list[i];
       var name = power.name;
@@ -120,6 +151,9 @@ dungeon.CharacterButton = (function() {
       var type = power['Action Type'];
       var block = $('power-template').cloneNode(true);
       block.id = '';
+      var title = block.getElementsByClassName('power-title')[0];
+      var categoryClass = 'power-' + type.toLowerCase().replace(' ', '-');
+      title.classList.add(categoryClass);
       var createToggleDetailsCallback = function(element) {
         return function() {
           var details = element.getElementsByClassName('power-details')[0];

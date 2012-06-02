@@ -226,10 +226,40 @@
 }
 
 .power-title {
-  background: #eee;
   font-weight: bold;
   margin: 0;
   padding: 5px;
+}
+
+/* TODO(kellis): Figure out what this is.
+   See "Destined for Greatness" power. */
+.power-no-action {
+   background: #eee;
+}
+
+.power-immediate-interrupt {
+  background: hsl(245, 100%, 92%);
+}
+
+/* See "Shadowslip" power as example. */
+.power-immediate-reaction {
+  background: hsl(245, 100%, 84%);
+}
+
+.power-free-action {
+  background: hsl(34, 100%, 92%);
+}
+
+.power-minor-action {
+  background: hsl(34, 100%, 84%);
+}
+
+.power-move-action {
+  background: hsl(34, 100%, 76%);
+}
+
+.power-standard-action {
+  background: hsl(34, 100%, 68%);
 }
 
 .power-attack-bonus,
