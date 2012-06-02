@@ -1,20 +1,90 @@
 
-#combat-page,
-#character-page {
+body {
   bottom: 0;
   left: 0;
+  margin: 0;
+  padding: 0;
   position: absolute;
   right: 0;
   top: 0;
 }
 
-#sidebar {
-  -webkit-box-orient: vertical;
+.left-sidebar-layout:not([hidden]),
+.top-navbar-layout:not([hidden]) {
+  -webkit-box-align: stretch;
+  -webkit-box-pack: justify;
   display: -webkit-box;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  top: 0;
+  position: relative;
+}
+
+.left-sidebar-layout {
+  -webkit-box-orient: horizontal;
+  height: 100%;
+}
+
+.top-navbar-layout {
+  -webkit-box-orient: vertical;
+  width: 100%;
+}
+
+.left-sidebar-layout > div,
+.top-navbar-layout > div {
+  -webkit-box-flex: 1;
+  position: relative;
+}
+
+.left-sidebar-layout:not([hidden]) > div:first-child,
+.top-navbar-layout:not([hidden]) > div:first-child {
+  -webkit-box-flex: 0;
+  display: -webkit-box;
+}
+
+.top-navbar-layout > div:first-child {
+  -webkit-box-orient: horizontal;
+  border-bottom: 1px solid #777;
+  display: -webkit-box;
+}
+
+.left-sidebar-layout > div:first-child {
+  -webkit-box-orient: vertical;
+  border-right: 1px solid #777;
+  display: -webkit-box;
+}
+
+#nav-bar {
+  background: #eee;
+  /* height: 40px; */
+}
+
+.page-selector {
+  -webkit-box-sizing: content-box;
+  background-size: 90%;
+  background-position: center center;
+  background-repeat: no-repeat;
+  border: 1px solid: #eee;
+  height: 40px;
+  margin: 5px;
+  width: 40px;
+  position: relative;
+}
+
+.page-selector[active=true] {
+  border: 1px solid #555;
+}
+
+#character-selector {
+  background-image: url("./images/character.png");
+}
+
+#map-selector {
+  background-image: url("./images/map.png");
+}
+
+#combat-overview-selector {
+  background-image: url("./images/shield_and_swords.png");
+}
+
+#sidebar {
   width: 200px;
 }
 
@@ -25,6 +95,20 @@
 
 #sidebar-controls {
   padding: 5px;
+}
+
+#content-area {
+  /* overflow: auto; */
+}
+
+/*
+#combat-page,
+#character-page {
+  bottom: 0;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
 }
 
 #content-area {
@@ -39,6 +123,7 @@
 #content-area > canvas {
   position: absolute;
 }
+*/
 
 .section-title {
   color: #555;
@@ -81,15 +166,6 @@
   -webkit-padding-end: 5px;
 }
 
-#character-navbar {
-  border-right: 1px solid #777;
-  bottom: 0;
-  left: 0;
-  position: absolute;
-  top: 0;
-  width: 150px;
-}
-
 #character-navbar > button {
   -webkit-margin-start: 10px;
   background: none;
@@ -98,11 +174,8 @@
   display: block;
   font: 16px 'sans';
   line-height: 32px;
-  width: 130px;
-}
-
-#character-navbar > button:first-child {
-  margin-top: 5px;
+  margin: 0;
+  width: 120px;
 }
 
 #character-navbar > button[active=true] {
@@ -115,28 +188,16 @@
   font-weight: bold;
 }
 
-
-#character-page section {
-  bottom: 0;
-  left: 150px;
-  position: absolute;
-  right: 0;
-  top: 0;
+#character-sections {
+  -webkit-padding-start: 10px;
+  padding-top: 10px;
+  position: relative;
 }
 
-#action-bar {
-  background: #fff;
-  border-top: 1px solid #777;
-  bottom: 0;
-  left: 0;
-  position: absolute;
-  right: 0;
-  z-index: 1;
-}
-
-#close-button {
-  float: right;
-  margin: 5px;
+#character-page > section {
+  height: 100%;
+  overflow: auto;
+  width: 100%;
 }
 
 .stat-column {

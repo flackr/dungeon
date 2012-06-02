@@ -23,6 +23,13 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.socket.on('e', this.receiveEvent.bind(this));
     this.canvas.addEventListener('mousedown', this.onPointerDown.bind(this));
 
+    // Switching between views.
+    $('character-selector').addEventListener('click', this.onSelectView.bind(this,'character'));
+    $('map-selector').addEventListener('click', this.onSelectView.bind(this,'map'));
+    $('combat-overview-selector').addEventListener(
+        'click', 
+        this.onSelectView.bind(this,'combat-overview'));
+
     // Drag-n-drop of character files.
     var dropZone = $('sidebar-character-list');
     dropZone.addEventListener('dragover', this.onDragOver.bind(this));
@@ -52,6 +59,19 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     // not possible to execute given the current game state. If this happens it
     // is likely that the game state is incorrect.
     this.processEvent(eventData);
+  },
+
+  onSelectView: function(view) {
+    var selectors = document.getElementsByClassName('page-selector');
+    for (var i = 0; i < selectors.length; i++)
+      selectors[i].setAttribute('active', false);
+    var pages = document.getElementsByClassName('page');
+    for (var i = 0; i < pages.length; i++) {
+      pages[i].hidden = true;
+      console.log('hide ' + pages[i].id);
+    }
+    $(view + '-selector').setAttribute('active', true);
+    $(view + '-page').hidden = false;
   },
 
   onPointerDown: function(e) {
