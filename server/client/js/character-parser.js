@@ -204,15 +204,15 @@ dungeon.ParseCharacter = (function() {
         }; 
         for (var j = 0; j < weapons.length; j++) {
           var weapon = weapons[j];
-          var name = power.getAttribute('name');
-           utencils.push({
-             name: name,
-             toHit: extractWeaponStat(weapon, 'AttackBonus'),
-             defense: extractWeaponStat(weapon, 'Defense'),
-             damage: extractWeaponStat(weapon, 'Damage'),
-             toHitDetails: extractWeaponStat(weapon, 'HitComponents'),
-             damageDetails: extractWeaponStat(weapon, 'DamageComponents')
-           });
+          var name = weapon.getAttribute('name');
+          utencils.push({
+            name: name,
+            toHit: extractWeaponStat(weapon, 'AttackBonus'),
+            defense: extractWeaponStat(weapon, 'Defense'),
+            damage: extractWeaponStat(weapon, 'Damage'),
+            toHitDetails: extractWeaponStat(weapon, 'HitComponents'),
+            damageDetails: extractWeaponStat(weapon, 'DamageComponents')
+          });
         }
         data.weapons = utencils;
       }

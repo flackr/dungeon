@@ -73,8 +73,29 @@
       </div>
     </section>
     <div id="power-template" class="power-block">
-      <div class="power-name"></div>
-      <div class="power-type"></div>
+      <div class="power-title">
+        <span class="power-name"></span>
+        <div class="power-details-toggle">
+          <div class="power-details-show arrow-right"></div>
+          <div class="power-details-hide arrow-down" hidden></div>
+        </div>
+      </div>
+      <div class="power-details" hidden>
+        <div class="power-type"></div>
+        <div class="power-effect" hidden>
+          <div>
+            <span>To Hit: +</span>
+            <div class="power-attack-bonus"></div>
+            <span> versus </span>
+            <div class="power-defense"></div>
+          </div>
+          <div>
+            <span>Damage: <span>
+            <div class="power-damage"></div>
+          </div>
+          <div class="power-weapon"></div>
+        </div>
+      </div>
     </div>
     <section id="powers-tab" hidden>
      <div class = "power-column">

@@ -220,12 +220,42 @@
   margin: 5px;
 }
 
-#power-template {
+#power-template,
+#power-damage-template {
   display: none;
 }
 
-.power-name {
+.power-title {
   background: #eee;
   font-weight: bold;
+  margin: 0;
+  padding: 5px;
+}
+
+.power-attack-bonus,
+.power-defense,
+.power-damage {
+  display: inline;
+}
+
+.power-details-toggle {
+  float: right;
+}
+
+.arrow-right {
+  border-bottom: 6px solid transparent;
+  border-left: 6px solid #555;
+  border-top: 6px solid transparent;
+  height: 0;
+  width: 0;
+}
+
+.arrow-down {
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #555;
+  height: 0;
+  margin-top: 4px;
+  width: 0;
 }
 

@@ -77,6 +77,9 @@ dungeon.CharacterButton = (function() {
   }
 
   function populateCharacterSheet_(characterData) {
+    var populateField = function(parent, name, value) {
+      parent.getElementsByClassName(name)[0].textContent = value;
+    }
     var populateStatEntries = function(category) {
       var list = characterData[category];
       for (var i = 0; i < list.length; i++) {
@@ -86,8 +89,8 @@ dungeon.CharacterButton = (function() {
         if (value == undefined)
           value = '?';
         var modifier = characterData.stats[name + ' modifier'];
-        stat.getElementsByClassName('stat-name')[0].textContent = name + ':';
-        stat.getElementsByClassName('stat-value')[0].textContent = value;
+        populateField(stat, 'stat-name', name + ':');
+        populateField(stat, 'stat-value', value);
         var modifierField = stat.getElementsByClassName('stat-modifier')[0];
         if (modifier) {
           if (Number(modifier) > 0)
@@ -117,12 +120,32 @@ dungeon.CharacterButton = (function() {
       var type = power['Action Type'];
       var block = $('power-template').cloneNode(true);
       block.id = '';
+      var createToggleDetailsCallback = function(element) {
+        return function() {
+          var details = element.getElementsByClassName('power-details')[0];
+          details.hidden = !details.hidden;
+          element.getElementsByClassName('power-details-show')[0].hidden = !details.hidden;
+          element.getElementsByClassName('power-details-hide')[0].hidden = details.hidden;
+        }
+      };
+      block.addEventListener('click', createToggleDetailsCallback(block));
       block.getElementsByClassName('power-name')[0].textContent = name;
       block.getElementsByClassName('power-type')[0].textContent = type;
+      var effectBlock = block.getElementsByClassName('power-effect')[0];
+      if (power.weapons && power.weapons.length > 0) {
+        effectBlock.hidden = false;
+        // Assume preferred weapon is at the top of the list.
+        var weapon = power.weapons[0];
+        var weaponName = weapon.name;
+        var defense = weapon.defense;
+        populateField(effectBlock, 'power-attack-bonus', weapon.toHit);
+        populateField(effectBlock, 'power-defense', weapon.defense);
+        populateField(effectBlock, 'power-damage', weapon.damage);
+        populateField(effectBlock, 'power-weapon', weapon.name);
+      }
       $(usage.toLowerCase() + '-list').appendChild(block);
     }
   }
-
   return characterButton_;
 
 })();
