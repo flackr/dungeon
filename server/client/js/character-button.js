@@ -26,7 +26,6 @@ dungeon.CharacterButton = (function() {
     setCharacterAttribute_(element, 'class', characterData.charClass);
     element.addEventListener('click', showCharacterSheet_.bind(undefined, characterData));
 
-    // $('close-button').addEventListener('click', showCombatSheet_);
     $('stats-button').addEventListener('click', showStatsTab_);
     $('powers-button').addEventListener('click', showPowersTab_);
 
@@ -46,14 +45,7 @@ dungeon.CharacterButton = (function() {
       initialized_ = true;
     }
     populateCharacterSheet_(characterData);
-    // TODO(kellis): initialize page content.
-    $('map-page').hidden = true;
-    $('character-page').hidden = false;
-  }
-
-  function showCombatSheet_() {
-    $('character-page').hidden = true;
-    $('combat-page').hidden = false;
+    dungeon.Client.prototype.onSelectView('character');
   }
 
   function showStatsTab_() {
