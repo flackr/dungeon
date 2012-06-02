@@ -104,6 +104,23 @@ dungeon.CharacterButton = (function() {
     populateStatEntries('health');
     populateStatEntries('skills');
     populateStatEntries('other');
+
+    $('at-will-list').textContent = '';
+    $('encounter-list').textContent = '';
+    $('daily-list').textContent = '';
+
+    var list = characterData.powers;
+    for (var i = 0; i < list.length; i++) {
+      var power = list[i];
+      var name = power.name;
+      var usage = power['Power Usage'];
+      var type = power['Action Type'];
+      var block = $('power-template').cloneNode(true);
+      block.id = '';
+      block.getElementsByClassName('power-name')[0].textContent = name;
+      block.getElementsByClassName('power-type')[0].textContent = type;
+      $(usage.toLowerCase() + '-list').appendChild(block);
+    }
   }
 
   return characterButton_;

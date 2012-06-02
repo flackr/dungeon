@@ -38,6 +38,7 @@ dungeon.ParseCharacter = (function() {
     }
     stats['Class'] = charClass;
     stats['Name'] = name;
+    stats['Power Source'] = extractRulesByType_(rules, 'Power Source')[0];
     var json = {
        name: name,
        player: player,
@@ -48,8 +49,12 @@ dungeon.ParseCharacter = (function() {
        skills: extractRulesByType_(rules, 'Skill'), // List of skill names
        defenses: ['AC', 'Fortitude', 'Reflex', 'Will'],
        health: ['Hit Points', 'Bloodied', 'Surge Amount', 'Healing Surges'],
-       other: ['Name', 'Class', 'Level', 'Initiative', 'Speed', 'Passive Perception', 
-               'Passive Insight', 'Size'],
+       other: ['Name', 'Class', 'Level', 'Power Source', 'Initiative', 'Speed', 
+               'Passive Perception', 'Passive Insight', 'Size'],
+       racialTraits: extractRulesByType_(rules, 'Ratial Traits'),
+       classFeatures: extractRulesByType_(rules, 'Class Features'),
+       feats: extractRulesByType_(rules, 'Feats'),
+       powers: extractPowers_(characterSheet, rules)
     };
     return json;
   }
@@ -142,9 +147,80 @@ dungeon.ParseCharacter = (function() {
     }
     return chars.join('');
   }
- 
-  return parseCharacter_;
 
+  function extractPowers_(node, rules) {
+    var powers = [];
+
+    // TODO(kellis): Cross-check powers in rules list with powers in PowerStats
+    // to see if any are missing.
+    // var names = extractRulesByType_(rules, 'Power');
+
+    // Cannot currently load sample characters as naturally they are stored differently.
+    // Instead traverse RulesElementField. e.g. for the "Sure Strike" power:
+
+    // <RulesElementField field="Power Usage" name = "Reaping Strike" type="Power" ...>
+    //   At-Will
+    // </RulesElementField>
+    // <RulesElementField field="Level" name="Reaping Strike" type="Power" ... >
+    //  1
+    // </RulesElementField>
+    // <RulesElementField field="Keywords" name="Reaping Strike" type="Power" ... >
+    //  Martial, Weapon
+    // </RulesElementField>
+    // <RulesElementField field="Attack Type" name="Reaping Strike" type="Power" ... >
+    //  Melee weapon
+    // </RulesElementField>
+    // <RulesElementField field="Attack" name="Reaping Strike" type="Power" ... >
+    //  Strength vs. AC
+    // </RulesElementField>
+    // <RulesElementField field="Hit" name="Reaping Strike" type="Power" ... >
+    //  1[W] + Strength modifier damage.
+    //  Increase damage to 2[W] + Strength modifier at 21st level.
+    // </RulesElementField>
+
+    var powerStats = node.getElementsByTagName('PowerStats')[0];
+    // If group is missing, assume powers are lumped in main block.
+    if (!powerStats)
+      powerStats = node;
+    var powerList = powerStats.getElementsByTagName('Power');
+    for (var i = 0; i < powerList.length; i++) {
+      var data = {};
+      var power = powerList[i];
+      var name = power.getAttribute('name');
+      data.name = name;
+      var specifics = power.getElementsByTagName('specific');
+      for (var j = 0; j < specifics.length; j++) {
+         var detail = specifics[j];
+         var attribute = detail.getAttribute('name');
+         var value = detail.textContent.trim();
+         data[attribute] = value;
+      }
+      var weapons = power.getElementsByTagName('Weapon');
+      if (weapons) {
+        var utencils = [];
+        var extractWeaponStat = function(weapon, stat) {
+          var element = weapon.getElementsByTagName(stat)[0];
+          return element ? element.textContent.trim() : '';
+        }; 
+        for (var j = 0; j < weapons.length; j++) {
+          var weapon = weapons[j];
+          var name = power.getAttribute('name');
+           utencils.push({
+             name: name,
+             toHit: extractWeaponStat(weapon, 'AttackBonus'),
+             defense: extractWeaponStat(weapon, 'Defense'),
+             damage: extractWeaponStat(weapon, 'Damage'),
+             toHitDetails: extractWeaponStat(weapon, 'HitComponents'),
+             damageDetails: extractWeaponStat(weapon, 'DamageComponents')
+           });
+        }
+        data.weapons = utencils;
+      }
+      powers.push(data);
+    }
+    return powers;
+  }
+  return parseCharacter_;
 })();
 
 
