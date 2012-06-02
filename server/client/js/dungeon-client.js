@@ -44,9 +44,13 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   resize: function() {
-    var element = this.canvas.parentNode;
+    var element = $('content-area');
     this.canvas.setAttribute('width', element.clientWidth);
     this.canvas.setAttribute('height', element.clientHeight);
+
+    // Hack to fix scrolling of the character page.
+    $('character-page').style.setProperty('height', element.clientHeight + 'px');
+
     this.update();
   },
 

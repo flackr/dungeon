@@ -53,7 +53,6 @@ body {
 
 #nav-bar {
   background: #eee;
-  /* height: 40px; */
 }
 
 .page-selector {
@@ -97,38 +96,17 @@ body {
   padding: 5px;
 }
 
-#content-area {
-  /* overflow: auto; */
-}
-
-/*
-#combat-page,
-#character-page {
-  bottom: 0;
-  left: 0;
-  position: absolute;
-  right: 0;
-  top: 0;
-}
-
-#content-area {
-  bottom: 0;
-  left: 200px;
-  overflow: auto;
-  right: 0;
-  top: 0;
-  position: absolute;
-}
-
-#content-area > canvas {
-  position: absolute;
-}
-*/
-
 .section-title {
   color: #555;
   font-family: 'sans';
   font-weight: bold;
+}
+
+#content-area {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
 }
 
 #character-template {
@@ -175,6 +153,7 @@ body {
   font: 16px 'sans';
   line-height: 32px;
   margin: 0;
+  overflow: hidden;
   width: 120px;
 }
 
@@ -190,20 +169,21 @@ body {
 
 #character-sections {
   -webkit-padding-start: 10px;
+  overflow: auto;
   padding-top: 10px;
   position: relative;
 }
 
-#character-page > section {
-  height: 100%;
-  overflow: auto;
-  width: 100%;
+#stats-tab:not([hidden]) {
+  -webkit-box-orient: horizontal;
+  -webkit-box-pack: start;
+  -webkit-box-align: start;
+  display: -webkit-box;
 }
 
 .stat-column {
   -webkit-margin-end: 20px;
-  float: left;
-  position: relative;
+  overflow: visible;
 }
 
 .stat-block {
@@ -249,7 +229,7 @@ body {
   text-align: left;
 }
 
-.powers-tab {
+#powers-tab([not(hidden]) {
   -webkit-box-orient: horizontal;
   -webkit-box-pack: justify;
   display: -webkit-box;
@@ -258,7 +238,7 @@ body {
 .power-column {
   -webkit-box-flex: 1;
   display: inline-block;
-  width: 25%;
+  width: 33%;
   vertical-align: top;
 }
 
