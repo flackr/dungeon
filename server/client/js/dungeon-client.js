@@ -37,12 +37,14 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
     // Drag-n-drop of character files.
     var dropZone = $('sidebar-character-list');
-    dropZone.addEventListener('dragover', this.onDragOver.bind(this));
-    dropZone.addEventListener('drop', this.onDrop.bind(this));
+    dropZone.addEventListener('dragover', this.onFileDragOver.bind(this));
+    dropZone.addEventListener('drop', this.onFileDrop.bind(this));
     // Character file chooser
     $('files').addEventListener('change', this.onFileSelect.bind(this));
 
-    // TODO(kellis): Drag-n-drop of a character from the sidebar onto the map.
+    // Drag-n-drop of a character from the sidebar onto the map.
+    this.canvas.addEventListener('dragover', this.onCharacterDragOver.bind(this));
+    this.canvas.addEventListener('drop', this.onCharacterDrop.bind(this));
 
     window.addEventListener('resize', this.resize.bind(this));
     this.resize();
@@ -142,21 +144,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       return;
     }
     this.pointer = null;
-    var x = e.clientX;
-    var y = e.clientY;
-    var element = this.canvas;
-    while (element != document.body) {
-      x -= element.offsetLeft;
-      y -= element.offsetTop;
-      element = element.parentNode;
-    }
-    var w = parseInt(this.canvas.getAttribute('width'));
-    var h = parseInt(this.canvas.getAttribute('height'));
-    var evt = {
-      x: Math.floor((x - w/2)/this.viewport.tileSize + this.viewport.x),
-      y: Math.floor((y - h/2)/this.viewport.tileSize + this.viewport.y)
-    };
-
+    var evt = this.computeMapCoordinates(e);
     if (evt.x < 0 || evt.y < 0 || evt.x >= this.map[0].length || evt.y >= this.map.length)
       return;
     if (this.ui.selected !== undefined) {
@@ -166,8 +154,8 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       this.sendEvent(evt);
       return;
     }
-    for (var i = 0; i < this.characters.length; i++) {
-      if (this.characters[i].x == evt.x && this.characters[i].y == evt.y) {
+    for (var i = 0; i < this.characterPlacement.length; i++) {
+      if (this.characterPlacement[i].x == evt.x && this.characterPlacement[i].y == evt.y) {
         this.ui.selected = i;
         return;
       }
@@ -179,13 +167,52 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
   },
 
-  onDragOver: function(e) {
+  computeMapCoordinates: function(e) {
+    var x = e.clientX;
+    var y = e.clientY;
+    var element = this.canvas;
+    while (element != document.body) {
+      x -= element.offsetLeft;
+      y -= element.offsetTop;
+      element = element.parentNode;
+    }
+    var w = parseInt(this.canvas.getAttribute('width'));
+    var h = parseInt(this.canvas.getAttribute('height'));
+    var coords = {
+      x: Math.floor((x - w/2)/this.viewport.tileSize + this.viewport.x),
+      y: Math.floor((y - h/2)/this.viewport.tileSize + this.viewport.y)
+    };
+    return coords;
+  },
+
+  onCharacterDragOver: function(e) {
+    e.stopPropagation();
+    e.preventDefault();
+  },
+
+  onCharacterDrop: function(e) {
+    var coords = this.computeMapCoordinates(e);
+    //TODO(kevers): Separate lists for characters on map and sidebar.
+    // register, unregister, add, remove.
+    var characterData = {
+      name: e.dataTransfer.getData('text/html'),
+      x: coords.x,
+      y: coords.y
+    }
+    var evt = {
+      type: 'add-character-instance',
+      character: characterData
+    }
+    this.sendEvent(evt);
+  },
+
+  onFileDragOver: function(e) {
     e.stopPropagation();
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
   },
 
-  onDrop: function(e) {
+  onFileDrop: function(e) {
     var files = e.dataTransfer.files;
     this.loadFiles(files);
   },
@@ -214,7 +241,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
           var xmlContent = evt.target.result;
           var json = dungeon.ParseCharacter(filename, xmlContent);
           var evt = {
-            type: 'add-character',
+            type: 'register-character-prototype',
             character: json
           };
           self.sendEvent(evt, true);
@@ -245,28 +272,33 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       for (var j = view.x1; j < view.x2; j++) {
         ctx.fillStyle = this.map[i][j] ? '#000' : '#ccc';
         ctx.fillRect(baseX + (j - view.x1) * this.viewport.tileSize,
-                     baseY + (i - view.y1) * this.viewport.tileSize,
-                     this.viewport.tileSize, this.viewport.tileSize);
+                     baseY + (i - view.y1) * this.viewport.tileSize, 
+        this.viewport.tileSize, this.viewport.tileSize);
       }
     }
-    ctx.font = (this.viewport.tileSize - 5) + 'px Arial';
-    for (var i = 0; i < this.characters.length; i++) {
-      var character = this.characters[i];
+    ctx.font = '12px Arial'; // (this.viewport.tileSize - 5) + 'px Arial';
+    for (var i = 0; i < this.characterPlacement.length; i++) {
+      var character = this.characterPlacement[i];
+      var name = character.name;
+      ctx.fillStyle = '#f00';
+
+      ctx.beginPath();
+      var w = this.viewport.tileSize;
+      var x = baseX + (character.x - view.x1) * w + w / 2;
+      var y = baseY + (character.y - view.y1) * w + w / 2;
+      ctx.arc(x, y, this.viewport.tileSize/4, 0, 2*Math.PI, true);
+      ctx.fill();
+      ctx.fillText(name, x + w / 4, y - w / 4);
+    }
+    for (var i = 0; i < this.characterRegistry.length; i++) {
+      var character = this.characterRegistry[i];
       var name = character.name;
       // Update in character list.
       if (name in this.characterList)
          this.updateCharacter(character);
       else
          this.addCharacter(character);
-      // Show on map only if position has been set.
-      if (character.x == undefined)
-        continue;
-      ctx.fillStyle = '#f00';
-      ctx.fillText(name,
-                   baseX + (character.x - view.x1) * this.viewport.tileSize,
-                   baseY + ((character.y + 1) - view.y1) * this.viewport.tileSize);
     }
-
   },
 
   addCharacter: function(characterData) {

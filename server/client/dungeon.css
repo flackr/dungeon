@@ -149,6 +149,10 @@ body {
   -webkit-padding-end: 5px;
 }
 
+.character-button-drag {
+  opacity: 0.4;
+}
+
 #character-navbar > button {
   -webkit-margin-start: 10px;
   background: none;

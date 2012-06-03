@@ -19,22 +19,8 @@ dungeon.Game.prototype = {
         this.map[i].push(false);
       }
     }
-    this.characters = [];
-    this.characters.push({
-      x: 1,
-      y: 1,
-      name: 'A',
-      });
-    this.characters.push({
-      x: 5,
-      y: 5,
-      name: 'B',
-      });
-    this.characters.push({
-      x: 8,
-      y: 4,
-      name: 'X',
-      });
+    this.characterRegistry = [];
+    this.characterPlacement = [];
   },
 
   processEvent: function(eventData) {
@@ -44,14 +30,46 @@ dungeon.Game.prototype = {
     } else if (eventData.type == 'change') {
       this.map[eventData.y][eventData.x] = eventData.value;
     } else if (eventData.type == 'move') {
-      this.characters[eventData.index].x = eventData.x;
-      this.characters[eventData.index].y = eventData.y;
-    } else if (eventData.type == 'add-character') {
-      this.characters.push(eventData.character);
+      this.characterPlacement[eventData.index].x = eventData.x;
+      this.characterPlacement[eventData.index].y = eventData.y;
+    } else if (eventData.type == 'register-character-prototype') {
+      // TODO(kellis): Check if character already registered.
+      this.characterRegistry.push(eventData.character);
+    } else if (eventData.type == 'add-character-instance') {
+      this.createCharacterInstance(eventData.character);
     }
     this.update();
     return true;
   },
+
+  /**
+   * Creates an instance of a character on the combat map. Allows multiple
+   * instances of the same character prototype by adding a numeric sufix
+   * to the name to disambiguate.
+   */
+  createCharacterInstance: function(character) {
+    var name = character.name;
+    var candidateName = name;
+    var index = 1;
+    while(true) {
+      var found = false;
+      for (var i = 0; i < this.characterPlacement.length; i++) {
+        if (this.characterPlacement[i].name == candidateName) {
+          found = true;
+          break;
+        }   
+      }
+      if (!found)
+        break;
+      candidateName = name + ' [' + (++index) + ']';
+    }
+    character.name = candidateName;
+    this.characterPlacement.push(character);
+    // TODO(kellis): Add link back to prototype for populating initial state.
+  },
+
+
+  
 
   /**
    * This function is called when a change causes the current state to be stale

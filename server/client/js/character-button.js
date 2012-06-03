@@ -2,6 +2,8 @@ dungeon.CharacterButton = (function() {
 
   var initialized_ = false;
 
+  var dragIcon_ = null;
+
   /* @const */ var POWER_ORDERING_PREFERENCE = [
     'No Action',
     'Immediate Interrupt',
@@ -23,9 +25,24 @@ dungeon.CharacterButton = (function() {
     setCharacterAttribute_(element, 'class', characterData.charClass);
     element.addEventListener('click', showCharacterSheet_.bind(undefined, characterData));
 
+    // Drag-n-drop onto the map.
+    element.addEventListener('dragstart', onDragStart_.bind(element), false);
+    element.addEventListener('dragend', onDragEnd_.bind(element), false);
+
     $('stats-button').addEventListener('click', showStatsTab_);
     $('powers-button').addEventListener('click', showPowersTab_);
 
+    // Create drag-n-drop icon
+    // TODO(kellis): Create prettier icon.
+    if (!dragIcon_) {
+      var canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 32;
+      var context = canvas.getContext('2d');
+      context.fillStyle = 'rgb(255, 0, 255)';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      dragIcon_ = new Image();
+      dragIcon_.src = canvas.toDataURL('image/png');
+    }
     return element;
   }
 
@@ -62,6 +79,19 @@ dungeon.CharacterButton = (function() {
     $('powers-tab').hidden = false;
     $('stats-button').setAttribute('active', false);
     $('powers-button').setAttribute('active', true);
+  }
+
+  function onDragStart_(e) {
+    dungeon.Client.prototype.onSelectView('map');
+    this.classList.add('character-button-drag');
+    var name = this.getElementsByClassName('character-button-name')[0].textContent;
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData('text/html', name);
+    e.dataTransfer.setDragImage(dragIcon_, 16, 16);
+  }
+
+  function onDragEnd_(e) {
+    this.classList.remove('character-button-drag');
   }
 
   function createCharacterSheet_(characterData) {
