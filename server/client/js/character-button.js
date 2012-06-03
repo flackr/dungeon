@@ -208,7 +208,11 @@ dungeon.CharacterButton = (function() {
         populateField(effectBlock, 'power-damage', weapon.damage);
         populateField(effectBlock, 'power-weapon', weapon.name);
       }
-      $(usage.toLowerCase() + '-list').appendChild(block);
+      var category = usage.toLowerCase().trim();
+      var index = category.indexOf(' ');
+      if (index > 0)
+        category = category.substring(0, index);
+      $(category + '-list').appendChild(block);
     }
   }
 
