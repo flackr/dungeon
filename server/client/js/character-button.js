@@ -15,12 +15,9 @@ dungeon.CharacterButton = (function() {
   function characterButton_(characterData) {
     var template = $('character-template');
     var element = template.cloneNode(true);
-    element.id = '';
     var name = characterData.name;
-    var player = characterData.player ? 
-        '(' + characterData.player + ')' : '';
+    element.id = name + '-character-button';
     setCharacterAttribute_(element, 'name', name);
-    setCharacterAttribute_(element, 'player', player);
     // TODO(kellis): Option to sensor info for the bad guys.
     setCharacterAttribute_(element, 'level', characterData.level);
     setCharacterAttribute_(element, 'class', characterData.charClass);
@@ -45,6 +42,11 @@ dungeon.CharacterButton = (function() {
       initialized_ = true;
     }
     populateCharacterSheet_(characterData);
+    var buttons = document.getElementsByClassName('character-button');
+    for (var i = 0; i < buttons.length; i++)
+      buttons[i].setAttribute('active', false);
+    var activeButtonName = characterData.name + '-character-button';
+    $(activeButtonName).setAttribute('active', true);
     dungeon.Client.prototype.onSelectView('character');
   }
 
@@ -101,6 +103,11 @@ dungeon.CharacterButton = (function() {
      return list.sort(sortFunction);
   }
 
+  function SimplifyPowerName(name) {
+    // TODO(kellis): Add other filters here as required.
+    return name.replace('[Movement Technique]', '(move)');
+  }
+
   function populateCharacterSheet_(characterData) {
     var populateField = function(parent, name, value) {
       parent.getElementsByClassName(name)[0].textContent = value;
@@ -140,7 +147,7 @@ dungeon.CharacterButton = (function() {
     var list = sortPowers_(characterData);
     for (var i = 0; i < list.length; i++) {
       var power = list[i];
-      var name = power.name;
+      var name = SimplifyPowerName(power.name);
       var usage = power['Power Usage'];
       var type = power['Action Type'];
       var block = $('power-template').cloneNode(true);
@@ -174,6 +181,7 @@ dungeon.CharacterButton = (function() {
       $(usage.toLowerCase() + '-list').appendChild(block);
     }
   }
+
   return characterButton_;
 
 })();

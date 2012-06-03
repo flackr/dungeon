@@ -120,6 +120,11 @@ body {
   padding: 3px;
 }
 
+.character-button[active=true] {
+  background: #777;
+  color: #fff;
+}
+
 .character-button-title {
   -webkit-box-orient: horizontal;
   display: -webkit-box;
@@ -130,14 +135,14 @@ body {
   -webkit-box-flex: 1;
 }
 
-.character-button-player {
-  color: #777;
-}
-
 .character-button-subtitle {
   color: #555;
   font: 10px 'sans';
   margin-top: 5px;
+}
+
+.character-button[active=true] .character-button-subtitle {
+  color: #fff;
 }
 
 .character-button-subtitle > * {
