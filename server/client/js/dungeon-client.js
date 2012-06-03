@@ -17,6 +17,11 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       tileSize: 32,
     };
 
+    // Events can be sent faster than they can be processed. To avoid dropping
+    // important events, such as file load, we can compare against this index
+    // to detect a stall, and requeue the event if needed.
+    this.lastEventIndex = -1;
+
     this.canvas = $('game-canvas');
     this.socket = io.connect('http://' + location.host);
 
@@ -54,8 +59,26 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.update();
   },
 
-  sendEvent: function(eventData) {
-    this.socket.emit('e', this.events.length, eventData);
+  /**
+   * Broadcasts an event, which will be processed by all clients.
+   * @param {json} eventData Raw data in JSON format describing the event.
+   * @param {boolean=} opt_force Set to true to mark an important event which
+   *     should be requeued if a previous event is still being processed.
+   */
+  sendEvent: function(eventData, opt_force) {
+    if(this.lastEventIndex < this.events.length) {
+      this.lastEventIndex = this.events.length;
+      this.socket.emit('e', this.events.length, eventData);
+    } else if (opt_force) {
+      // Last event has not been processed.  Requeue the event.
+      var self = this;
+      var queueEvent = (function(e) {
+        return function() {
+          self.sendEvent(e, true);
+        }
+      })(eventData);
+      window.setTimeout(queueEvent, 100);
+    }
   },
 
   receiveEvent: function(eventData) {
@@ -172,28 +195,33 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.loadFiles(files);
   },
 
-  loadFiles: function(files) {
-    if (files && files.length > 0) {
-      for (var i = 0, f; f = files[i]; i++) {
-        this.loadCharacter(f);
+  /**
+   * Loads one or more files.  This is the entry point for all file types.
+   * Currently only D&D player files (dnd4e extension) are handled.  More to
+   * follow.
+   * @param {File|FileList} file File or list of files to load.
+   */
+  loadFiles: function(file) {
+    if (file) {
+      if (file instanceof FileList) {
+        for (var i = 0; i < file.length; i++)
+          this.loadFiles(file[i]);
+      } else {
+        var filename = file.name;
+        var reader = new FileReader();
+        var self = this;
+        reader.onload = function(evt) {
+          var xmlContent = evt.target.result;
+          var json = dungeon.ParseCharacter(filename, xmlContent);
+          var evt = {
+            type: 'add-character',
+            character: json
+          };
+          self.sendEvent(evt, true);
+        }
+        reader.readAsText(file);
       }
     }
-  },
-
-  loadCharacter: function(file) {
-    var filename = file.name;
-    var reader = new FileReader();
-    var self = this;
-    reader.onload = function(evt) {
-      var xmlContent = evt.target.result;
-      var json = dungeon.ParseCharacter(filename, xmlContent);
-      var evt = {
-        type: 'add-character',
-        character: json
-      };
-      self.sendEvent(evt);
-    }
-    reader.readAsText(file);
   },
 
   update: function() {
