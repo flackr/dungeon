@@ -9,6 +9,10 @@ body {
   top: 0;
 }
 
+#game-canvas {
+  position: absolute;
+}
+
 .left-sidebar-layout:not([hidden]),
 .top-navbar-layout:not([hidden]) {
   -webkit-box-align: stretch;
@@ -53,6 +57,12 @@ body {
 
 #nav-bar {
   background: #eee;
+}
+
+.page {
+  position: absolute;
+  height: 100%;
+  width: 100%;
 }
 
 .page-selector {
@@ -103,10 +113,7 @@ body {
 }
 
 #content-area {
-  height: 100%;
-  width: 100%;
   overflow: hidden;
-  position: relative;
 }
 
 #character-template {
@@ -339,3 +346,31 @@ body {
   width: 0;
 }
 
+#map-tiles,
+#map-functions {
+  overflow: auto;
+  position: absolute;
+}
+
+#map-tiles {
+  bottom: 5px;
+  left: 5px;
+}
+
+#map-functions {
+  left: 5px;
+  top: 5px;
+}
+
+#map-tiles > *,
+#map-functions > * {
+  width: 25px;
+  height: 25px;
+  background-color: white;
+  border: 1px solid #ccc;
+}
+
+#map-tiles > *[selected],
+#map-functions > *[selected] {
+  border-color: red;
+}

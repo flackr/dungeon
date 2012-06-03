@@ -13,6 +13,7 @@
   <script type="text/javascript" src="js/character-parser.js"></script>
   <script type="text/javascript" src="js/monster-parser.js"></script>
   <script type="text/javascript" src="js/character-button.js"></script>
+  <script type="text/javascript" src="js/map-editor.js"></script>
   <script type="text/javascript" src="js/dungeon-client.js"></script>
 </head>
 <body>
@@ -44,7 +45,13 @@
       </div>
       <div id="content-area">
         <div id="map-page" class="page">
-          <canvas width="800" height="600" id="game-canvas">
+          <canvas width="800" height="600" id="game-canvas"></canvas>
+          <div id="map-functions">
+            <div>1</div>
+            <div>3</div>
+            <div>5</div>
+          </div>
+          <div id="map-tiles"></div>
         </div>
         <div id="combat-overview-page" class="page" hidden>
           <h1>Stay tuned!!!</h1>

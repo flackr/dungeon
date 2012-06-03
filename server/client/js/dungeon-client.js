@@ -1,4 +1,5 @@
 dungeon.Client = function() {
+  dungeon.Game.apply(this);
   this.initialize();
 }
 
@@ -29,7 +30,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.canvas.addEventListener('mousedown', this.onPointerDown.bind(this));
 
     // Switching between views.
-    $('character-selector').addEventListener('click', this.onSelectView.bind(this,'character'));
+    $('character-selector').addEventListener('click', this.onSelectView.bind(this, 'character'));
     $('map-selector').addEventListener('click', this.onSelectView.bind(this,'map'));
     $('combat-overview-selector').addEventListener(
         'click', 
@@ -47,17 +48,18 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.canvas.addEventListener('drop', this.onCharacterDrop.bind(this));
 
     window.addEventListener('resize', this.resize.bind(this));
+
+    // Map related.
+    dungeon.MapEditor.loadTiles(this.mapTiles);
+    this.rebuildTiles();
+
     this.resize();
   },
 
   resize: function() {
-    var element = $('content-area');
+    var element = this.canvas.parentNode;
     this.canvas.setAttribute('width', element.clientWidth);
     this.canvas.setAttribute('height', element.clientHeight);
-
-    // Hack to fix scrolling of the character page.
-    $('character-page').style.setProperty('height', element.clientHeight + 'px');
-
     this.update();
   },
 
@@ -104,18 +106,51 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   onPointerDown: function(e) {
+    var selectedTile = dungeon.MapEditor.selectedTile();
     e.preventDefault();
-    this.pointer = {
-      x1: e.clientX,
-      y1: e.clientY,
-      listeners: {
-        mouseup: this.onPointerUp.bind(this),
-        mouseout: this.onPointerOut.bind(this),
-        mousemove: this.onPointerMove.bind(this)},
-      mapX: this.viewport.x,
-      mapY: this.viewport.y};
-    for (var i in this.pointer.listeners)
-      this.canvas.addEventListener(i, this.pointer.listeners[i]);
+    if (selectedTile == -1) {
+      this.pointer = {
+        mode: 'select',
+        x1: e.clientX,
+        y1: e.clientY,
+        listeners: {
+          mouseup: this.onPointerUp.bind(this),
+          mouseout: this.onPointerOut.bind(this),
+          mousemove: this.onPointerMove.bind(this)},
+        mapX: this.viewport.x,
+        mapY: this.viewport.y};
+      for (var i in this.pointer.listeners)
+        this.canvas.addEventListener(i, this.pointer.listeners[i]);
+    } else {
+      var lastpos = this.computeMapCoordinates(e);
+
+      var self = this;
+      var paint = function(pos) {
+        if (self.map.length > pos.y && self.map[pos.y].length > pos.x) {
+          pos.type = 'change';
+          pos.value = selectedTile;
+          self.sendEvent(pos);
+        }
+      };
+
+      paint(lastpos);
+      var move = function move(e) {
+        var pos = self.computeMapCoordinates(e);
+        if (pos.y == lastpos.y && pos.x == lastpos.x)
+          return;
+        lastpos = pos;
+        paint(pos);
+      };
+
+      var cancel = function() {
+        self.canvas.removeEventListener('mousemove', move);
+        self.canvas.removeEventListener('mouseup', cancel);
+        self.canvas.removeEventListener('mouseout', cancel);
+      };
+      this.canvas.addEventListener('mousemove', move);
+      this.canvas.addEventListener('mouseup', cancel);
+      this.canvas.addEventListener('mouseout', cancel);
+    }
   },
 
   onPointerMove: function(e) {
@@ -159,11 +194,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         this.ui.selected = i;
         return;
       }
-    }
-    if (this.map.length > evt.y && this.map[evt.y].length > evt.x) {
-      evt.type = 'change';
-      evt.value = !this.map[evt.y][evt.x];
-      this.sendEvent(evt);
     }
   },
 
@@ -239,6 +269,15 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
   },
 
+  rebuildTiles: function() {
+    for (var i = 0; i < this.mapTiles.length; i++) {
+      if (!this.mapTiles[i].image) {
+        this.mapTiles[i].image = new Image();
+        this.mapTiles[i].image.src = this.mapTiles[i].src;
+      }
+    }
+  },
+
   update: function() {
     var ctx = this.canvas.getContext('2d');
     var w = parseInt(this.canvas.getAttribute('width'));
@@ -258,10 +297,10 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
     for (var i = view.y1; i < view.y2; i++) {
       for (var j = view.x1; j < view.x2; j++) {
-        ctx.fillStyle = this.map[i][j] ? '#000' : '#ccc';
-        ctx.fillRect(baseX + (j - view.x1) * this.viewport.tileSize,
-                     baseY + (i - view.y1) * this.viewport.tileSize, 
-        this.viewport.tileSize, this.viewport.tileSize);
+        ctx.drawImage(this.mapTiles[this.map[i][j]].image,
+                      baseX + (j - view.x1) * this.viewport.tileSize,
+                      baseY + (i - view.y1) * this.viewport.tileSize, 
+                      this.viewport.tileSize, this.viewport.tileSize);
       }
     }
     ctx.font = '12px Arial'; // (this.viewport.tileSize - 5) + 'px Arial';
