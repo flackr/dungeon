@@ -96,7 +96,7 @@ dungeon.Server.prototype = {
   },
 
   eventReceived: function(id, eventData) {
-    if (this.events.length == id && this.processEvent(eventData)) {
+    if (this.processEvent(eventData)) {
       io.sockets.emit('e', eventData);
     }
   }
