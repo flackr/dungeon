@@ -264,19 +264,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         for (var i = 0; i < file.length; i++)
           this.loadFiles(file[i]);
       } else {
-        var filename = file.name;
-        var reader = new FileReader();
-        var self = this;
-        reader.onload = function(evt) {
-          var xmlContent = evt.target.result;
-          var json = dungeon.ParseCharacter(filename, xmlContent);
-          var evt = {
-            type: 'register-character-prototype',
-            character: json
-          };
-          self.sendEvent(evt, true);
-        }
-        reader.readAsText(file);
+        dungeon.ParseFile(file, this);
       }
     }
   },
