@@ -10,9 +10,7 @@ dungeon.ParseCharacter = (function() {
     'Intelligence Modifier': 'Intelligence modifier' 
   };
   
-  function parseCharacter_(filename, xmlContent) {
-    var parser=new DOMParser();
-    var xmlDoc = parser.parseFromString(xmlContent,"text/xml");
+  function parseCharacter_(xmlDoc) {
     // Relevant sections in the D&D character sheet.
     var characterSheet = xmlDoc.getElementsByTagName('CharacterSheet')[0];
     if (characterSheet == undefined) {
@@ -27,9 +25,7 @@ dungeon.ParseCharacter = (function() {
 
     var charClass = extractRulesByType_(rules, 'Class')[0];
     var stats =  extractStats(characterSheet);
-    var index = filename.indexOf('.');
-    var defaultName = convertFromCamelCase_(filename.substring(0, index));
-    var name = details ? extractBasicAttribute_(details, 'name') : defaultName;
+    var name = details ? extractBasicAttribute_(details, 'name') : '';
     var player = details ? extractBasicAttribute_(details, 'Player') : '';
     var level = details ?  Number(extractBasicAttribute_(details, 'Level')) : '?';
     var size = extractRulesByType_(rules, 'Size')[0];
@@ -127,25 +123,6 @@ dungeon.ParseCharacter = (function() {
     if (!('Passive Perception' in statMap))
       statMap['Passive Perception'] = Number(statMap['Perception']) + 10;
     return statMap;
-  }
-
-  function convertFromCamelCase_(name) {
-    var chars = [];
-    var armInsertSpace = false;
-    for (var i = 0; i < name.length; i++) {
-      var ch = name.charAt(i);
-      var isUpperCase = (ch == ch.toUpperCase());
-      if (isUpperCase) {
-        if (armInsertSpace) {
-          chars.push(' ');
-          armInsertSpace = false;
-        }
-      } else {
-        armInsertSpace = true;
-      }
-      chars.push(ch);
-    }
-    return chars.join('');
   }
 
   function extractPowers_(node, rules) {
