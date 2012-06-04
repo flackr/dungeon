@@ -62,6 +62,7 @@ function handler(req, res) {
 }
 
 dungeon.Server = function() {
+  dungeon.Game.apply(this);
   this.initialize();
   this.clients = [];
 
@@ -96,7 +97,7 @@ dungeon.Server.prototype = {
   },
 
   eventReceived: function(id, eventData) {
-    if (this.events.length == id && this.processEvent(eventData)) {
+    if (this.processEvent(eventData)) {
       io.sockets.emit('e', eventData);
     }
   }

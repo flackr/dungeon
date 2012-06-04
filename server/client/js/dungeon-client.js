@@ -47,11 +47,16 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.canvas.addEventListener('dragover', this.onCharacterDragOver.bind(this));
     this.canvas.addEventListener('drop', this.onCharacterDrop.bind(this));
 
+    // Drag-n-drop of image files for map tiles.
+    dropZone = $('map-tiles');
+    dropZone.addEventListener('dragover', this.onFileDragOver.bind(this));
+    dropZone.addEventListener('drop', this.onMapTileDrop.bind(this));
+
     window.addEventListener('resize', this.resize.bind(this));
 
     // Map related.
-    dungeon.MapEditor.loadTiles(this.mapTiles);
     this.rebuildTiles();
+    this.addEventListener('tile-added', this.rebuildTiles.bind(this));
 
     this.resize();
   },
@@ -242,14 +247,35 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     e.dataTransfer.dropEffect = 'copy';
   },
 
+  onMapTileDrop: function(e) {
+    var files = e.dataTransfer.files;
+    this.loadFiles(files, this.loadMapTile.bind(this));
+  },
+
+  loadMapTile: function(file) {
+    var reader = new FileReader();
+    var filename = file.name;
+    var self = this;
+
+    reader.onload = function(evt) {
+      // Assuming image content, encoding as base64 uri.
+      var evt = {
+        type: 'add-tile',
+        image: evt.target.result,
+      };
+      self.sendEvent(evt);
+    }
+    reader.readAsDataURL(file);
+  },
+
   onFileDrop: function(e) {
     var files = e.dataTransfer.files;
-    this.loadFiles(files);
+    this.loadFiles(files, dungeon.ParseFile.bind(undefined, this));
   },
 
   onFileSelect: function(e) {
     var files = e.target.files;
-    this.loadFiles(files);
+    this.loadFiles(files, dungeon.ParseFile.bind(undefined, this));
   },
 
   /**
@@ -257,14 +283,15 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
    * Currently only D&D player files (dnd4e extension) are handled.  More to
    * follow.
    * @param {File|FileList} file File or list of files to load.
+   * @param {function(file, DungeonClient)} handler Function to call per file.
    */
-  loadFiles: function(file) {
+  loadFiles: function(file, handler) {
     if (file) {
       if (file instanceof FileList) {
         for (var i = 0; i < file.length; i++)
-          this.loadFiles(file[i]);
+          this.loadFiles(file[i], handler);
       } else {
-        dungeon.ParseFile(file, this);
+        handler(file);
       }
     }
   },
@@ -276,6 +303,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         this.mapTiles[i].image.src = this.mapTiles[i].src;
       }
     }
+    dungeon.MapEditor.loadTiles(this.mapTiles);
   },
 
   update: function() {
