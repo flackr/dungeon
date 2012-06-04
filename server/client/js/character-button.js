@@ -171,6 +171,7 @@ dungeon.CharacterButton = (function() {
     populateStatEntries('other');
 
     $('at-will-list').textContent = '';
+    $('recharge-list').textContent = '';
     $('encounter-list').textContent = '';
     $('daily-list').textContent = '';
 
@@ -214,6 +215,15 @@ dungeon.CharacterButton = (function() {
         category = category.substring(0, index);
       $(category + '-list').appendChild(block);
     }
+
+    var setListVisibility = function(name) {
+      var list = $(name);
+      list.parentNode.parentNode.hidden = list.childNodes.length == 0;
+    }
+    setListVisibility('at-will-list');
+    setListVisibility('recharge-list');
+    setListVisibility('encounter-list');
+    setListVisibility('daily-list');
   }
 
   return characterButton_;

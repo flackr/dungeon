@@ -8,6 +8,13 @@ dungeon.ParseMonster = (function() {
     'Speed', // TODO(kellis): Will be more than one value for flying creatures.
   ];
 
+  var aliasMap_ = {
+    'Standard': 'Standard Action',
+    'At-Will': 'At-Will Action',
+    'Free': 'Free Action',
+    'free': 'Free Action'
+  };
+
   function parseMonster_(xmlDoc) {
     var abilities = xmlDoc.getElementsByTagName('AbilityScoreNumber');
     var stats = {};
@@ -71,22 +78,19 @@ dungeon.ParseMonster = (function() {
        health: ['Hit Points', 'Bloodied', 'Surge Amount', 'Healing Surges'],
        other: ['Name', 'Class', 'Level', 'Power Source', 'Initiative', 'Speed', 
                'Passive Perception', 'Passive Insight', 'Size'],
-       //racialTraits: [],
-       //classFeatures: [],
-       powers: []
-       //powers: extractPowers_(characterSheet, rules)
+       powers: extractPowers_(xmlDoc)
     };
     return json;
   }
 
-  function extractStat_(xmlDoc, name, stats) {
+  function extractStat_(el, name, stats) {
     var alias = name;
     var index = name.indexOf(':');
     if (index > 0) {
        alias = name.substring(index + 1);
        name = name.substring(0,index);
     }
-    var match = xmlDoc.getElementsByTagName(name)[0];
+    var match = el.getElementsByTagName(name)[0];
     if (match) {
       var value = match.getAttribute('FinalValue');
       if (!value)
@@ -99,6 +103,60 @@ dungeon.ParseMonster = (function() {
     var match = el.getElementsByTagName(tag)[0];
     if (match)
       return match.textContent;
+  }
+
+  function extractValueFromChild_(el, tag) {
+    var list = el.childNodes;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].nodeName == tag)
+        return list[i].textContent;
+    }
+  }
+
+  function extractPowers_(xmlDoc, stats) {
+    var powers = [];
+
+    var extractor = function(el, name) {
+      var match = el.getElementsByTagName(name)[0];
+      if (match) {
+        var value = match.getAttribute('FinalValue');
+        if (!value)
+          value = match.textContent;
+        return value;
+      }
+    }
+
+    var powerList = xmlDoc.getElementsByTagName('MonsterPower');
+    for (var i = 0; i < powerList.length; i++) {
+      var power = powerList[i];
+      var data = {};
+      var type = extractBasicAttribute_(power, 'Action');
+      var usage = extractBasicAttribute_(power, 'Usage');
+      if (type in aliasMap_)
+        type = aliasMap_[type];
+      // TODO(kellis): Investigate suitable defaults for missing properties.
+      if (!type)
+        type = 'Standard Action';
+      if (!usage)
+        usage = 'Encounter';
+      data['Action Type'] = type;
+      data['Power Usage'] = usage;
+      data.name = extractValueFromChild_(power, 'Name');
+
+      var attack = {};
+      var attackBonuses = power.getElementsByTagName('AttackBonuses')[0];
+      attack.toHit = extractor(attackBonuses, 'MonsterPowerAttackNumber');
+      attack.defense = extractor(attackBonuses, 'DefenseName');
+      attack.damage = extractor(power, 'Expression');
+      attack.name = '';
+      // TODO(kellis): Fix hacky escape clause.
+      if (!attack.damage)
+        attack.damage = 'special';
+      if (attack.toHit)
+        data.weapons = [attack];
+      powers.push(data);
+    }
+    return powers;
   }
 
   return parseMonster_;

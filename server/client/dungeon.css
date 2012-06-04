@@ -251,7 +251,7 @@ body {
   display: -webkit-box;
 }
 
-.power-column {
+.power-column:not([hidden]) {
   -webkit-box-flex: 1;
   display: inline-block;
   width: 33%;
