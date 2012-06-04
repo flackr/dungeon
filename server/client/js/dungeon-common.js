@@ -51,7 +51,7 @@ dungeon.Game = function() {
   dungeon.EventSource.apply(this);
 };
 
-dungeon.Game.prototype = extend(dungeon.EventSource ,{
+dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
   initialize: function() {
     var mapWidth = 60;
     var mapHeight = 60;
@@ -85,6 +85,9 @@ dungeon.Game.prototype = extend(dungeon.EventSource ,{
       this.characterRegistry.push(eventData.character);
     } else if (eventData.type == 'add-character-instance') {
       this.createCharacterInstance(eventData.character);
+    } else if (eventData.type == 'add-tile') {
+      this.mapTiles.push({'src': eventData.image});
+      this.dispatchEvent('tile-added', this.mapTiles.length - 1);
     }
     this.update();
     return true;

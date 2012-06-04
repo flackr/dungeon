@@ -62,6 +62,7 @@ function handler(req, res) {
 }
 
 dungeon.Server = function() {
+  dungeon.Game.apply(this);
   this.initialize();
   this.clients = [];
 

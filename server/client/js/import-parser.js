@@ -1,11 +1,11 @@
 /**
  * Parser for loading content into Dungeon.  Currently limited to importing
  * characters, but will be extended to handle other file types as well.
- * @param {File} The file to load.
  * @param {dungeon.Client} client The target client for receiving load
  *     notification.
+ * @param {File} The file to load.
  */
-dungeon.ParseFile = function(file, client) {
+dungeon.ParseFile = function(client, file) {
   var reader = new FileReader();
   var filename = file.name;
   reader.onload = function(evt) {
