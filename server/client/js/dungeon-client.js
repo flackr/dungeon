@@ -5,6 +5,11 @@ dungeon.Client = function() {
 
 dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   initialize: function() {
+    var role = 'player';
+    if (window.location.hash == '#dm')
+      role = 'dm';
+    document.body.parentNode.setAttribute('role', role);
+
     this.canvas = $('game-canvas');
     this.socket = io.connect('http://' + location.host);
 
