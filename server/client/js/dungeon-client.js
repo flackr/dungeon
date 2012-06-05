@@ -229,16 +229,28 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var coords = this.computeMapCoordinates(e);
     //TODO(kevers): Separate lists for characters on map and sidebar.
     // register, unregister, add, remove.
-    var characterData = {
-      name: e.dataTransfer.getData('text/html'),
-      x: coords.x,
-      y: coords.y
+    var name = e.dataTransfer.getData('text/html');
+    if (name) {
+      var found = false;
+      for (var i = 0; i < this.characterRegistry.length; i++) {
+        if (this.characterRegistry[i].name == name) {
+          found = true;
+          break;
+        }
+      }
+      if (!found)
+        return;
+      var characterData = {
+        name: name,
+        x: coords.x,
+        y: coords.y
+      }
+      var evt = {
+        type: 'add-character-instance',
+        character: characterData
+      }
+      this.sendEvent(evt);
     }
-    var evt = {
-      type: 'add-character-instance',
-      character: characterData
-    }
-    this.sendEvent(evt);
   },
 
   onFileDragOver: function(e) {
