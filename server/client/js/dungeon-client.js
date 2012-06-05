@@ -12,11 +12,17 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.canvas.addEventListener('mousedown', this.onPointerDown.bind(this));
 
     // Switching between views.
-    $('character-selector').addEventListener('click', this.onSelectView.bind(this, 'character'));
-    $('map-selector').addEventListener('click', this.onSelectView.bind(this,'map'));
+    $('character-selector').addEventListener(
+        'click', this.onSelectView.bind(this, 'page', 'character'));
+    $('map-selector').addEventListener(
+        'click', this.onSelectView.bind(this,'page', 'map'));
     $('combat-overview-selector').addEventListener(
-        'click', 
-        this.onSelectView.bind(this,'combat-overview'));
+        'click', this.onSelectView.bind(this,'page', 'combat-overview'));
+    $('character-import-selector').addEventListener(
+        'click', this.onSelectView.bind(this, 'sidebar-page', 'character-import'));
+    $('combat-tracker-selector').addEventListener(
+        'click', this.onSelectView.bind(this, 'sidebar-page', 'combat-tracker'));
+
     $('undo-button').addEventListener('click', this.sendEvent.bind(this, {'type': 'undo'}));
     $('save-button').addEventListener('click', this.saveMap.bind(this));
 
@@ -38,6 +44,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
     window.addEventListener('resize', this.resize.bind(this));
     this.addEventListener('tile-added', this.rebuildTiles.bind(this));
+    this.addEventListener('character-loaded', this.updateCharacterRegistry.bind(this));
 
     this.viewport = {
       x: 30,
@@ -104,17 +111,20 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       this.update();
   },
 
-  onSelectView: function(view) {
-    var selectors = document.getElementsByClassName('page-selector');
+  onSelectView: function(category, view) {
+    var selectors = document.getElementsByClassName(category + '-selector');
     for (var i = 0; i < selectors.length; i++)
       selectors[i].setAttribute('active', false);
-    var pages = document.getElementsByClassName('page');
+    var pages = document.getElementsByClassName(category);
     for (var i = 0; i < pages.length; i++) {
       pages[i].hidden = true;
       console.log('hide ' + pages[i].id);
     }
     $(view + '-selector').setAttribute('active', true);
     $(view + '-page').hidden = false;
+
+    if (view == 'combat-tracker')
+      this.onSelectView('page', 'map');
   },
 
   onPointerDown: function(e) {
@@ -336,6 +346,25 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     dungeon.MapEditor.loadTiles(this.mapTiles);
   },
 
+  updateCharacterRegistry: function(character) {
+    var name = character.name;
+    // Update in character list.
+    if (name in this.characterList)
+       this.updateCharacter(character);
+    else
+       this.addCharacter(character);
+  },
+
+  addCharacter: function(characterData) {
+    var element = dungeon.CharacterButton(characterData);
+    this.characterList[characterData.name] = element;
+    $('sidebar-character-list').appendChild(element);
+  },
+
+  updateCharacter: function(characterData) {
+     //TODO(kellis): Implement me.
+  },
+
   update: function() {
     var ctx = this.canvas.getContext('2d');
     var w = parseInt(this.canvas.getAttribute('width'));
@@ -374,26 +403,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       ctx.arc(x, y, this.viewport.tileSize/4, 0, 2*Math.PI, true);
       ctx.fill();
       ctx.fillText(name, x + w / 4, y - w / 4);
-    }
-    for (var i = 0; i < this.characterRegistry.length; i++) {
-      var character = this.characterRegistry[i];
-      var name = character.name;
-      // Update in character list.
-      if (name in this.characterList)
-         this.updateCharacter(character);
-      else
-         this.addCharacter(character);
-    }
-  },
-
-  addCharacter: function(characterData) {
-    var element = dungeon.CharacterButton(characterData);
-    this.characterList[characterData.name] = element;
-    $('sidebar-character-list').appendChild(element);
-  },
-
-  updateCharacter: function(characterData) {
-     //TODO(kellis): Implement me.
+    }    
   },
 
 });

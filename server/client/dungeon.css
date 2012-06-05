@@ -60,12 +60,13 @@ body {
 }
 
 .page {
-  position: absolute;
+  position: absolute !important;
   height: 100%;
   width: 100%;
 }
 
-#nav-bar > * {
+#nav-bar > *,
+.sidebar-page-selector {
   -webkit-box-sizing: content-box;
   background-size: 90%;
   background-position: center center;
@@ -80,7 +81,8 @@ body {
 .page-selector {
 }
 
-.page-selector[active=true] {
+.page-selector[active=true],
+.sidebar-page-selector[active=true] {
   border: 1px solid #555;
 }
 
@@ -96,6 +98,14 @@ body {
   background-image: url("./images/shield_and_swords.png");
 }
 
+#character-import-selector {
+  background-image: url("./images/document.png");
+}
+
+#combat-tracker-selector {
+  background-image: url("./images/Swords-icon.png");
+}
+
 #save-button {
   background-image: url('./images/save.png');
 }
@@ -106,6 +116,19 @@ body {
 
 #sidebar {
   width: 200px;
+}
+
+#sidebar-tabs {
+  display: -webkit-box;
+}
+
+
+#character-import-page:not([hidden]) {
+  -webkit-box-orient: vertical;
+  display: -webkit-box;
+  position: absolute !important;
+  height: 100%;
+  width: 100%;
 }
 
 #sidebar-character-list {
@@ -385,3 +408,19 @@ body {
 #map-functions > *[selected] {
   border-color: red;
 }
+
+#combat-message-area {
+  border: 1px solid #777;
+  height: 150px;
+  overflow-y: auto;
+  padding: 5px;
+}
+
+.combat-message {
+  font: 12px sans;
+  color: #555;
+  margin: 3px 0;
+  padding: 3px;
+}
+
+
