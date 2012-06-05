@@ -5,24 +5,6 @@ dungeon.Client = function() {
 
 dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   initialize: function() {
-    dungeon.Game.prototype.initialize.call(this);
-
-    this.ui = {
-      selected: undefined,
-    };
-
-    this.characterList = {};
-    this.viewport = {
-      x: 30,
-      y: 30,
-      tileSize: 32,
-    };
-
-    // Events can be sent faster than they can be processed. To avoid dropping
-    // important events, such as file load, we can compare against this index
-    // to detect a stall, and requeue the event if needed.
-    this.lastEventIndex = -1;
-
     this.canvas = $('game-canvas');
     this.socket = io.connect('http://' + location.host);
 
@@ -41,6 +23,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     $('combat-tracker-selector').addEventListener(
         'click', this.onSelectView.bind(this, 'sidebar-page', 'combat-tracker'));
 
+    $('undo-button').addEventListener('click', this.sendEvent.bind(this, {'type': 'undo'}));
 
     // Drag-n-drop of character files.
     var dropZone = $('sidebar-character-list');
@@ -59,12 +42,34 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     dropZone.addEventListener('drop', this.onMapTileDrop.bind(this));
 
     window.addEventListener('resize', this.resize.bind(this));
+    this.addEventListener('tile-added', this.rebuildTiles.bind(this));
+
+    this.viewport = {
+      x: 30,
+      y: 30,
+      tileSize: 32,
+    };
+
+
+    dungeon.Game.prototype.initialize.call(this);
+    this.resize();
+  },
+
+  reset: function() {
+    dungeon.Game.prototype.reset.call(this);
+
+    this.ui = {
+      selected: undefined,
+    };
+
+    this.characterList = {};
+    // Events can be sent faster than they can be processed. To avoid dropping
+    // important events, such as file load, we can compare against this index
+    // to detect a stall, and requeue the event if needed.
+    this.lastEventIndex = -1;
 
     // Map related.
     this.rebuildTiles();
-    this.addEventListener('tile-added', this.rebuildTiles.bind(this));
-
-    this.resize();
   },
 
   resize: function() {
@@ -100,7 +105,8 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     // TODO(flackr): processEvent can return false if the event description is
     // not possible to execute given the current game state. If this happens it
     // is likely that the game state is incorrect.
-    this.processEvent(eventData);
+    if (this.processEvent(eventData))
+      this.update();
   },
 
   onSelectView: function(category, view) {

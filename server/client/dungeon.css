@@ -65,9 +65,9 @@ body {
   width: 100%;
 }
 
-.page-selector,
+#nav-bar > *,
 .sidebar-page-selector {
-  -webkit-box-sizing:e- content-box;
+  -webkit-box-sizing: content-box;
   background-size: 90%;
   background-position: center center;
   background-repeat: no-repeat;
@@ -76,6 +76,9 @@ body {
   margin: 5px;
   width: 40px;
   position: relative;
+}
+
+.page-selector {
 }
 
 .page-selector[active=true],
@@ -101,6 +104,10 @@ body {
 
 #combat-tracker-selector {
   background-image: url("./images/Swords-icon.png");
+}
+
+#undo-button {
+  background-image: url('./images/undo.png');
 }
 
 #sidebar {

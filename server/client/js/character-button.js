@@ -64,7 +64,7 @@ dungeon.CharacterButton = (function() {
       buttons[i].setAttribute('active', false);
     var activeButtonName = characterData.name + '-character-button';
     $(activeButtonName).setAttribute('active', true);
-    dungeon.Client.prototype.onSelectView('character');
+    dungeon.Client.prototype.onSelectView('page', 'character');
   }
 
   function showStatsTab_() {
@@ -82,7 +82,7 @@ dungeon.CharacterButton = (function() {
   }
 
   function onDragStart_(e) {
-    dungeon.Client.prototype.onSelectView('map');
+    dungeon.Client.prototype.onSelectView('page', 'map');
     this.classList.add('character-button-drag');
     var name = this.getElementsByClassName('character-button-name')[0].textContent;
     e.dataTransfer.effectAllowed = 'copy';
