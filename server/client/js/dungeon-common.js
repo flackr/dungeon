@@ -87,6 +87,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
     } else if (eventData.type == 'register-character-prototype') {
       // TODO(kellis): Check if character already registered.
       this.characterRegistry.push(eventData.character);
+      this.dispatchEvent('character-loaded', eventData.character);
     } else if (eventData.type == 'add-character-instance') {
       this.createCharacterInstance(eventData.character);
     } else if (eventData.type == 'add-tile') {

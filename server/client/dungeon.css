@@ -404,3 +404,19 @@ body {
 #map-functions > *[selected] {
   border-color: red;
 }
+
+#combat-message-area {
+  border: 1px solid #777;
+  height: 150px;
+  overflow-y: auto;
+  padding: 5px;
+}
+
+.combat-message {
+  font: 12px sans;
+  color: #555;
+  margin: 3px 0;
+  padding: 3px;
+}
+
+
