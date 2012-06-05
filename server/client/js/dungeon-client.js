@@ -43,6 +43,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
     window.addEventListener('resize', this.resize.bind(this));
     this.addEventListener('tile-added', this.rebuildTiles.bind(this));
+    this.addEventListener('character-loaded', this.updateCharacterRegistry.bind(this));
 
     this.viewport = {
       x: 30,
@@ -120,6 +121,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
     $(view + '-selector').setAttribute('active', true);
     $(view + '-page').hidden = false;
+
+    if (view == 'combat-tracker')
+      this.onSelectView('page', 'map');
   },
 
   onPointerDown: function(e) {
@@ -330,6 +334,25 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     dungeon.MapEditor.loadTiles(this.mapTiles);
   },
 
+  updateCharacterRegistry: function(character) {
+    var name = character.name;
+    // Update in character list.
+    if (name in this.characterList)
+       this.updateCharacter(character);
+    else
+       this.addCharacter(character);
+  },
+
+  addCharacter: function(characterData) {
+    var element = dungeon.CharacterButton(characterData);
+    this.characterList[characterData.name] = element;
+    $('sidebar-character-list').appendChild(element);
+  },
+
+  updateCharacter: function(characterData) {
+     //TODO(kellis): Implement me.
+  },
+
   update: function() {
     var ctx = this.canvas.getContext('2d');
     var w = parseInt(this.canvas.getAttribute('width'));
@@ -368,26 +391,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       ctx.arc(x, y, this.viewport.tileSize/4, 0, 2*Math.PI, true);
       ctx.fill();
       ctx.fillText(name, x + w / 4, y - w / 4);
-    }
-    for (var i = 0; i < this.characterRegistry.length; i++) {
-      var character = this.characterRegistry[i];
-      var name = character.name;
-      // Update in character list.
-      if (name in this.characterList)
-         this.updateCharacter(character);
-      else
-         this.addCharacter(character);
-    }
-  },
-
-  addCharacter: function(characterData) {
-    var element = dungeon.CharacterButton(characterData);
-    this.characterList[characterData.name] = element;
-    $('sidebar-character-list').appendChild(element);
-  },
-
-  updateCharacter: function(characterData) {
-     //TODO(kellis): Implement me.
+    }    
   },
 
 });
