@@ -24,6 +24,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         'click', this.onSelectView.bind(this, 'sidebar-page', 'combat-tracker'));
 
     $('undo-button').addEventListener('click', this.sendEvent.bind(this, {'type': 'undo'}));
+    $('save-button').addEventListener('click', this.saveMap.bind(this));
 
     // Drag-n-drop of character files.
     var dropZone = $('sidebar-character-list');
@@ -51,7 +52,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       tileSize: 32,
     };
 
-
     dungeon.Game.prototype.initialize.call(this);
     this.resize();
   },
@@ -61,6 +61,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
     this.ui = {
       selected: undefined,
+      mapImages: [],
     };
 
     this.characterList = {};
@@ -297,6 +298,15 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     reader.readAsDataURL(file);
   },
 
+  saveMap: function() {
+    var mapData = JSON.stringify({
+      type: 'map',
+      map: this.map,
+      mapTiles: this.mapTiles,
+    });
+    window.open('data:text;charset=utf-8,' + encodeURI(mapData));
+  },
+
   onFileDrop: function(e) {
     var files = e.dataTransfer.files;
     this.loadFiles(files, dungeon.ParseFile.bind(undefined, this));
@@ -327,11 +337,13 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
   rebuildTiles: function() {
     for (var i = 0; i < this.mapTiles.length; i++) {
-      if (!this.mapTiles[i].image) {
-        this.mapTiles[i].image = new Image();
-        this.mapTiles[i].image.src = this.mapTiles[i].src;
-      }
+      if (!this.ui.mapImages[i])
+        this.ui.mapImages[i] = new Image();
+
+      // TODO: Only reset images when necessary.
+      this.ui.mapImages[i].src = this.mapTiles[i].src;
     }
+    this.ui.mapImages.splice(this.mapTiles.length, this.ui.mapImages.length);
     dungeon.MapEditor.loadTiles(this.mapTiles);
   },
 
@@ -373,7 +385,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
     for (var i = view.y1; i < view.y2; i++) {
       for (var j = view.x1; j < view.x2; j++) {
-        ctx.drawImage(this.mapTiles[this.map[i][j]].image,
+        ctx.drawImage(this.ui.mapImages[this.map[i][j]],
                       baseX + (j - view.x1) * this.viewport.tileSize,
                       baseY + (i - view.y1) * this.viewport.tileSize, 
                       this.viewport.tileSize, this.viewport.tileSize);

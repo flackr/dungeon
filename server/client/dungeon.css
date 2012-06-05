@@ -106,6 +106,10 @@ body {
   background-image: url("./images/Swords-icon.png");
 }
 
+#save-button {
+  background-image: url('./images/save.png');
+}
+
 #undo-button {
   background-image: url('./images/undo.png');
 }
