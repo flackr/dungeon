@@ -30,11 +30,17 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.canvas.addEventListener('mousedown', this.onPointerDown.bind(this));
 
     // Switching between views.
-    $('character-selector').addEventListener('click', this.onSelectView.bind(this, 'character'));
-    $('map-selector').addEventListener('click', this.onSelectView.bind(this,'map'));
+    $('character-selector').addEventListener(
+        'click', this.onSelectView.bind(this, 'page', 'character'));
+    $('map-selector').addEventListener(
+        'click', this.onSelectView.bind(this,'page', 'map'));
     $('combat-overview-selector').addEventListener(
-        'click', 
-        this.onSelectView.bind(this,'combat-overview'));
+        'click', this.onSelectView.bind(this,'page', 'combat-overview'));
+    $('character-import-selector').addEventListener(
+        'click', this.onSelectView.bind(this, 'sidebar-page', 'character-import'));
+    $('combat-tracker-selector').addEventListener(
+        'click', this.onSelectView.bind(this, 'sidebar-page', 'combat-tracker'));
+
 
     // Drag-n-drop of character files.
     var dropZone = $('sidebar-character-list');
@@ -97,11 +103,11 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.processEvent(eventData);
   },
 
-  onSelectView: function(view) {
-    var selectors = document.getElementsByClassName('page-selector');
+  onSelectView: function(category, view) {
+    var selectors = document.getElementsByClassName(category + '-selector');
     for (var i = 0; i < selectors.length; i++)
       selectors[i].setAttribute('active', false);
-    var pages = document.getElementsByClassName('page');
+    var pages = document.getElementsByClassName(category);
     for (var i = 0; i < pages.length; i++) {
       pages[i].hidden = true;
       console.log('hide ' + pages[i].id);

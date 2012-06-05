@@ -115,8 +115,26 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
       candidateName = name + ' [' + (++index) + ']';
     }
     character.name = candidateName;
+
+    // Add link back to prototype for accessing powers and stats. The
+    // source info is cloned to store the current condition of the
+    // charcter. As the character takes damage or uses powers, the current
+    // condition can be freely modified while still having access to
+    // the original state.
+    for (var i = 0; i < this.characterRegistry.length; i++) {
+      if (this.characterRegistry[i].name == name) {
+        var source = this.characterRegistry[i];
+        character.source = source;
+        character.condition = {};
+        var sourceStats = source.stats;
+        var targetStats = {};
+        for (key in character.source.stats)
+           targetStats[key] = sourceStats[key];
+        var targetPowers = source.powers.slice(0, source.powers.length);
+        break;
+      }
+    }
     this.characterPlacement.push(character);
-    // TODO(kellis): Add link back to prototype for populating initial state.
   },
 
 
