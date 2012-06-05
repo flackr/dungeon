@@ -53,13 +53,19 @@ dungeon.Game = function() {
 
 dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
   initialize: function() {
-    var mapWidth = 60;
-    var mapHeight = 60;
+    this.reset();
+  },
+
+  reset: function() {
     this.events = [];
+    this.characterRegistry = [];
+    this.characterPlacement = [];
     this.mapTiles = [
       {'src': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9wGAxUZHk8/2VoAAAAdaVRYdENvbW1lbnQAAAAAAENyZWF0ZWQgd2l0aCBHSU1QZC5lBwAAAA1JREFUCNdjYGBg+A8AAQQBAKTgrDEAAAAASUVORK5CYII='},
       {'src': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAAXNSR0IArs4c6QAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9wGAxUVG5PgYtkAAAAdaVRYdENvbW1lbnQAAAAAAENyZWF0ZWQgd2l0aCBHSU1QZC5lBwAAABdJREFUCNdj1FzG/vPnT6afP3+y8jMDADNeBsdmI5bVAAAAAElFTkSuQmCC'},
     ];
+    var mapWidth = 60;
+    var mapHeight = 60;
     this.map = [];
     for (var i = 0; i < mapHeight; i++) {
       this.map.push([]);
@@ -67,8 +73,6 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
         this.map[i].push(1);
       }
     }
-    this.characterRegistry = [];
-    this.characterPlacement = [];
   },
 
   processEvent: function(eventData) {
@@ -88,8 +92,14 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
     } else if (eventData.type == 'add-tile') {
       this.mapTiles.push({'src': eventData.image});
       this.dispatchEvent('tile-added', this.mapTiles.length - 1);
+    } else if (eventData.type == 'undo') {
+      var gameEvents = this.events;
+      this.events = [];
+      this.reset();
+      for (var i = 0; i < gameEvents.length - 2; i++) {
+        this.processEvent(gameEvents[i]);
+      }
     }
-    this.update();
     return true;
   },
 
@@ -119,16 +129,6 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
     // TODO(kellis): Add link back to prototype for populating initial state.
   },
 
-
-  
-
-  /**
-   * This function is called when a change causes the current state to be stale
-   * and can be overridden to redraw the game when something changes.
-   * TODO(flackr): Eventually we should probably use events to trigger changes.
-   */
-  update: function() {
-  },
 });
 
 // If being included from NodeJS, add dungeon.Game to exports.

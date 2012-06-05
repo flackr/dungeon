@@ -65,7 +65,7 @@ body {
   width: 100%;
 }
 
-.page-selector {
+#nav-bar > * {
   -webkit-box-sizing: content-box;
   background-size: 90%;
   background-position: center center;
@@ -75,6 +75,9 @@ body {
   margin: 5px;
   width: 40px;
   position: relative;
+}
+
+.page-selector {
 }
 
 .page-selector[active=true] {
@@ -91,6 +94,10 @@ body {
 
 #combat-overview-selector {
   background-image: url("./images/shield_and_swords.png");
+}
+
+#undo-button {
+  background-image: url('./images/undo.png');
 }
 
 #sidebar {
