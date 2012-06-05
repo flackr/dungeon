@@ -10,9 +10,23 @@ dungeon.ParseFile = function(client, file) {
   var filename = file.name;
   reader.onload = function(evt) {
     // TODO(kellis): Should handle json input too for reloading saved state.
-    var xmlContent = evt.target.result;
+    var fileContent = evt.target.result;
+
+    try {
+      var json;
+      if ((json = JSON.parse(fileContent)) && json.type) {
+        if (json.type == 'map') {
+          json.type = 'load-map';
+          client.sendEvent(json);
+        }
+        return;
+      }
+    } catch(err) {
+      console.log('Failed to read '+filename+' as json');
+    }
+
     var parser=new DOMParser();
-    var xmlDoc = parser.parseFromString(xmlContent,"text/xml");
+    var xmlDoc = parser.parseFromString(fileContent, "text/xml");
     // Inspect the root node to determine which parser we should use.
     var rootName = xmlDoc.childNodes[0].nodeName;
     if(rootName == 'D20Character' || rootName == 'Monster') {

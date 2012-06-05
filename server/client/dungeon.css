@@ -96,6 +96,10 @@ body {
   background-image: url("./images/shield_and_swords.png");
 }
 
+#save-button {
+  background-image: url('./images/save.png');
+}
+
 #undo-button {
   background-image: url('./images/undo.png');
 }

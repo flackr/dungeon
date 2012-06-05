@@ -99,6 +99,10 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
       for (var i = 0; i < gameEvents.length - 2; i++) {
         this.processEvent(gameEvents[i]);
       }
+    } else if (eventData.type == 'load-map') {
+      this.map = eventData.map;
+      this.mapTiles = eventData.mapTiles;
+      this.dispatchEvent('tile-added');
     }
     return true;
   },
