@@ -213,6 +213,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     for (var i = 0; i < this.characterPlacement.length; i++) {
       if (this.characterPlacement[i].x == evt.x && this.characterPlacement[i].y == evt.y) {
         this.ui.selected = i;
+        dungeon.combatTracker.dispatchEvent('character-selected', this.characterPlacement[i]);
         return;
       }
     }

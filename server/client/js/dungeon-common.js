@@ -141,7 +141,8 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
         var targetStats = {};
         for (key in character.source.stats)
            targetStats[key] = sourceStats[key];
-        var targetPowers = source.powers.slice(0, source.powers.length);
+        character.condition.stats = targetStats;
+        character.condition.powers = source.powers.slice(0, source.powers.length);
         break;
       }
     }

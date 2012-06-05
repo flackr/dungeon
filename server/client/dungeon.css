@@ -405,7 +405,16 @@ body {
   border-color: red;
 }
 
+#combat-tracker-page:not([hidden]) {
+  -webkit-box-orient: vertical;
+  -wbkit-box-pack: justify;
+  display: -webkit-box;
+  position: relative;
+}
+
+
 #combat-message-area {
+  -webkit-box-flex: 0;
   border: 1px solid #777;
   height: 150px;
   overflow-y: auto;
@@ -413,10 +422,43 @@ body {
 }
 
 .combat-message {
-  font: 12px sans;
+  font: 12px 'sans';
   color: #555;
   margin: 3px 0;
   padding: 3px;
+}
+
+#combat-active-character {
+  -webkit-box-flex: 1;
+  padding: 10px 5px;
+  font: 16px 'sans';
+  position: relative;
+}
+
+#active-character-powers {
+  overflow-y: auto;
+  /* position: absolute !important; */
+}
+
+#active-character-powers > * {
+  margin: 5px 0;
+  padding: 3px;
+}
+
+#power-summary-template {
+  display: none;
+}
+
+.power-summary {
+ font: 10px 'sans';
+}
+
+.power-summary-name {
+  font-weight: bold;
+}
+
+.power-summary-min-damage {
+  -webkit-margin-start: 10px;
 }
 
 
