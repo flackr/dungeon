@@ -107,14 +107,26 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
     } else if (eventData.type == 'log') {
       this.dispatchEvent('log', eventData.text);
     } else if (eventData.type == 'attack-result') {
+      var obituary = [];
       for (var i = 0; i < eventData.characters.length; i++) {
-        for (var j in eventData.characters[i][1]) {
-          this.characterPlacement[
-              eventData.characters[i][0]].condition.stats[j] =
-                  eventData.characters[i][1][j];
+        var characterEdits = eventData.characters[i];
+        var index = characterEdits[0];
+        for (var j in characterEdits[1]) {
+          this.characterPlacement[index].condition.stats[j] 
+              = characterEdits[1][j];
+          // Monsters are removed from the map on extermination.
+          if (j == 'Hit Points' && characterEdits[1][j] < 0) {
+            if (this.characterPlacement[index].source.charClass == 'Monster') {
+              // Remove the character from the placement list.
+              obituary.push(this.characterPlacement[index].name);
+              this.characterPlacement[index].dead = true;
+            }
+          }
         }
       }
       this.dispatchEvent('log', eventData.log);
+      for( var i = 0; i < obituary.length; i++)
+        this.dispatchEvent('log', obituary[i] + ' is no more.  RIP.');
     }
     return true;
   },

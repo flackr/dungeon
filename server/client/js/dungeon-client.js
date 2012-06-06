@@ -454,6 +454,8 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     ctx.font = '12px Arial'; // (this.viewport.tileSize - 5) + 'px Arial';
     for (var i = 0; i < this.characterPlacement.length; i++) {
       var character = this.characterPlacement[i];
+      if (character.dead)
+        continue;
       var name = character.name;
       ctx.fillStyle = '#f00';
 
@@ -464,7 +466,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       ctx.arc(x, y, this.viewport.tileSize/4, 0, 2*Math.PI, true);
       ctx.fill();
       ctx.fillText(name, x + w / 4, y - w / 4);
-    }    
+    }
   },
 
 });
