@@ -116,6 +116,15 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
         }
       }
       this.dispatchEvent('log', eventData.log);
+    } else if (eventData.type == 'use-power') {
+      if (eventData.power == 'healing-surge') {
+        this.characterPlacement[eventData.character].condition.stats[
+            'Hit Points'] = parseInt(this.characterPlacement[
+            eventData.character].condition.stats['Hit Points']) +
+            Math.floor(parseInt(this.characterPlacement[
+                eventData.character].source.stats['Hit Points']) / 4);
+        this.dispatchEvent('log', this.characterPlacement[eventData.character].name + ' uses a healing surge.\n\n');
+      }
     }
     return true;
   },

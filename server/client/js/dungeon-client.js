@@ -54,6 +54,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       $('combat-message-area').textContent += text;
     });
 
+    dungeon.combatTracker.addEventListener('use-power',
+        this.onUsePower.bind(this));
+
     this.viewport = {
       x: 30,
       y: 30,
@@ -107,6 +110,14 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     // is likely that the game state is incorrect.
     if (this.processEvent(eventData))
       this.update();
+  },
+
+  onUsePower: function(powerName) {
+    if (this.ui.selected !== undefined) {
+      this.sendEvent({type: 'use-power',
+          character: this.ui.selected,
+          power: powerName});
+    }
   },
 
   onSelectView: function(category, view) {

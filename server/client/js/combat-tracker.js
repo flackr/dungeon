@@ -19,9 +19,17 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
       block.getElementsByClassName(name)[0].textContent = value;
     }
     $('active-character-powers').textContent = '';
+
+    var block = $('power-summary-template').cloneNode(true);
+    block.id = '';
+    setData(block, 'power-summary-name', 'Healing surge');
+    block.addEventListener('click',
+        this.dispatchEvent.bind(this, 'use-power', 'healing-surge'));
+    $('active-character-powers').appendChild(block);
+
     for (var i = 0; i < powers.length; i++) {
       var power = powers[i];
-      var block = $('power-summary-template').cloneNode(true);
+      block = $('power-summary-template').cloneNode(true);
       block.id = '';
       // Provide mechanism to easily extract combat information from the element
       // when selected.
@@ -47,8 +55,8 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
         setData(block, 'power-summary-attack-bonus', block.data.toHit);
         setData(block, 'power-summary-defense', block.data.defense);
         setData(block, 'power-summary-damage', block.data.damage);
-        $('active-character-powers').appendChild(block);
         block.addEventListener('click', this.selectPower.bind(this, block));
+        $('active-character-powers').appendChild(block);
       }
     }
   },
