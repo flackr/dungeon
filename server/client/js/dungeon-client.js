@@ -264,16 +264,21 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var rollstr = '';
     // Rolls the given dice.
     for (var i = 0; i < rollArray.length; i++) {
+      if (i > 0) rollstr += ' + ';
       var val = rollArray[i][1];
       if (rollArray[i][0] > 0) {
-        val = 0;
+        rollstr += '(';
         for (var j = 0; j < rollArray[i][0]; j++) {
-          val += Math.floor(Math.random() * rollArray[i][1] + 1);
+          if (j > 0) rollstr += ' + ';
+          val = Math.floor(Math.random() * rollArray[i][1] + 1);
+          rollstr += val;
+          total += val;
         }
+        rollstr += ')';
+      } else {
+        rollstr += val;
+        total += val;
       }
-      if (i > 0) rollstr += ' + ';
-      rollstr += val;
-      total += val;
     }
     rollstr += ' = ' + total;
     return [total, rollstr];

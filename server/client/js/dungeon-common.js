@@ -187,6 +187,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
         if (val > 0)
           dice.push([num, val]);
         val = 0;
+        num = 0;
       }
     }
     dice.push([num, val]);
