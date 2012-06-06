@@ -73,6 +73,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
         this.map[i].push(1);
       }
     }
+    this.dispatchEvent('reset');
   },
 
   processEvent: function(eventData) {

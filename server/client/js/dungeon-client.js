@@ -73,6 +73,12 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     };
 
     this.characterList = {};
+    var characters = $('sidebar-character-list').getElementsByClassName('character-button');
+    for (var i = characters.length - 1; i >= 0; i--) {
+      if (characters[i].getAttribute('id') != 'character-template')
+        characters[i].parentNode.removeChild(characters[i]);
+    }
+    $('combat-message-area').textContent = 'Select a character to play!\n';
 
     // Map related.
     this.rebuildTiles();
@@ -234,7 +240,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   attackResult: function(attacker, attackee, power, tohit, dmg, logStr) {
     var attackedStat = power.defense;
     var defStat = parseInt(
-        this.characterPlacement[attackee].source.stats[attackedStat]);
+        this.characterPlacement[attackee].condition.stats[attackedStat]);
     if (defStat <= tohit) {
       logStr += 'HIT for ' + dmg + '\n';
       this.sendEvent({
