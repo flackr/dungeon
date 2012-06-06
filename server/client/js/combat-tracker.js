@@ -12,7 +12,7 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
   onCharacterSelect: function(character) {
     $('combat-active-character').hidden = false;
     $('active-character-name').textContent = character.name;
-    $('current-hp').textContent = character.condition.stats['Hit Points'];
+    $('current-hp').value = character.condition.stats['Hit Points'];
     $('total-hp').textContent = character.source.stats['Hit Points'];
     var powers = character.condition.powers;
     var setData = function(block, name, value) {

@@ -420,6 +420,7 @@ body {
 #combat-message-area {
   -webkit-box-flex: 0;
   border: 1px solid #777;
+  font: 12px 'sans';
   height: 150px;
   overflow-y: auto;
   padding: 5px;
@@ -427,7 +428,6 @@ body {
 }
 
 .combat-message {
-  font: 12px 'sans';
   color: #555;
   margin: 3px 0;
   padding: 3px;
@@ -484,6 +484,10 @@ body {
 
 .power-summary-min-damage {
   -webkit-margin-start: 10px;
+}
+
+#current-hp {
+  width: 50px;
 }
 
 html[role=player] #map-tiles,
