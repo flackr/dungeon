@@ -21,13 +21,13 @@
   <div class="left-sidebar-layout">
     <div id="sidebar" class="top-navbar-layout">
       <div id="sidebar-tab-switcher">
-        <div id="character-import-selector" class="sidebar-page-selector"active="true">
+        <div id="combat-tracker-selector" class="sidebar-page-selector" active="true">
         </div>
-        <div id="combat-tracker-selector" class="sidebar-page-selector" active="false">
+        <div id="character-import-selector" class="sidebar-page-selector"active="false">
         </div>
       </div>
       <div id="sidebar-tabs">
-        <div id="character-import-page" class="sidebar-page">
+        <div id="character-import-page" class="sidebar-page" hidden>
           <div id="sidebar-character-list">
             <div id="character-template" class="character-button" draggable="true">
               <div class="character-button-title">
@@ -46,7 +46,7 @@
             <input id="files" type="file" name="files[]" multiple></input>
           </div>
         </div>
-        <div id="combat-tracker-page" class="sidebar-page" hidden>
+        <div id="combat-tracker-page" class="sidebar-page">
           <div id="combat-message-area">
             <div class="combat-message">Click on a character to play.</div>
           </div>

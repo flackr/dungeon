@@ -53,8 +53,9 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
         minDamage: '?',
         maxDamage: '?'
       };
-      // TODO(kellis): Fill in block data with correct values.
-      var weapon = power.weapons[0];
+      // Fill in block data with correct values.
+      // Make assumption that first weapon in list is best.  TODO(kellis): Check assumption.
+      var weapon = power.weapons && power.weapons.length > 0 ? power.weapons[0] : null;
       if (weapon) {
         block.data.toHit = weapon.toHit;
         block.data.defense = weapon.defense;
@@ -72,6 +73,8 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
         $('active-character-powers').appendChild(block);
       }
     }
+    // force tab switch.
+    dungeon.Client.prototype.onSelectView('sidebar-page', 'combat-tracker');
   },
 
   selectPower: function(powerElement) {
