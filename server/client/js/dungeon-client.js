@@ -51,7 +51,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.addEventListener('tile-added', this.rebuildTiles.bind(this));
     this.addEventListener('character-loaded', this.updateCharacterRegistry.bind(this));
     this.addEventListener('log', function(text) {
-      console.log(text);
+      $('combat-message-area').textContent += text;
     });
 
     this.viewport = {
