@@ -423,6 +423,7 @@ body {
   height: 150px;
   overflow-y: auto;
   padding: 5px;
+  white-space: pre-wrap;
 }
 
 .combat-message {
@@ -445,7 +446,7 @@ body {
 }
 
 #active-character-powers > * {
-  margin: 5px 0;
+  margin: 5px 2px;
   padding: 3px;
 }
 
@@ -454,13 +455,27 @@ body {
 }
 
 .power-summary {
-  border: 1px solid transparent;
+  -webkit-border-radius: 3px;
+  border: 1px solid #666;
   cursor: pointer;
   font: 10px 'sans';
 }
 
+.power-summary.at-will {
+  background-color: #97E6A4;
+}
+
+.power-summary.encounter {
+  background-color: #faa;
+}
+
+.power-summary.daily {
+  background-color: #aaa;
+}
+
 .power-summary[selected] {
-  border-color: red;
+  border: 2px solid red;
+  margin: 3px 0;
 }
 
 .power-summary-name {

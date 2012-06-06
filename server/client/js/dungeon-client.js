@@ -5,6 +5,7 @@ dungeon.Client = function() {
 
 dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   initialize: function() {
+    var self = this;
     var role = 'player';
     if (window.location.hash == '#dm')
       role = 'dm';
@@ -51,8 +52,19 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.addEventListener('tile-added', this.rebuildTiles.bind(this));
     this.addEventListener('character-loaded', this.updateCharacterRegistry.bind(this));
     this.addEventListener('log', function(text) {
-      console.log(text);
+      $('combat-message-area').textContent += text;
     });
+    this.addEventListener('character-updated', function(c) {
+      if (self.ui.selected !== undefined && c == self.ui.selected) {
+        // TODO: This is a really hacky way of making sure the character gets
+        // updated. We should be subscribing for character updates from
+        // combat tracker but it doesn't know about 'this' yet.
+        dungeon.combatTracker.dispatchEvent('character-selected', self.characterPlacement[self.ui.selected]);
+      }
+    });
+
+    dungeon.combatTracker.addEventListener('use-power',
+        this.onUsePower.bind(this));
 
     this.viewport = {
       x: 30,
@@ -73,6 +85,12 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     };
 
     this.characterList = {};
+    var characters = $('sidebar-character-list').getElementsByClassName('character-button');
+    for (var i = characters.length - 1; i >= 0; i--) {
+      if (characters[i].getAttribute('id') != 'character-template')
+        characters[i].parentNode.removeChild(characters[i]);
+    }
+    $('combat-message-area').textContent = 'Select a character to play!\n';
 
     // Map related.
     this.rebuildTiles();
@@ -101,6 +119,14 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     // is likely that the game state is incorrect.
     if (this.processEvent(eventData))
       this.update();
+  },
+
+  onUsePower: function(powerName) {
+    if (this.ui.selected !== undefined) {
+      this.sendEvent({type: 'use-power',
+          character: this.ui.selected,
+          power: powerName});
+    }
   },
 
   onSelectView: function(category, view) {
@@ -234,7 +260,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   attackResult: function(attacker, attackee, power, tohit, dmg, logStr) {
     var attackedStat = power.defense;
     var defStat = parseInt(
-        this.characterPlacement[attackee].source.stats[attackedStat]);
+        this.characterPlacement[attackee].condition.stats[attackedStat]);
     if (defStat <= tohit) {
       logStr += 'HIT for ' + dmg + '\n';
       this.sendEvent({
@@ -258,16 +284,21 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var rollstr = '';
     // Rolls the given dice.
     for (var i = 0; i < rollArray.length; i++) {
+      if (i > 0) rollstr += ' + ';
       var val = rollArray[i][1];
       if (rollArray[i][0] > 0) {
-        val = 0;
+        rollstr += '(';
         for (var j = 0; j < rollArray[i][0]; j++) {
-          val += Math.floor(Math.random() * rollArray[i][1] + 1);
+          if (j > 0) rollstr += ' + ';
+          val = Math.floor(Math.random() * rollArray[i][1] + 1);
+          rollstr += val;
+          total += val;
         }
+        rollstr += ')';
+      } else {
+        rollstr += val;
+        total += val;
       }
-      if (i > 0) rollstr += ' + ';
-      rollstr += val;
-      total += val;
     }
     rollstr += ' = ' + total;
     return [total, rollstr];

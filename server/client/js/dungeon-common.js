@@ -73,6 +73,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
         this.map[i].push(1);
       }
     }
+    this.dispatchEvent('reset');
   },
 
   processEvent: function(eventData) {
@@ -109,13 +110,13 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
     } else if (eventData.type == 'attack-result') {
       var obituary = [];
       for (var i = 0; i < eventData.characters.length; i++) {
-        var characterEdits = eventData.characters[i];
-        var index = characterEdits[0];
-        for (var j in characterEdits[1]) {
-          this.characterPlacement[index].condition.stats[j] 
-              = characterEdits[1][j];
+        var index = eventData.characters[i][0];
+        for (var j in eventData.characters[i][1]) {
+          this.characterPlacement[index].condition.stats[j] =
+                  eventData.characters[i][1][j];
+          this.dispatchEvent('character-updated', index);
           // Monsters are removed from the map on extermination.
-          if (j == 'Hit Points' && characterEdits[1][j] < 0) {
+          if (j == 'Hit Points' && eventData.characters[i][1][j] < 0) {
             if (this.characterPlacement[index].source.charClass == 'Monster') {
               // Remove the character from the placement list.
               obituary.push(this.characterPlacement[index].name);
@@ -123,10 +124,20 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
             }
           }
         }
+        for( var i = 0; i < obituary.length; i++)
+          this.dispatchEvent('log', obituary[i] + ' is no more.  RIP.');        
       }
       this.dispatchEvent('log', eventData.log);
-      for( var i = 0; i < obituary.length; i++)
-        this.dispatchEvent('log', obituary[i] + ' is no more.  RIP.');
+    } else if (eventData.type == 'use-power') {
+      if (eventData.power == 'healing-surge') {
+        this.characterPlacement[eventData.character].condition.stats[
+            'Hit Points'] = parseInt(this.characterPlacement[
+            eventData.character].condition.stats['Hit Points']) +
+            Math.floor(parseInt(this.characterPlacement[
+                eventData.character].source.stats['Hit Points']) / 4);
+        this.dispatchEvent('log', this.characterPlacement[eventData.character].name + ' uses a healing surge.\n\n');
+        this.dispatchEvent('character-updated', eventData.character);
+      }
     }
     return true;
   },
@@ -198,6 +209,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
         if (val > 0)
           dice.push([num, val]);
         val = 0;
+        num = 0;
       }
     }
     dice.push([num, val]);
