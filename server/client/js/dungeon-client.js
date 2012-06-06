@@ -118,7 +118,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var pages = document.getElementsByClassName(category);
     for (var i = 0; i < pages.length; i++) {
       pages[i].hidden = true;
-      console.log('hide ' + pages[i].id);
     }
     $(view + '-selector').setAttribute('active', true);
     $(view + '-page').hidden = false;
@@ -241,13 +240,20 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   onCharacterDragOver: function(e) {
     e.stopPropagation();
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
   },
 
   onCharacterDrop: function(e) {
     var coords = this.computeMapCoordinates(e);
     //TODO(kevers): Separate lists for characters on map and sidebar.
     // register, unregister, add, remove.
-    var name = e.dataTransfer.getData('text/html');
+    var xml = e.dataTransfer.getData('text/xml');
+    var parser=new DOMParser();
+    var xmlDoc = parser.parseFromString(xml, "text/xml");
+    var node = xmlDoc.getElementsByTagName('character')[0];
+    if (!node)
+      return;
+    var name = node.getAttribute('name');
     if (name) {
       var found = false;
       for (var i = 0; i < this.characterRegistry.length; i++) {

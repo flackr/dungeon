@@ -58,7 +58,7 @@ dungeon.ParseCharacter = (function() {
   function extractBasicAttribute_(el, tag) {
     var matches = el.getElementsByTagName(tag);
     if (matches && matches.length == 1)
-      return matches[0].textContent;
+      return matches[0].textContent.trim();
   }
 
   function extractRulesByType_(rules, targetType) {

@@ -86,7 +86,7 @@ dungeon.CharacterButton = (function() {
     this.classList.add('character-button-drag');
     var name = this.getElementsByClassName('character-button-name')[0].textContent;
     e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('text/html', name);
+    e.dataTransfer.setData('text/xml', '<character name=\"' + name + '\"/>');
     e.dataTransfer.setDragImage(dragIcon_, 16, 16);
   }
 
