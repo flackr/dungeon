@@ -4,12 +4,22 @@ dungeon.CombatTracker = function() {
 };
 
 dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
+
+  activeCharacter: null,
+
   initialize: function() {
     this.addEventListener('character-selected', 
                           this.onCharacterSelect.bind(this));
+    $('current-hp').addEventListener('change', this.updateHitPoints.bind(this));
+  },
+
+  updateHitPoints: function() {
+    if (this.activeCharacter)
+      this.activeCharacter.condition.stats['Hit Points'] = $('current-hp').value;    
   },
 
   onCharacterSelect: function(character) {
+    this.activeCharacter = character;
     $('combat-active-character').hidden = false;
     $('active-character-name').textContent = character.name;
     $('current-hp').value = character.condition.stats['Hit Points'];

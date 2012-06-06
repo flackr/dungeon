@@ -125,7 +125,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
           }
         }
         for( var i = 0; i < obituary.length; i++)
-          this.dispatchEvent('log', obituary[i] + ' is no more.  RIP.');        
+          this.dispatchEvent('log', obituary[i] + ' is no more.  RIP.\n');        
       }
       this.dispatchEvent('log', eventData.log);
     } else if (eventData.type == 'use-power') {

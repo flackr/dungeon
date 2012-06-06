@@ -482,13 +482,15 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
                       this.viewport.tileSize, this.viewport.tileSize);
       }
     }
-    ctx.font = '12px Arial'; // (this.viewport.tileSize - 5) + 'px Arial';
+    ctx.font = '12px Arial';
     for (var i = 0; i < this.characterPlacement.length; i++) {
       var character = this.characterPlacement[i];
       if (character.dead)
         continue;
       var name = character.name;
-      ctx.fillStyle = '#f00';
+
+      ctx.fillStyle = (this.characterPlacement[i].source.charClass == 'Monster') ?
+          '#f00' : '#00f';
 
       ctx.beginPath();
       var w = this.viewport.tileSize;
