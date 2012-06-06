@@ -104,6 +104,17 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
       this.map = eventData.map;
       this.mapTiles = eventData.mapTiles;
       this.dispatchEvent('tile-added');
+    } else if (eventData.type == 'log') {
+      this.dispatchEvent('log', eventData.text);
+    } else if (eventData.type == 'attack-result') {
+      for (var i = 0; i < eventData.characters.length; i++) {
+        for (var j in eventData.characters[i][1]) {
+          this.characterPlacement[
+              eventData.characters[i][0]].condition.stats[j] =
+                  eventData.characters[i][1][j];
+        }
+      }
+      this.dispatchEvent('log', eventData.log);
     }
     return true;
   },
@@ -151,6 +162,34 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
       }
     }
     this.characterPlacement.push(character);
+  },
+
+  /**
+   * Parses a roll string and returns an array of dice to roll.
+   * @param {string} damage A roll string (i.e. 3d8 + 2d6 + 6).
+   * @return {Array<[num, die]>} An array consisting of pairs of integers giving
+   *     the number of dice to roll and the die face count. If num is 0 this
+   *     corresponds to a constant value (i.e. the +6 above).
+   */
+  parseRollString: function(damage) {
+    var dice = [];
+    var val = 0;
+    var num = 0;
+    for (var i = 0; i < damage.length; i++) {
+      var ch = damage.charAt(i);
+      if (ch >= '0' && ch <= '9') {
+        val = 10*val + Number(ch);
+      } else if (ch == 'd') {
+        num = val;
+        val = 0;
+      } else {
+        if (val > 0)
+          dice.push([num, val]);
+        val = 0;
+      }
+    }
+    dice.push([num, val]);
+    return dice;
   },
 
 });

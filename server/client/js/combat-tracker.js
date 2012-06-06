@@ -48,7 +48,28 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
         setData(block, 'power-summary-defense', block.data.defense);
         setData(block, 'power-summary-damage', block.data.damage);
         $('active-character-powers').appendChild(block);
-      } 
+        block.addEventListener('click', this.selectPower.bind(this, block));
+      }
+    }
+  },
+
+  selectPower: function(powerElement) {
+    if (powerElement && powerElement.getAttribute('selected')) {
+      powerElement.removeAttribute('selected');
+      return;
+    }
+    var nodes = $('active-character-powers').getElementsByClassName('power-summary');
+    for (var i = 0; i < nodes.length; i++)
+      nodes[i].removeAttribute('selected');
+    if (powerElement)
+      powerElement.setAttribute('selected', true);
+  },
+
+  selectedPower: function() {
+    var nodes = $('active-character-powers').getElementsByClassName('power-summary');
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i].getAttribute('selected'))
+        return nodes[i].data;
     }
   },
 
