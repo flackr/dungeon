@@ -5,6 +5,11 @@ dungeon.Client = function() {
 
 dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   initialize: function() {
+    var role = 'player';
+    if (window.location.hash == '#dm')
+      role = 'dm';
+    document.body.parentNode.setAttribute('role', role);
+
     this.canvas = $('game-canvas');
     this.socket = io.connect('http://' + location.host);
 
@@ -45,6 +50,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     window.addEventListener('resize', this.resize.bind(this));
     this.addEventListener('tile-added', this.rebuildTiles.bind(this));
     this.addEventListener('character-loaded', this.updateCharacterRegistry.bind(this));
+    this.addEventListener('log', function(text) {
+      console.log(text);
+    });
 
     this.viewport = {
       x: 30,
@@ -65,10 +73,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     };
 
     this.characterList = {};
-    // Events can be sent faster than they can be processed. To avoid dropping
-    // important events, such as file load, we can compare against this index
-    // to detect a stall, and requeue the event if needed.
-    this.lastEventIndex = -1;
 
     // Map related.
     this.rebuildTiles();
@@ -88,19 +92,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
    *     should be requeued if a previous event is still being processed.
    */
   sendEvent: function(eventData, opt_force) {
-    if(this.lastEventIndex < this.events.length) {
-      this.lastEventIndex = this.events.length;
-      this.socket.emit('e', this.events.length, eventData);
-    } else if (opt_force) {
-      // Last event has not been processed.  Requeue the event.
-      var self = this;
-      var queueEvent = (function(e) {
-        return function() {
-          self.sendEvent(e, true);
-        }
-      })(eventData);
-      window.setTimeout(queueEvent, 100);
-    }
+    this.socket.emit('e', this.events.length, eventData);
   },
 
   receiveEvent: function(eventData) {
@@ -203,6 +195,21 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var evt = this.computeMapCoordinates(e);
     if (evt.x < 0 || evt.y < 0 || evt.x >= this.map[0].length || evt.y >= this.map.length)
       return;
+    for (var i = 0; i < this.characterPlacement.length; i++) {
+      if (this.characterPlacement[i].x == evt.x && this.characterPlacement[i].y == evt.y) {
+        var power;
+        if (this.ui.selected !== undefined &&
+            (power = dungeon.combatTracker.selectedPower())) {
+          // Deselect power to indicate action was completed.
+          dungeon.combatTracker.selectPower();
+          this.attack(this.ui.selected, i, power);
+        } else {
+          this.ui.selected = i;
+          dungeon.combatTracker.dispatchEvent('character-selected', this.characterPlacement[i]);
+        }
+        return;
+      }
+    }
     if (this.ui.selected !== undefined) {
       evt.type = 'move';
       evt.index = this.ui.selected;
@@ -210,13 +217,60 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       this.sendEvent(evt);
       return;
     }
-    for (var i = 0; i < this.characterPlacement.length; i++) {
-      if (this.characterPlacement[i].x == evt.x && this.characterPlacement[i].y == evt.y) {
-        this.ui.selected = i;
-        dungeon.combatTracker.dispatchEvent('character-selected', this.characterPlacement[i]);
-        return;
-      }
+  },
+
+  attack: function(attacker, attackee, power) {
+    var toHitStr = '1d20 + ' + power.toHit;
+    var dmgStr = power.damage;
+    var logStr = 'Rolling attack: ' + toHitStr + '\n';
+    var attack = this.rollDice(this.parseRollString(toHitStr));
+    logStr += attack[1] + '\n';
+    logStr += 'Rolling damage: ' + dmgStr + '\n';
+    var damage = this.rollDice(this.parseRollString(dmgStr));
+    logStr += damage[1] + '\n';
+    this.attackResult(attacker, attackee, power, attack[0], damage[0], logStr);
+  },
+
+  attackResult: function(attacker, attackee, power, tohit, dmg, logStr) {
+    var attackedStat = power.defense;
+    var defStat = parseInt(
+        this.characterPlacement[attackee].source.stats[attackedStat]);
+    if (defStat <= tohit) {
+      logStr += 'HIT for ' + dmg + '\n';
+      this.sendEvent({
+        type: 'attack-result',
+        characters: [
+          [attackee,
+           {'Hit Points':
+           this.characterPlacement[attackee].condition.stats['Hit Points']
+               - dmg}],
+        ],
+        log: logStr,
+      });
+    } else {
+      logStr += 'Missed!' + '\n';
+      this.sendEvent({type: 'log', text: logStr});
     }
+  },
+
+  rollDice: function(rollArray) {
+    var total = 0;
+    var rollstr = '';
+    // Rolls the given dice.
+    for (var i = 0; i < rollArray.length; i++) {
+      var val = rollArray[i][1];
+      if (rollArray[i][0] > 0) {
+        val = 0;
+        for (var j = 0; j < rollArray[i][0]; j++) {
+          val += Math.floor(Math.random() * rollArray[i][1] + 1);
+        }
+      }
+      if (i > 0) rollstr += ' + ';
+      rollstr += val;
+      total += val;
+    }
+    rollstr += ' = ' + total;
+    return [total, rollstr];
   },
 
   computeMapCoordinates: function(e) {

@@ -454,7 +454,13 @@ body {
 }
 
 .power-summary {
- font: 10px 'sans';
+  border: 1px solid transparent;
+  cursor: pointer;
+  font: 10px 'sans';
+}
+
+.power-summary[selected] {
+  border-color: red;
 }
 
 .power-summary-name {
@@ -465,4 +471,9 @@ body {
   -webkit-margin-start: 10px;
 }
 
-
+html[role=player] #map-tiles,
+html[role=player] #map-functions,
+html[role=player] #save-button,
+html[role=player] #undo-button {
+  display: none;
+}
