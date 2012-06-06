@@ -31,6 +31,9 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
       var power = powers[i];
       block = $('power-summary-template').cloneNode(true);
       block.id = '';
+      if (powers[i]['Power Usage'])
+        block.classList.add(
+            powers[i]['Power Usage'].split(' ')[0].toLowerCase());
       // Provide mechanism to easily extract combat information from the element
       // when selected.
       block.data = {
