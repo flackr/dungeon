@@ -5,8 +5,6 @@ dungeon.CombatTracker = function() {
 
 dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
 
-  activeCharacter: null,
-
   initialize: function() {
     this.addEventListener('character-selected', 
                           this.onCharacterSelect.bind(this));
@@ -14,12 +12,11 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
   },
 
   updateHitPoints: function() {
-    if (this.activeCharacter)
-      this.activeCharacter.condition.stats['Hit Points'] = $('current-hp').value;    
+    var value = $('current-hp').value;
+    this.dispatchEvent('use-power', 'HP-tweak', {tweak: value});
   },
 
   onCharacterSelect: function(character) {
-    this.activeCharacter = character;
     $('combat-active-character').hidden = false;
     $('active-character-name').textContent = character.name;
     $('current-hp').value = character.condition.stats['Hit Points'];
@@ -34,7 +31,7 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
     block.id = '';
     setData(block, 'power-summary-name', 'Healing surge');
     block.addEventListener('click',
-        this.dispatchEvent.bind(this, 'use-power', 'healing-surge'));
+        this.dispatchEvent.bind(this, 'use-power', 'healing-surge', {}));
     $('active-character-powers').appendChild(block);
 
     for (var i = 0; i < powers.length; i++) {

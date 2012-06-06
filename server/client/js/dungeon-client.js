@@ -121,11 +121,15 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       this.update();
   },
 
-  onUsePower: function(powerName) {
+  onUsePower: function(powerName, data) {
     if (this.ui.selected !== undefined) {
-      this.sendEvent({type: 'use-power',
-          character: this.ui.selected,
-          power: powerName});
+      var evt = {
+        type: 'use-power',
+        character: this.ui.selected,
+        power: powerName
+      };
+      evt.data = data;
+      this.sendEvent(evt);
     }
   },
 
