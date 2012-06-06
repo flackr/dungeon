@@ -113,6 +113,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
           this.characterPlacement[
               eventData.characters[i][0]].condition.stats[j] =
                   eventData.characters[i][1][j];
+          this.dispatchEvent('character-updated', eventData.characters[i][0]);
         }
       }
       this.dispatchEvent('log', eventData.log);
@@ -124,6 +125,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
             Math.floor(parseInt(this.characterPlacement[
                 eventData.character].source.stats['Hit Points']) / 4);
         this.dispatchEvent('log', this.characterPlacement[eventData.character].name + ' uses a healing surge.\n\n');
+        this.dispatchEvent('character-updated', eventData.character);
       }
     }
     return true;

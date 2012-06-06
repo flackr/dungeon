@@ -5,6 +5,7 @@ dungeon.Client = function() {
 
 dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   initialize: function() {
+    var self = this;
     var role = 'player';
     if (window.location.hash == '#dm')
       role = 'dm';
@@ -52,6 +53,14 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.addEventListener('character-loaded', this.updateCharacterRegistry.bind(this));
     this.addEventListener('log', function(text) {
       $('combat-message-area').textContent += text;
+    });
+    this.addEventListener('character-updated', function(c) {
+      if (self.ui.selected !== undefined && c == self.ui.selected) {
+        // TODO: This is a really hacky way of making sure the character gets
+        // updated. We should be subscribing for character updates from
+        // combat tracker but it doesn't know about 'this' yet.
+        dungeon.combatTracker.dispatchEvent('character-selected', self.characterPlacement[self.ui.selected]);
+      }
     });
 
     dungeon.combatTracker.addEventListener('use-power',
