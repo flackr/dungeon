@@ -118,16 +118,23 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
           // Monsters are removed from the map on extermination.
           if (j == 'Hit Points' && eventData.characters[i][1][j] < 0) {
             if (this.characterPlacement[index].source.charClass == 'Monster') {
-              // Remove the character from the placement list.
-              obituary.push(this.characterPlacement[index].name);
-              this.characterPlacement[index].dead = true;
+              // Mark dead monster for removal from the game.
+              obituary.push(index);
+              //obituary.push(this.characterPlacement[index].name);
+              //this.characterPlacement[index].dead = true;
             }
           }
         }
-        for( var i = 0; i < obituary.length; i++)
-          this.dispatchEvent('log', obituary[i] + ' is no more.  RIP.\n');        
       }
       this.dispatchEvent('log', eventData.log);
+      if( obituary.length > 0) {
+        obituary.sort(function(a, b) {return b - a});
+        for( var i = 0; i < obituary.length; i++) {
+          this.dispatchEvent('log', this.characterPlacement[obituary[i]] 
+              + ' is no more.  RIP.\n');
+          this.characterPlacement.splice(obituary[i], 1);
+        }
+      }
     } else if (eventData.type == 'use-power') {
       if (eventData.power == 'healing-surge') {
         this.characterPlacement[eventData.character].condition.stats[
