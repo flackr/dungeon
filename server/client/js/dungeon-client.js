@@ -16,6 +16,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
     this.socket.on('e', this.receiveEvent.bind(this));
     this.canvas.addEventListener('mousedown', this.onPointerDown.bind(this));
+    this.canvas.addEventListener('mousewheel', this.onMouseWheel.bind(this));
 
     // Switching between views.
     $('character-selector').addEventListener(
@@ -247,6 +248,12 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       this.sendEvent(evt);
       return;
     }
+  },
+  
+  onMouseWheel: function(e) {
+    var delta = e.wheelDelta/120;
+    this.viewport.tileSize += Math.floor(delta);
+    this.update();
   },
 
   attack: function(attacker, attackee, power) {
