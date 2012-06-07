@@ -252,7 +252,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   
   onMouseWheel: function(e) {
     var delta = e.wheelDelta/120;
-    this.viewport.tileSize += Math.floor(delta);
+    this.viewport.tileSize = Math.max(1, this.viewport.tileSize + Math.floor(delta));
     this.update();
   },
 
