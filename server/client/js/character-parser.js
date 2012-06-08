@@ -116,6 +116,7 @@ dungeon.ParseCharacter = (function() {
     }
     // Add derived stats that are not part of the XML save format.
     var hp = Number(statMap['Hit Points']);
+    statMap['Max Hit Points'] = hp;
     statMap['Bloodied'] = Math.floor(hp/2);
     statMap['Surge Amount'] = Math.floor(hp/4);
     if (!('Passive Insight' in statMap))

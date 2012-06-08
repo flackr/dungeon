@@ -493,15 +493,15 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
                       this.viewport.tileSize, this.viewport.tileSize);
       }
     }
-    ctx.font = '12px Arial';
+    var role = document.body.parentNode.getAttribute('role');
     for (var i = 0; i < this.characterPlacement.length; i++) {
       var character = this.characterPlacement[i];
       if (character.dead)
         continue;
       var name = character.name;
+      var isMonster = character.source.charClass == 'Monster';
 
-      ctx.fillStyle = (this.characterPlacement[i].source.charClass == 'Monster') ?
-          '#f00' : '#00f';
+      ctx.fillStyle = isMonster ? '#f00' : '#00f';
 
       ctx.beginPath();
       var w = this.viewport.tileSize;
@@ -509,7 +509,51 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       var y = baseY + (character.y - view.y1) * w + w / 2;
       ctx.arc(x, y, this.viewport.tileSize/4, 0, 2*Math.PI, true);
       ctx.fill();
-      ctx.fillText(name, x + w / 4, y - w / 4);
+
+      // Health bars
+      var px = 1 / 32 * w;
+      var hx = Math.round(x - w / 2 + 1 + 1 * px);
+      var hy = Math.round(y - w / 2 + 1 + 1 * px);
+      var hw = Math.max(10, Math.round(w - 2 - 2 * px));
+      var hh = Math.max(1, Math.round(2 / 32 * w));
+      // Black border
+      ctx.fillStyle = '#000';
+      ctx.fillRect(hx - 1, hy - 1, hw + 2, hh + 2);
+      // Interior
+      var hpPercent = character.condition.stats['Hit Points'] / character.condition.stats['Max Hit Points'];
+      var isBloodied = (character.condition.stats['Hit Points'] <= character.condition.stats['Bloodied']);
+      var isDead = (character.condition.stats['Hit Points'] <= 0);
+      if (isMonster) {
+        ctx.fillStyle = isBloodied ? '#f00' : '#0f0';
+        if (role == 'dm')
+          ctx.fillRect(hx, hy, Math.max(0, Math.min(hw, Math.round(hw * hpPercent))), hh);
+        else
+          ctx.fillRect(hx, hy, Math.max(0, Math.min(hw, Math.round(hw * (isBloodied ? 0.5 : 1.0)))), hh);
+          ctx.fillStyle = '#000';
+          ctx.fillRect(Math.round(hx + hw * 1 / 2), hy, 1, hh);
+          
+      } else {
+        if (!isBloodied) {
+          ctx.fillStyle = "rgb(" + Math.round((1 - (hpPercent - 0.5) * 2) * 255) + ",255,0)";
+        } else if (!isDead) {
+          ctx.fillStyle = "rgb(255," + Math.round(hpPercent * 2 * 255) + ",0)";
+        } else {
+          ctx.fillStyle = "rgb(255,0,0)";
+        }
+        ctx.fillRect(hx, hy, Math.max(0, Math.min(hw, Math.round(hw * (0.5 + hpPercent) * 2.0 / 3.0))), hh);
+        if (!isDead) {
+          ctx.fillStyle = '#0f0';
+          ctx.fillRect(hx, hy, Math.round(hw * 1.0 / 3.0), hh);
+        }
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(Math.round(hx + hw * 1 / 3), hy - 1, 1, hh + 2);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(Math.round(hx + hw * 2 / 3), hy, 1, hh);
+      }
+      // Name
+      ctx.font = Math.max(10, w/3) + "px Arial";
+      ctx.fillStyle = isMonster ? '#f00' : '#00f';
+      ctx.fillText(name, Math.round(x - ctx.measureText(name).width / 2), Math.round(y - w / 2 - 1 * px));
     }
   },
 
