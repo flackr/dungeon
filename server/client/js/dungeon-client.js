@@ -56,8 +56,10 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.addEventListener('character-loaded', this.updateCharacterRegistry.bind(this));
     this.addEventListener('log', this.logMessage.bind(this));
     this.addEventListener('character-updated', function(c) {
-      if (self.ui.selected !== undefined && c == self.ui.selected)
-        this.dispatchEvent('character-selected', self.characterPlacement[self.ui.selected]);
+      var name = self.characterPlacement[c].name;
+      var displayed = this.combatTracker.displayedCharacterName();
+      if (name == displayed)
+        this.dispatchEvent('character-selected', self.characterPlacement[c]);
     });
 
     // Auto-select character when power is activated.
@@ -293,6 +295,16 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var damage = this.rollDice(this.parseRollString(dmgStr));
     logStr += damage[1] + '\n';
     this.attackResult(attacker, attackee, power, attack[0], damage[0], logStr);
+    var usage = power.usage;
+    if (usage == 'encounter' || usage == 'daily' || usage == 'recharge') {
+      // TODO(kellis): Add support for recharge of powers and multi-use special powers.
+      var evt = {
+        type: 'power-consumed',
+        character: attacker,
+        power: power.name
+      };
+      this.sendEvent(evt);
+    }
   },
 
   attackResult: function(attacker, attackee, power, tohit, dmg, logStr) {

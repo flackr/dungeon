@@ -151,6 +151,18 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
             eventData.data.tweak + ' hit points.\n');
         this.dispatchEvent('character-updated', eventData.character);
       }
+    } else if (eventData.type == 'power-consumed') {
+      var character = this.characterPlacement[eventData.character];
+      var targetPower = eventData.power;
+      var powersList = character.condition.powers;
+      for (var i = 0; i < powersList.length; i++) {
+        if (powersList[i].name == targetPower) {
+          powersList.splice(i, 1);
+          this.dispatchEvent('character-updated', eventData.character);
+          break;
+        } 
+      }
+      // TODO(kellis): Add support for recharge of powers.
     }
     return true;
   },

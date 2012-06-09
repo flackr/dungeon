@@ -48,6 +48,7 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
       // Provide mechanism to easily extract combat information from the element
       // when selected.
       block.data = {
+        name: power.name,
         usage: usage,
         toHit: '?',
         defense: '?',
@@ -80,18 +81,7 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
   },
 
   onPowerUsed: function() {
-    var nodes = $('active-character-powers').getElementsByClassName('power-summary');
-    for (var i = 0; i < nodes.length; i++) {
-      var power = nodes[i];
-      if (power.getAttribute('selected') == 'true') {
-        var usage = power.data.usage;
-        if (usage == 'encounter' || usage == 'daily' || usage == 'recharge') {
-          // TODO(kellis): Add special handling for recharge and multi-use powers.
-          power.parentNode.removeChild(power);
-        }
-        // TODO(kellis): Remember last At-will power used to simplify process of reusing a power.
-      }
-    }
+    // TODO(kellis): Remember last At-will power used to simplify process of reusing a power.
 
     // Reset selected power.
     this.selectPower();
@@ -117,6 +107,10 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
       if (nodes[i].getAttribute('selected'))
         return nodes[i].data;
     }
+  },
+
+  displayedCharacterName: function() {
+    return $('active-character-name').textContent;
   },
 
   parseDamageRange: function(damage) {
