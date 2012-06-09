@@ -249,6 +249,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         } else {
           this.ui.selected = i;
           this.dispatchEvent('character-selected', this.characterPlacement[i]);
+          this.update();
         }
         return;
       }
@@ -257,6 +258,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       evt.type = 'move';
       evt.index = this.ui.selected;
       this.ui.selected = undefined;
+      this.update();
       this.sendEvent(evt);
       return;
     }
@@ -517,8 +519,16 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       var w = this.viewport.tileSize;
       var x = baseX + (character.x - view.x1) * w + w / 2;
       var y = baseY + (character.y - view.y1) * w + w / 2;
-      ctx.arc(x, y, this.viewport.tileSize/4, 0, 2*Math.PI, true);
+      ctx.arc(x, y, w/4, 0, 2*Math.PI, true);
       ctx.fill();
+
+      if (i == this.ui.selected) {
+        ctx.beginPath();
+        ctx.strokeStyle = '#ff0';
+        ctx.lineWidth = 2;
+        ctx.arc(x, y, w/4, 0, 2*Math.PI, true);
+        ctx.stroke();
+      }
 
       // Health bars
       var px = 1 / 32 * w;
