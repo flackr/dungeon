@@ -255,8 +255,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         var power;
         if (this.ui.selected !== undefined &&
             (power = this.combatTracker.selectedPower())) {
-          // Deselect power to indicate action was completed.
-          this.combatTracker.selectPower();
+          this.dispatchEvent('power-used');
           this.attack(this.ui.selected, i, power);
           this.ui.selected = undefined;
           this.update();

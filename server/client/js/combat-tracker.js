@@ -9,6 +9,7 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
     this.client = client;
     client.addEventListener('character-selected', 
                           this.onCharacterSelect.bind(this));
+    client.addEventListener('power-used', this.onPowerUsed.bind(this));
     $('current-hp').addEventListener('change', this.updateHitPoints.bind(this));
   },
 
@@ -39,12 +40,15 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
       var power = powers[i];
       block = $('power-summary-template').cloneNode(true);
       block.id = '';
-      if (powers[i]['Power Usage'])
-        block.classList.add(
-            powers[i]['Power Usage'].split(' ')[0].toLowerCase());
+      var usage = '';
+      if (powers[i]['Power Usage']) {
+        usage = powers[i]['Power Usage'].split(' ')[0].toLowerCase();
+        block.classList.add(usage);
+      }
       // Provide mechanism to easily extract combat information from the element
       // when selected.
       block.data = {
+        usage: usage,
         toHit: '?',
         defense: '?',
         damage: '?',
@@ -73,6 +77,24 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
     }
     // force tab switch.
     this.client.onSelectView('sidebar-page', 'combat-tracker');
+  },
+
+  onPowerUsed: function() {
+    var nodes = $('active-character-powers').getElementsByClassName('power-summary');
+    for (var i = 0; i < nodes.length; i++) {
+      var power = nodes[i];
+      if (power.getAttribute('selected') == 'true') {
+        var usage = power.data.usage;
+        if (usage == 'encounter' || usage == 'daily' || usage == 'recharge') {
+          // TODO(kellis): Add special handling for recharge and multi-use powers.
+          power.parentNode.removeChild(power);
+        }
+        // TODO(kellis): Remember last At-will power used to simplify process of reusing a power.
+      }
+    }
+
+    // Reset selected power.
+    this.selectPower();
   },
 
   selectPower: function(powerElement) {
