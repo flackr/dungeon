@@ -436,6 +436,10 @@ body {
   padding: 3px;
 }
 
+.combat-message:nth-child(even) {
+  background: #eee;
+}
+
 #combat-active-character {
   -webkit-box-flex: 1;
   -webkit-box-orient: vertical;

@@ -52,9 +52,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     window.addEventListener('resize', this.resize.bind(this));
     this.addEventListener('tile-added', this.rebuildTiles.bind(this));
     this.addEventListener('character-loaded', this.updateCharacterRegistry.bind(this));
-    this.addEventListener('log', function(text) {
-      $('combat-message-area').textContent += text;
-    });
+    this.addEventListener('log', this.logMessage.bind(this));
     this.addEventListener('character-updated', function(c) {
       if (self.ui.selected !== undefined && c == self.ui.selected) {
         // TODO: This is a really hacky way of making sure the character gets
@@ -91,7 +89,8 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       if (characters[i].getAttribute('id') != 'character-template')
         characters[i].parentNode.removeChild(characters[i]);
     }
-    $('combat-message-area').textContent = 'Select a character to play!\n';
+    $('combat-message-area').textContent = '';
+    this.logMessage('Select a character to play!');
 
     // Map related.
     this.rebuildTiles();
@@ -120,6 +119,23 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     // is likely that the game state is incorrect.
     if (this.processEvent(eventData))
       this.update();
+  },
+
+  logMessage: function(text) {
+    var messageArea = $('combat-message-area');
+    var clientHeight = messageArea.clientHeight;
+    var scrollHeight = messageArea.scrollHeight;
+    var scrollTop = messageArea.scrollTop;
+    var div = document.createElement('div');
+    div.className = 'combat-message';
+    div.textContent = text;
+    messageArea.appendChild(div);
+    // Auto-scroll if at the bottom of the message area.
+    var top = div.offsetTop;
+    var height = div.clientHeight;
+    if (top <= scrollTop + clientHeight && top + height > scrollTop + clientHeight) {
+       messageArea.scrollTop = scrollHeight + height - clientHeight;
+    }
   },
 
   onUsePower: function(powerName, data) {
