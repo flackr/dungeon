@@ -120,6 +120,7 @@ body {
 
 #sidebar-tabs {
   display: -webkit-box;
+  position: relative;
 }
 
 
@@ -410,10 +411,12 @@ body {
 }
 
 #combat-tracker-page:not([hidden]) {
+  -webkit-box-align: stretch;
   -webkit-box-orient: vertical;
-  -wbkit-box-pack: justify;
+  -webkit-box-pack: justify;
   display: -webkit-box;
   position: relative;
+  width: 100%;
 }
 
 
@@ -435,19 +438,31 @@ body {
 
 #combat-active-character {
   -webkit-box-flex: 1;
-  padding: 10px 5px;
+  -webkit-box-orient: vertical;
+  -webkit-box-pack: justify;
+  display: -webkit-box;
   font: 16px 'sans';
   position: relative;
 }
 
+#active-character-name,
+#active-character-hp {
+  -webkit-box-flex: 0;
+  margin: 10px 5px; 
+}
+
 #active-character-powers {
+  -webkit-box-flex: 1;
   overflow-y: auto;
-  /* position: absolute !important; */
 }
 
 #active-character-powers > * {
-  margin: 5px 2px;
+  margin: 5px 5px;
   padding: 3px;
+}
+
+#active-character-powers > *:first-child {
+  margin-top: 0;
 }
 
 #power-summary-template {
