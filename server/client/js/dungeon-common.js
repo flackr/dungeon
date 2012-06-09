@@ -120,8 +120,6 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
             if (this.characterPlacement[index].source.charClass == 'Monster') {
               // Mark dead monster for removal from the game.
               obituary.push(index);
-              //obituary.push(this.characterPlacement[index].name);
-              //this.characterPlacement[index].dead = true;
             }
           }
         }

@@ -496,8 +496,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var role = document.body.parentNode.getAttribute('role');
     for (var i = 0; i < this.characterPlacement.length; i++) {
       var character = this.characterPlacement[i];
-      if (character.dead)
-        continue;
       var name = character.name;
       var isMonster = character.source.charClass == 'Monster';
 
