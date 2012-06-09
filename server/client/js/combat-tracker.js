@@ -83,8 +83,10 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
     var nodes = $('active-character-powers').getElementsByClassName('power-summary');
     for (var i = 0; i < nodes.length; i++)
       nodes[i].removeAttribute('selected');
-    if (powerElement)
+    if (powerElement) {
       powerElement.setAttribute('selected', true);
+      this.dispatchEvent('power-selected', $('active-character-name').textContent);
+    }
   },
 
   selectedPower: function() {

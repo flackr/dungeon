@@ -60,6 +60,18 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         this.dispatchEvent('character-selected', self.characterPlacement[self.ui.selected]);
     });
 
+    // Auto-select character when power is activated.
+    this.combatTracker.addEventListener('power-selected', function(characterName) {
+      self.ui.selected = undefined;
+      for(var i = 0; i < self.characterPlacement.length; i++) {
+        if(self.characterPlacement[i].name == characterName) {
+          self.ui.selected = i;
+          break;
+        }
+      }
+      self.update();
+    });
+
     this.combatTracker.addEventListener('use-power', this.onUsePower.bind(this));
 
     this.viewport = {
@@ -246,6 +258,8 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
           // Deselect power to indicate action was completed.
           this.combatTracker.selectPower();
           this.attack(this.ui.selected, i, power);
+          this.ui.selected = undefined;
+          this.update();
         } else {
           this.ui.selected = i;
           this.dispatchEvent('character-selected', this.characterPlacement[i]);
