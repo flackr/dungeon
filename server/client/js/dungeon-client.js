@@ -18,6 +18,8 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.canvas.addEventListener('mousedown', this.onPointerDown.bind(this));
     this.canvas.addEventListener('mousewheel', this.onMouseWheel.bind(this));
 
+    this.combatTracker = new dungeon.CombatTracker(this);
+
     // Switching between views.
     $('character-selector').addEventListener(
         'click', this.onSelectView.bind(this, 'page', 'character'));
@@ -54,16 +56,11 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.addEventListener('character-loaded', this.updateCharacterRegistry.bind(this));
     this.addEventListener('log', this.logMessage.bind(this));
     this.addEventListener('character-updated', function(c) {
-      if (self.ui.selected !== undefined && c == self.ui.selected) {
-        // TODO: This is a really hacky way of making sure the character gets
-        // updated. We should be subscribing for character updates from
-        // combat tracker but it doesn't know about 'this' yet.
-        dungeon.combatTracker.dispatchEvent('character-selected', self.characterPlacement[self.ui.selected]);
-      }
+      if (self.ui.selected !== undefined && c == self.ui.selected)
+        this.dispatchEvent('character-selected', self.characterPlacement[self.ui.selected]);
     });
 
-    dungeon.combatTracker.addEventListener('use-power',
-        this.onUsePower.bind(this));
+    this.combatTracker.addEventListener('use-power', this.onUsePower.bind(this));
 
     this.viewport = {
       x: 30,
@@ -133,9 +130,8 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     // Auto-scroll if at the bottom of the message area.
     var top = div.offsetTop;
     var height = div.clientHeight;
-    if (top <= scrollTop + clientHeight && top + height > scrollTop + clientHeight) {
-       messageArea.scrollTop = scrollHeight + height - clientHeight;
-    }
+    if (top <= scrollTop + clientHeight && top + height > scrollTop + clientHeight)
+      messageArea.scrollTop = scrollHeight + height - clientHeight;
   },
 
   onUsePower: function(powerName, data) {
@@ -246,13 +242,13 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       if (this.characterPlacement[i].x == evt.x && this.characterPlacement[i].y == evt.y) {
         var power;
         if (this.ui.selected !== undefined &&
-            (power = dungeon.combatTracker.selectedPower())) {
+            (power = this.combatTracker.selectedPower())) {
           // Deselect power to indicate action was completed.
-          dungeon.combatTracker.selectPower();
+          this.combatTracker.selectPower();
           this.attack(this.ui.selected, i, power);
         } else {
           this.ui.selected = i;
-          dungeon.combatTracker.dispatchEvent('character-selected', this.characterPlacement[i]);
+          this.dispatchEvent('character-selected', this.characterPlacement[i]);
         }
         return;
       }

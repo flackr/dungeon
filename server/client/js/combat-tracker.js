@@ -1,12 +1,13 @@
-dungeon.CombatTracker = function() {
+dungeon.CombatTracker = function(client) {
   dungeon.EventSource.apply(this);
-  this.initialize();
+  this.initialize(client);
 };
 
 dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
 
-  initialize: function() {
-    this.addEventListener('character-selected', 
+  initialize: function(client) {
+    this.client = client;
+    client.addEventListener('character-selected', 
                           this.onCharacterSelect.bind(this));
     $('current-hp').addEventListener('change', this.updateHitPoints.bind(this));
   },
@@ -71,7 +72,7 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
       }
     }
     // force tab switch.
-    dungeon.Client.prototype.onSelectView('sidebar-page', 'combat-tracker');
+    this.client.onSelectView('sidebar-page', 'combat-tracker');
   },
 
   selectPower: function(powerElement) {
@@ -128,8 +129,4 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
     console.log(damage + ' = [' + min + ', ' + max + ']');
     return [min, max];
   }
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-  dungeon.combatTracker = new dungeon.CombatTracker();
 });
