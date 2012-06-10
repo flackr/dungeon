@@ -583,8 +583,8 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       ctx.fillStyle = '#000';
       ctx.fillRect(hx - 1, hy - 1, hw + 2, hh + 2);
       // Interior
-      var hpPercent = character.condition.stats['Hit Points'] / character.condition.stats['Max Hit Points'];
-      var isBloodied = (character.condition.stats['Hit Points'] <= character.condition.stats['Bloodied']);
+      var hpPercent = character.condition.stats['Hit Points'] / character.source.stats['Hit Points'];
+      var isBloodied = (character.condition.stats['Hit Points'] <= character.source.stats['Bloodied']);
       var isDead = (character.condition.stats['Hit Points'] <= 0);
       if (isMonster) {
         ctx.fillStyle = isBloodied ? '#f00' : '#0f0';
@@ -592,9 +592,8 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
           ctx.fillRect(hx, hy, Math.max(0, Math.min(hw, Math.round(hw * hpPercent))), hh);
         else
           ctx.fillRect(hx, hy, Math.max(0, Math.min(hw, Math.round(hw * (isBloodied ? 0.5 : 1.0)))), hh);
-          ctx.fillStyle = '#000';
-          ctx.fillRect(Math.round(hx + hw * 1 / 2), hy, 1, hh);
-          
+        ctx.fillStyle = '#000';
+        ctx.fillRect(Math.round(hx + hw * 1 / 2), hy, 1, hh);
       } else {
         if (!isBloodied) {
           ctx.fillStyle = "rgb(" + Math.round((1 - (hpPercent - 0.5) * 2) * 255) + ",255,0)";
