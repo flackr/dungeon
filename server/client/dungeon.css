@@ -389,6 +389,11 @@ body {
   position: absolute;
 }
 
+#map-tiles,
+#map-functions {
+  z-index: 2;
+}
+
 #map-tiles {
   bottom: 5px;
   left: 5px;
