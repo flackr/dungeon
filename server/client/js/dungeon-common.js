@@ -125,10 +125,11 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
         }
       }
       this.dispatchEvent('log', eventData.log);
+      this.dispatchEvent('banner-message', eventData.log);
       if( obituary.length > 0) {
         obituary.sort(function(a, b) {return b - a});
         for( var i = 0; i < obituary.length; i++) {
-          this.dispatchEvent('log', this.characterPlacement[obituary[i]] 
+          this.dispatchEvent('log', this.characterPlacement[obituary[i]].name 
               + ' is no more.  RIP.\n');
           this.characterPlacement.splice(obituary[i], 1);
         }
@@ -163,6 +164,8 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
         } 
       }
       // TODO(kellis): Add support for recharge of powers.
+    } else if (eventData.type == 'banner-message') {
+      this.dispatchEvent('banner-message', eventData.text);
     }
     return true;
   },

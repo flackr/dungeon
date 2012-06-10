@@ -55,6 +55,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.addEventListener('tile-added', this.rebuildTiles.bind(this));
     this.addEventListener('character-loaded', this.updateCharacterRegistry.bind(this));
     this.addEventListener('log', this.logMessage.bind(this));
+    this.addEventListener('banner-message', this.displayBannerMessage.bind(this));
     this.addEventListener('character-updated', function(c) {
       var name = self.characterPlacement[c].name;
       var displayed = this.combatTracker.displayedCharacterName();
@@ -146,6 +147,16 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var height = div.clientHeight;
     if (top <= scrollTop + clientHeight && top + height > scrollTop + clientHeight)
       messageArea.scrollTop = scrollHeight + height - clientHeight;
+  },
+
+  displayBannerMessage: function(text) {
+    var banner = $('map-banner-message');
+    banner.textContent = text;
+    // Animate fade.
+    banner.classList.remove('fade-out');
+    setTimeout(function() {
+      banner.classList.add('fade-out');
+    }, 0);
   },
 
   onUsePower: function(powerName, data) {
@@ -286,6 +297,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   attack: function(attacker, attackee, power) {
+    var attackMessage = this.characterPlacement[attacker].name + ' attacks ' +
+      this.characterPlacement[attackee].name + ' with ' + power.name + '.';
+    this.sendEvent({type: 'log', text: attackMessage});
     var toHitStr = '1d20 + ' + power.toHit;
     var dmgStr = power.damage;
     var logStr = 'Rolling attack: ' + toHitStr + '\n';
@@ -293,8 +307,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     logStr += attack[1] + '\n';
     logStr += 'Rolling damage: ' + dmgStr + '\n';
     var damage = this.rollDice(this.parseRollString(dmgStr));
-    logStr += damage[1] + '\n';
-    this.attackResult(attacker, attackee, power, attack[0], damage[0], logStr);
+    logStr += damage[1];
+    this.sendEvent({type: 'log', text: logStr});
+    this.attackResult(attacker, attackee, power, attack[0], damage[0]);
     var usage = power.usage;
     if (usage == 'encounter' || usage == 'daily' || usage == 'recharge') {
       // TODO(kellis): Add support for recharge of powers and multi-use special powers.
@@ -307,12 +322,13 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
   },
 
-  attackResult: function(attacker, attackee, power, tohit, dmg, logStr) {
+  attackResult: function(attacker, attackee, power, tohit, dmg) {
     var attackedStat = power.defense;
     var defStat = parseInt(
         this.characterPlacement[attackee].condition.stats[attackedStat]);
     if (defStat <= tohit) {
-      logStr += 'HIT for ' + dmg + '\n';
+      var logStr = this.characterPlacement[attacker].name + ' hits ' + 
+        this.characterPlacement[attackee].name + ' for ' + dmg + ' damage.';
       this.sendEvent({
         type: 'attack-result',
         characters: [
@@ -324,8 +340,10 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         log: logStr,
       });
     } else {
-      logStr += 'Missed!' + '\n';
+      var logStr = this.characterPlacement[attacker].name + ' misses ' + 
+        this.characterPlacement[attackee].name + '.';
       this.sendEvent({type: 'log', text: logStr});
+      this.sendEvent({type: 'banner-message', text: logStr});
     }
   },
 
