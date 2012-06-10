@@ -19,6 +19,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.canvas.addEventListener('mousewheel', this.onMouseWheel.bind(this));
 
     this.combatTracker = new dungeon.CombatTracker(this);
+    this.characterDetailsPage = new dungeon.CharacterDetailsPage(this);
 
     // Switching between views.
     $('character-selector').addEventListener(
@@ -516,7 +517,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   addCharacter: function(characterData) {
-    var element = dungeon.CharacterButton(characterData);
+    var element = new dungeon.CharacterButton(this, characterData); 
     this.characterList[characterData.name] = element;
     $('sidebar-character-list').appendChild(element);
   },

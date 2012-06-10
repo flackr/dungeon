@@ -19,6 +19,9 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
   },
 
   onCharacterSelect: function(character) {
+    // Only track character/monster instances.
+    if (!('condition' in character))
+      return;
     $('combat-active-character').hidden = false;
     $('active-character-name').textContent = character.name;
     $('current-hp').value = character.condition.stats['Hit Points'];

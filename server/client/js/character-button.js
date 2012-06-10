@@ -1,233 +1,95 @@
+/**
+ * Button for an imported character or monster.  
+ */
+
 dungeon.CharacterButton = (function() {
 
-  var initialized_ = false;
+  function f(client, characterData) {
+    var el = document.createElement('div');
+    el.data = {};
+    el.data.client = client;
+    el.data.character = characterData;
+    f.decorate(el);
+    return el;
+  }
 
-  var dragIcon_ = null;
+  f.decorate = function(el) {
+    el.__proto__ = f.prototype;
+    el.decorate();
+  };
 
-  /* @const */ var POWER_ORDERING_PREFERENCE = [
-    'No Action',
-    'Immediate Interrupt',
-    'Immediate Reaction',
-    'Free Action',
-    'Minor Action',
-    'Move Action',
-    'Standard Action'
-  ];
+  return f;
 
-  function characterButton_(characterData) {
+})();
+
+dungeon.CharacterButton.prototype = {
+  __proto__: HTMLDivElement.prototype,
+
+  dragIcon_: null,
+
+  decorate: function() {
     var template = $('character-template');
-    var element = template.cloneNode(true);
-    var name = characterData.name;
-    element.id = name + '-character-button';
-    setCharacterAttribute_(element, 'name', name);
+    var name = this.data.character.name;
+    this.id = name + '-character-button';
+    this.className = template.className;
+    var nodes = template.childNodes;
+    for(var i = 0; i < nodes.length; i++)
+      this.appendChild(nodes[i].cloneNode(true));
+    this.setCharacterAttribute_(this, 'name', name);
     // TODO(kellis): Option to sensor info for the bad guys.
-    setCharacterAttribute_(element, 'level', characterData.level);
-    setCharacterAttribute_(element, 'class', characterData.charClass);
-    element.addEventListener('click', showCharacterSheet_.bind(undefined, characterData));
+    this.setCharacterAttribute_(this, 'level', this.data.character.level);
+    this.setCharacterAttribute_(this, 'class', this.data.character.charClass);
+    this.addEventListener('click', function() {
+      this.data.client.dispatchEvent('character-selected', this.data.character);
+    });
 
     // Drag-n-drop onto the map.
-    element.addEventListener('dragstart', onDragStart_.bind(element), false);
-    element.addEventListener('dragend', onDragEnd_.bind(element), false);
+    this.addEventListener('dragstart', this.onDragStart_.bind(this), false);
+    this.addEventListener('dragend', this.onDragEnd_.bind(this), false);
 
-    $('stats-button').addEventListener('click', showStatsTab_);
-    $('powers-button').addEventListener('click', showPowersTab_);
-
-    // Create drag-n-drop icon
-    // TODO(kellis): Create prettier icon.
-    if (!dragIcon_) {
+    // Create drag icon.
+    if (!this.dragIcon_) {
       var canvas = document.createElement('canvas');
       canvas.width = canvas.height = 32;
       var context = canvas.getContext('2d');
-      context.fillStyle = 'rgb(255, 0, 255)';
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      dragIcon_ = new Image();
-      dragIcon_.src = canvas.toDataURL('image/png');
+      var drawShape = function(color, width) {
+        context.strokeStyle = context.fillStyle = color;
+        context.lineWidth = width;
+        context.beginPath();
+        context.arc(16, 16, 12, 0, 2*Math.PI, true);
+        context.moveTo(16, 3);
+        context.lineTo(16, 29);
+        context.moveTo(3, 16);
+        context.lineTo(29, 16);
+        context.arc(16, 16, 8, 0, 2*Math.PI, true);
+        context.stroke();
+      };
+      drawShape('#000', 4);
+      drawShape('#ff0', 2);      
+      this.dragIcon_ = new Image();
+      this.dragIcon_.src = canvas.toDataURL('image/png');
+      // Reuse icon for other characters.
+      dungeon.CharacterButton.prototype.dragIcon_ = this.dragIcon_;
     }
-    return element;
-  }
+  },
 
-  function setCharacterAttribute_(characterElement, attributeName, attributeValue) {
+  setCharacterAttribute_: function(characterElement, attributeName, attributeValue) {
     var className = 'character-button-' + attributeName;
     if (attributeValue == undefined)
       attributeValue = '?';
     characterElement.getElementsByClassName(className)[0].textContent = attributeValue;
-  }
+  },
 
-  function showCharacterSheet_(characterData) {
-    if (!initialized_) {
-      createCharacterSheet_(characterData);
-      initialized_ = true;
-    }
-    populateCharacterSheet_(characterData);
-    var buttons = document.getElementsByClassName('character-button');
-    for (var i = 0; i < buttons.length; i++)
-      buttons[i].setAttribute('active', false);
-    var activeButtonName = characterData.name + '-character-button';
-    $(activeButtonName).setAttribute('active', true);
-    dungeon.Client.prototype.onSelectView('page', 'character');
-  }
-
-  function showStatsTab_() {
-    $('powers-tab').hidden = true;
-    $('stats-tab').hidden = false;
-    $('powers-button').setAttribute('active', false);
-    $('stats-button').setAttribute('active', true);
-  }
-
-  function showPowersTab_() {
-    $('stats-tab').hidden = true;
-    $('powers-tab').hidden = false;
-    $('stats-button').setAttribute('active', false);
-    $('powers-button').setAttribute('active', true);
-  }
-
-  function onDragStart_(e) {
+  onDragStart_: function(e) {
     dungeon.Client.prototype.onSelectView('page', 'map');
     this.classList.add('character-button-drag');
     var name = this.getElementsByClassName('character-button-name')[0].textContent;
     e.dataTransfer.effectAllowed = 'copy';
     e.dataTransfer.setData('text/xml', '<character name=\"' + name + '\"/>');
-    e.dataTransfer.setDragImage(dragIcon_, 16, 16);
-  }
+    e.dataTransfer.setDragImage(this.dragIcon_, 16, 16);
+  },
 
-  function onDragEnd_(e) {
+  onDragEnd_: function(e) {
     this.classList.remove('character-button-drag');
   }
-
-  function createCharacterSheet_(characterData) {
-    var createStatEntries = function(category) {
-      var list = $(category + '-list');
-      var stats = characterData[category];
-      for (var i = 0; i < stats.length; i++) {
-        var name = stats[i];
-        var stat = $('character-stat-template').cloneNode(true);
-        stat.id = name + '-stat';
-        list.appendChild(stat);
-      }
-    }
-    createStatEntries('attributes');
-    createStatEntries('defenses');
-    createStatEntries('health');
-    createStatEntries('skills');
-    createStatEntries('other');
-  }
-
-  function sortPowers_(characterData) {
-     var sortIndices = {};
-     for (var i = 0; i < POWER_ORDERING_PREFERENCE.length; i++) {
-       sortIndices[POWER_ORDERING_PREFERENCE[i]] = i;
-     }
-     var getIndex = function(power) {
-       var action = power['Action Type'];
-       return (action in sortIndices) ? sortIndices[action] : 
-         POWER_ORDERING_PREFERENCE.length;
-     }
-     var sortFunction = function(a, b) {
-       var diff = getIndex(a) - getIndex(b);
-       if (diff == 0)
-         diff = a.name < b.name ? -1 : 1;
-       return diff;
-     }
-     var list = characterData.powers;
-     list = list.slice(0,list.length);
-     return list.sort(sortFunction);
-  }
-
-  function SimplifyPowerName(name) {
-    // TODO(kellis): Add other filters here as required.
-    return name.replace('[Movement Technique]', '(move)');
-  }
-
-  function populateCharacterSheet_(characterData) {
-    var populateField = function(parent, name, value) {
-      parent.getElementsByClassName(name)[0].textContent = value;
-    }
-    var populateStatEntries = function(category) {
-      var list = characterData[category];
-      for (var i = 0; i < list.length; i++) {
-        var name = list[i];
-        var stat = $(name + '-stat');
-        var value = characterData.stats[name];
-        if (value == undefined)
-          value = '?';
-        var modifier = characterData.stats[name + ' modifier'];
-        populateField(stat, 'stat-name', name + ':');
-        populateField(stat, 'stat-value', value);
-        var modifierField = stat.getElementsByClassName('stat-modifier')[0];
-        if (modifier) {
-          if (Number(modifier) > 0)
-            modifier = '+' + modifier;
-          modifierField.textContent = modifier;
-          modifierField.hidden = false;
-        } else  {
-          modifierField.hidden = true;
-        }
-      }
-    }
-    populateStatEntries('attributes');
-    populateStatEntries('defenses');
-    populateStatEntries('health');
-    populateStatEntries('skills');
-    populateStatEntries('other');
-
-    $('at-will-list').textContent = '';
-    $('recharge-list').textContent = '';
-    $('encounter-list').textContent = '';
-    $('daily-list').textContent = '';
-
-    var list = sortPowers_(characterData);
-    for (var i = 0; i < list.length; i++) {
-      var power = list[i];
-      var name = SimplifyPowerName(power.name);
-      var usage = power['Power Usage'];
-      var type = power['Action Type'];
-      var block = $('power-template').cloneNode(true);
-      block.id = '';
-      var title = block.getElementsByClassName('power-title')[0];
-      var categoryClass = 'power-' + type.toLowerCase().replace(' ', '-');
-      title.classList.add(categoryClass);
-      var createToggleDetailsCallback = function(element) {
-        return function() {
-          var details = element.getElementsByClassName('power-details')[0];
-          details.hidden = !details.hidden;
-          element.getElementsByClassName('power-details-show')[0].hidden = !details.hidden;
-          element.getElementsByClassName('power-details-hide')[0].hidden = details.hidden;
-        }
-      };
-      block.addEventListener('click', createToggleDetailsCallback(block));
-      block.getElementsByClassName('power-name')[0].textContent = name;
-      block.getElementsByClassName('power-type')[0].textContent = type;
-      var effectBlock = block.getElementsByClassName('power-effect')[0];
-      if (power.weapons && power.weapons.length > 0) {
-        effectBlock.hidden = false;
-        // Assume preferred weapon is at the top of the list.
-        var weapon = power.weapons[0];
-        var weaponName = weapon.name;
-        var defense = weapon.defense;
-        populateField(effectBlock, 'power-attack-bonus', weapon.toHit);
-        populateField(effectBlock, 'power-defense', weapon.defense);
-        populateField(effectBlock, 'power-damage', weapon.damage);
-        populateField(effectBlock, 'power-weapon', weapon.name);
-      }
-      var category = usage.toLowerCase().trim();
-      var index = category.indexOf(' ');
-      if (index > 0)
-        category = category.substring(0, index);
-      $(category + '-list').appendChild(block);
-    }
-
-    var setListVisibility = function(name) {
-      var list = $(name);
-      list.parentNode.parentNode.hidden = list.childNodes.length == 0;
-    }
-    setListVisibility('at-will-list');
-    setListVisibility('recharge-list');
-    setListVisibility('encounter-list');
-    setListVisibility('daily-list');
-  }
-
-  return characterButton_;
-
-})();
-
-
+};
