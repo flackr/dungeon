@@ -9,6 +9,16 @@ body {
   top: 0;
 }
 
+html, body, div, span, object,
+form, input, h1, h2, button, label, a, img {
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+
+input[type=text] {
+  -webkit-user-select: text;
+}
+
 #game-canvas {
   position: absolute;
   z-index: 1;
@@ -157,6 +167,7 @@ body {
 }
 
 .character-button {
+  -webkit-user-drag: element !important;
   background: #eee;
   border-radius: 5px;
   margin: 5px;
