@@ -561,3 +561,61 @@ html[role=player] #save-button,
 html[role=player] #undo-button {
   display: none;
 }
+
+#combat-overview-page {
+  overflow: auto;
+}
+
+#combat-overview-list {
+  display: table;
+  padding: 10px;
+  width: 700px;
+}
+
+.combat-overview-summary {
+  -webkit-margin-start: 10px;
+  display: table-row;
+  font: 14px 'sans';
+}
+
+.combat-overview-summary:nth-child(even) {
+  background: #eee;
+}
+
+.combat-overview-summary > * {
+  display: table-cell;
+  padding: 8px 0;
+}
+
+#combat-overview-summary-template > * {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* Keep numeric columns narrow to allow extra room for name and effects columns. */
+.combat-overview-hp,
+.combat-overview-temps {
+  text-align: center;
+  width: 50px;
+}
+
+.combat-overview-name,
+.combat-overview-effects {
+  width: 180px;
+}
+
+.combat-overview-name {
+  -webkit-padding-start: 10px;
+}
+
+.combat-overview-action-points,
+.combat-overview-healing-surges-remaining,
+.combat-overview-second-wind-used {
+  text-align: center;
+  width: 80px;
+}
+
+.combat-overview-effects ul {
+  -webkit-padding-start: 10px;
+}
+

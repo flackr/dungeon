@@ -213,6 +213,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
       }
     }
     this.characterPlacement.push(character);
+    this.dispatchEvent('character-added', character);
   },
 
   /**

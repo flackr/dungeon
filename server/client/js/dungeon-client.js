@@ -20,6 +20,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
     this.combatTracker = new dungeon.CombatTracker(this);
     this.characterDetailsPage = new dungeon.CharacterDetailsPage(this);
+    this.combatOverviewPage = new dungeon.CombatOverviewPage(this); 
 
     // Switching between views.
     $('character-selector').addEventListener(

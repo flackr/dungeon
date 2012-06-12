@@ -14,6 +14,7 @@
   <script type="text/javascript" src="js/monster-parser.js"></script>
   <script type="text/javascript" src="js/character-button.js"></script>
   <script type="text/javascript" src="js/character-details-page.js"></script>
+  <script type="text/javascript" src="js/combat-overview-page.js"></script>
   <script type="text/javascript" src="js/map-editor.js"></script>
   <script type="text/javascript" src="js/combat-tracker.js"></script>
   <script type="text/javascript" src="js/dungeon-client.js"></script>
@@ -90,7 +91,18 @@
           <div id="map-banner-message"></div>
         </div>
         <div id="combat-overview-page" class="page" hidden>
-          <h1>Stay tuned!!!</h1>
+          <div id="combat-overview-list">
+            <div id="combat-overview-summary-template" class="combat-overview-summary">
+              <div class="combat-overview-name">Name</div>
+              <div class="combat-overview-hp">HP</div>
+              <div class="combat-overview-temps">+</div>
+              <div class="combat-overview-effects">Effects</div>
+              <div class="combat-overview-action-points">Action<br>Points</div>
+              <div class="combat-overview-healing-surges-remaining">Healing<br>Surges</div>
+              <div class="combat-overview-second-wind-used">Second<br>Wind<br>Used</div>
+
+            </div>
+          </div>
         </div>
         <div id="character-page" class="page top-navbar-layout" hidden>
           <div id="character-navbar">

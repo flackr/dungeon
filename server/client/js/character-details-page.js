@@ -1,6 +1,5 @@
 dungeon.CharacterDetailsPage = (function() {
 
-  // Can probably get rid of this, repopulating from scratch.
   var initialized_ = false;
 
   /**
