@@ -17,6 +17,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.socket.on('e', this.receiveEvent.bind(this));
     this.canvas.addEventListener('mousedown', this.onPointerDown.bind(this));
     this.canvas.addEventListener('mousewheel', this.onMouseWheel.bind(this));
+    document.body.addEventListener('keydown', this.onKeyDown.bind(this));
 
     this.combatTracker = new dungeon.CombatTracker(this);
     this.characterDetailsPage = new dungeon.CharacterDetailsPage(this);
@@ -83,6 +84,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       x: 30,
       y: 30,
       tileSize: 32,
+      tileSizeFloat: 32,
     };
 
     dungeon.Game.prototype.initialize.call(this);
@@ -306,8 +308,37 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   
   onMouseWheel: function(e) {
     var delta = e.wheelDelta/120;
-    this.viewport.tileSize = Math.max(1, this.viewport.tileSize + Math.floor(delta));
-    this.update();
+    var mouse = this.computeMapCoordinatesDouble(e);
+    this.zoom(delta, mouse);
+  },
+  
+  onKeyDown: function(e) {
+    var key = e.keyCode;
+    if (key == 221 || key == 107) // = or numpad +
+      this.zoom(1);
+    else if (key == 219 || key == 109) // - or numpad -
+      this.zoom(-1);
+  },
+  
+  /*
+  @param {number} delta Number of zoom steps.  Negative for zooming out and positive for zooming in.
+  @param {{x:number, y:number}} mouse Float tile x and y on the map.
+  */
+  zoom: function(delta, mouse) {
+    var oldTileSize = this.viewport.tileSizeFloat;
+    var newTileSize = Math.max(1, oldTileSize * Math.pow(1.1, Math.floor(delta)));
+    this.viewport.tileSizeFloat = newTileSize;
+    newTileSize = Math.round(newTileSize);
+    var zoomRatio = (newTileSize - Math.round(oldTileSize)) / newTileSize;
+    if (zoomRatio != 1) {
+      if (mouse) {
+        this.viewport.x += ((mouse.x - this.viewport.x) * zoomRatio);
+        this.viewport.y += ((mouse.y - this.viewport.y) * zoomRatio);
+      }
+      this.viewport.tileSize = newTileSize;
+      this.update();
+    }
+    
   },
 
   attack: function(attacker, attackee, power) {
@@ -386,7 +417,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     return [total, rollstr];
   },
 
-  computeMapCoordinates: function(e) {
+  computeMapCoordinatesDouble: function(e) {
     var x = e.clientX;
     var y = e.clientY;
     var element = this.canvas;
@@ -398,9 +429,16 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var w = parseInt(this.canvas.getAttribute('width'));
     var h = parseInt(this.canvas.getAttribute('height'));
     var coords = {
-      x: Math.floor((x - w/2)/this.viewport.tileSize + this.viewport.x),
-      y: Math.floor((y - h/2)/this.viewport.tileSize + this.viewport.y)
+      x: (x - w/2)/this.viewport.tileSize + this.viewport.x,
+      y: (y - h/2)/this.viewport.tileSize + this.viewport.y
     };
+    return coords;
+  },
+
+  computeMapCoordinates: function(e) {
+    var coords = this.computeMapCoordinatesDouble(e);
+    coords.x = Math.floor(coords.x);
+    coords.y = Math.floor(coords.y);
     return coords;
   },
 

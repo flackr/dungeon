@@ -8,6 +8,7 @@
        loaded after dungeon-common.js which must run both client side and
        server side. -->
   <script type="text/javascript" src="js/util.js"></script>
+  <script type="text/javascript" src="js/html-include.js"></script>
   <script type="text/javascript" src="js/socket.io.js"></script>
   <script type="text/javascript" src="js/import-parser.js"></script>
   <script type="text/javascript" src="js/character-parser.js"></script>
@@ -103,97 +104,7 @@
             </div>
           </div>
         </div>
-        <div id="character-page" class="page top-navbar-layout" hidden>
-          <div id="character-navbar">
-            <button id="stats-button" active="true">Stats</button>
-            <button id="powers-button" active="false">Powers</button>
-          </div>
-          <div id="character-sections">
-            <div id="character-stat-template" class="character-stat">
-              <div class="stat-name"></div>
-              <div class="stat-value"></div>
-              <div class="stat-modifier" hidden></div>
-            </div>
-            <section id="stats-tab">
-              <div class="stat-column">
-                <div id="attributes-list" class="stat-block">
-                  <h2>Attributes</h2>
-                </div>
-                <div id="defenses-list" class="stat-block">
-                  <h2>Defenses</h2>
-                </div>
-                <div id="health-list" class="stat-block">
-                  <h2>Health</h2>
-                </div>
-              </div>
-              <div class="stat-column">
-                <div id="skills-list" class="stat-block">
-                  <h2>Skills</h2>
-                </div>
-              </div>
-              <div class="stat-column">
-                <div id="other-list" class="stat-block">
-                  <h2>Miscellaneous</h2>
-                </div>
-              </div>
-            </section>
-            <div id="power-template" class="power-block">
-              <div class="power-title">
-                <span class="power-name"></span>
-                <div class="power-details-toggle">
-                  <div class="power-details-show arrow-right"></div>
-                  <div class="power-details-hide arrow-down" hidden></div>
-                </div>
-              </div>
-              <div class="power-details" hidden>
-                <div class="power-type"></div>
-                <div class="power-effect" hidden>
-                  <div>
-                    <span>To Hit: +</span>
-                    <div class="power-attack-bonus"></div>
-                    <span> versus </span>
-                    <div class="power-defense"></div>
-                  </div>
-                  <div>
-                    <span>Damage: <span>
-                    <div class="power-damage"></div>
-                  </div>
-                  <div class="power-weapon"></div>
-                </div>
-              </div>
-            </div>
-            <section id="powers-tab" hidden>
-              <div class = "power-column">
-                <div class="power-list">
-                  <h2>At Will</h2>
-                  <div id="at-will-list">
-                  </div>
-                </div>
-              </div>
-              <div class = "power-column">
-                <div class="power-list">
-                  <h2>Recharge</h2>
-                  <div id="recharge-list">
-                  </div>
-                </div>
-              </div>
-              <div class = "power-column">
-                <div class="power-list">
-                  <h2>Encounter</h2>
-                  <div id="encounter-list">
-                  </div>
-                </div>
-              </div>
-              <div class = "power-column">
-                <div class="power-list">
-                  <h2>Daily</h2>
-                  <div id="daily-list">
-                  </div>
-                </div>
-              </div>
-            </section>
-          </div>
-        </div>
+        <include id="character-page" class="page top-navbar-layout" src="character-page.html" hidden></include>
       </div>
     </div>
   </div>
