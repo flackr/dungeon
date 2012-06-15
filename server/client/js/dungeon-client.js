@@ -83,6 +83,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       x: 30,
       y: 30,
       tileSize: 32,
+      tileSizeFloat: 32,
     };
 
     dungeon.Game.prototype.initialize.call(this);
@@ -295,9 +296,11 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   onMouseWheel: function(e) {
     var mouse = this.computeMapCoordinatesDouble(e);
     var delta = e.wheelDelta/120;
-    var oldTileSize = this.viewport.tileSize;
-    var newTileSize = Math.max(1, this.viewport.tileSize * Math.pow(1.1, Math.floor(delta)));
-    var zoomRatio = (newTileSize - oldTileSize) / newTileSize;
+    var oldTileSize = this.viewport.tileSizeFloat;
+    var newTileSize = Math.max(1, oldTileSize * Math.pow(1.1, Math.floor(delta)));
+    this.viewport.tileSizeFloat = newTileSize;
+    newTileSize = Math.round(newTileSize);
+    var zoomRatio = (newTileSize - Math.round(oldTileSize)) / newTileSize;
     if (zoomRatio != 1) {
       this.viewport.x += ((mouse.x - this.viewport.x) * zoomRatio);
       this.viewport.y += ((mouse.y - this.viewport.y) * zoomRatio);
