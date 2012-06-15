@@ -6,7 +6,7 @@ dungeon.CharacterDetailsPage = (function() {
    * Constructor.
    */
   CharacterDetailsPage = function(client) {
-    this.initialize(client);
+    load($('character-page'), this.initialize.bind(this, client));
   };
 
   CharacterDetailsPage.prototype = {
