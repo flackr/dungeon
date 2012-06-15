@@ -293,8 +293,14 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
   
   onMouseWheel: function(e) {
+    var mouse = this.computeMapCoordinatesDouble(e);
     var delta = e.wheelDelta/120;
-    this.viewport.tileSize = Math.max(1, this.viewport.tileSize + Math.floor(delta));
+    var oldTileSize = this.viewport.tileSize;
+    var newTileSize = Math.max(1, this.viewport.tileSize + Math.floor(delta));
+    var zoomRatio = oldTileSize / newTileSize;
+    this.viewport.x += delta * ((mouse.x - this.viewport.x) * zoomRatio) / oldTileSize;
+    this.viewport.y += delta * ((mouse.y - this.viewport.y) * zoomRatio) / oldTileSize;
+    this.viewport.tileSize = newTileSize;
     this.update();
   },
 
@@ -374,7 +380,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     return [total, rollstr];
   },
 
-  computeMapCoordinates: function(e) {
+  computeMapCoordinatesDouble: function(e) {
     var x = e.clientX;
     var y = e.clientY;
     var element = this.canvas;
@@ -386,9 +392,16 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var w = parseInt(this.canvas.getAttribute('width'));
     var h = parseInt(this.canvas.getAttribute('height'));
     var coords = {
-      x: Math.floor((x - w/2)/this.viewport.tileSize + this.viewport.x),
-      y: Math.floor((y - h/2)/this.viewport.tileSize + this.viewport.y)
+      x: (x - w/2)/this.viewport.tileSize + this.viewport.x,
+      y: (y - h/2)/this.viewport.tileSize + this.viewport.y
     };
+    return coords;
+  },
+
+  computeMapCoordinates: function(e) {
+    var coords = computeMapCoordinatesDouble(e);
+    coords.x = Math.floor(coords.x);
+    coords.y = Math.floor(coords.y);
     return coords;
   },
 
