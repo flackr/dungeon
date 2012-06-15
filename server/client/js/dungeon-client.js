@@ -296,12 +296,14 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var mouse = this.computeMapCoordinatesDouble(e);
     var delta = e.wheelDelta/120;
     var oldTileSize = this.viewport.tileSize;
-    var newTileSize = Math.max(1, this.viewport.tileSize + Math.floor(delta));
-    var zoomRatio = oldTileSize / newTileSize;
-    this.viewport.x += delta * ((mouse.x - this.viewport.x) * zoomRatio) / oldTileSize;
-    this.viewport.y += delta * ((mouse.y - this.viewport.y) * zoomRatio) / oldTileSize;
-    this.viewport.tileSize = newTileSize;
-    this.update();
+    var newTileSize = Math.max(1, this.viewport.tileSize * Math.pow(1.1, Math.floor(delta)));
+    var zoomRatio = (newTileSize - oldTileSize) / newTileSize;
+    if (zoomRatio != 1) {
+      this.viewport.x += ((mouse.x - this.viewport.x) * zoomRatio);
+      this.viewport.y += ((mouse.y - this.viewport.y) * zoomRatio);
+      this.viewport.tileSize = newTileSize;
+      this.update();
+    }
   },
 
   attack: function(attacker, attackee, power) {
@@ -399,7 +401,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   computeMapCoordinates: function(e) {
-    var coords = computeMapCoordinatesDouble(e);
+    var coords = this.computeMapCoordinatesDouble(e);
     coords.x = Math.floor(coords.x);
     coords.y = Math.floor(coords.y);
     return coords;
