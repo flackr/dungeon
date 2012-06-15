@@ -15,7 +15,7 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
 
   updateHitPoints: function() {
     var value = $('current-hp').value;
-    this.dispatchEvent('use-power', 'HP-tweak', {tweak: value});
+    this.dispatchEvent('use-power', 'Stat-tweak', {stat: 'Hit Points', tweak: value});
   },
 
   onCharacterSelect: function(character) {

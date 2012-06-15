@@ -89,6 +89,18 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.resize();
   },
 
+  getCharacter: function(index) {
+    return this.characterPlacement[index];
+  },
+
+  getCharacterIndex: function(name) {
+    for (var i = 0; i < this.characterPlacement.length; i++) {
+      var candidate = this.characterPlacement[i].name;
+      if (candidate == name)
+        return i;
+    }
+  },
+
   reset: function() {
     dungeon.Game.prototype.reset.call(this);
 
@@ -400,8 +412,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
   onCharacterDrop: function(e) {
     var coords = this.computeMapCoordinates(e);
-    //TODO(kevers): Separate lists for characters on map and sidebar.
-    // register, unregister, add, remove.
+    //TODO(kevers): Ability to remove characters from sidebar and map.
     var xml = e.dataTransfer.getData('text/xml');
     var parser=new DOMParser();
     var xmlDoc = parser.parseFromString(xml, "text/xml");

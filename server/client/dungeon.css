@@ -592,13 +592,6 @@ html[role=player] #undo-button {
   font-weight: bold;
 }
 
-/* Keep numeric columns narrow to allow extra room for name and effects columns. */
-.combat-overview-hp,
-.combat-overview-temps {
-  text-align: center;
-  width: 50px;
-}
-
 .combat-overview-name,
 .combat-overview-effects {
   width: 180px;
@@ -608,14 +601,22 @@ html[role=player] #undo-button {
   -webkit-padding-start: 10px;
 }
 
-.combat-overview-action-points,
-.combat-overview-healing-surges-remaining,
-.combat-overview-second-wind-used {
-  text-align: center;
-  width: 80px;
+.combat-overview-effects ul {
+  -webkit-padding-start: 30px;
 }
 
-.combat-overview-effects ul {
-  -webkit-padding-start: 10px;
+.combat-overview-hp {
+  width: 140px;
+}
+
+.combat-overview-hp > input,
+.combat-overview-temps > input,
+.combat-overview-action-points > input,
+.combat-overview-healing-surges-remaining > input,
+.combat-overview-second-wind-used > input {
+  margin: 0 10px;
+  position: relative;
+  text-align: center;
+  width: 50px;
 }
 

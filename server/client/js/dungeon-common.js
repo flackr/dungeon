@@ -143,13 +143,12 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
                 eventData.character].source.stats['Hit Points']) / 4);
         this.dispatchEvent('log', this.characterPlacement[eventData.character].name + ' uses a healing surge.\n\n');
         this.dispatchEvent('character-updated', eventData.character);
-      } else if (eventData.power == 'HP-tweak') {
-        // TODO(kellis): Generalize to an arbitrary stat tweak.
+      } else if (eventData.power == 'Stat-tweak') {
         var character = this.characterPlacement[eventData.character]
         var characterStats = character.condition.stats;
-        characterStats['Hit Points'] = parseInt(eventData.data.tweak);
-        this.dispatchEvent('log', character.name + ' has been tweaked to ' +
-            eventData.data.tweak + ' hit points.\n');
+        characterStats[eventData.data.stat] = eventData.data.tweak;
+        this.dispatchEvent('log', character.name + ' has been tweaked: ' +
+            eventData.data.stat + ' = ' + eventData.data.tweak + '.\n');
         this.dispatchEvent('character-updated', eventData.character);
       }
     } else if (eventData.type == 'power-consumed') {
