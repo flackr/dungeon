@@ -11,6 +11,10 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       role = 'dm';
     document.body.parentNode.setAttribute('role', role);
 
+    this.combatTracker = new dungeon.CombatTracker(this);
+    this.characterDetailsPage = new dungeon.CharacterDetailsPage(this);
+    this.combatOverviewPage = new dungeon.CombatOverviewPage(this); 
+
     this.canvas = $('game-canvas');
     this.socket = io.connect('http://' + location.host);
 
@@ -18,10 +22,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.canvas.addEventListener('mousedown', this.onPointerDown.bind(this));
     this.canvas.addEventListener('mousewheel', this.onMouseWheel.bind(this));
     document.body.addEventListener('keydown', this.onKeyDown.bind(this));
-
-    this.combatTracker = new dungeon.CombatTracker(this);
-    this.characterDetailsPage = new dungeon.CharacterDetailsPage(this);
-    this.combatOverviewPage = new dungeon.CombatOverviewPage(this); 
 
     // Switching between views.
     $('character-selector').addEventListener(
@@ -117,8 +117,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       if (characters[i].getAttribute('id') != 'character-template')
         characters[i].parentNode.removeChild(characters[i]);
     }
-    $('combat-message-area').textContent = '';
-    this.logMessage('Select a character to play!');
+    var messageArea = document.getElementById('combat-message-area');
+    if (messageArea)
+      messageArea.textContent = '';
 
     // Map related.
     this.rebuildTiles();

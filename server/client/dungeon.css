@@ -551,8 +551,17 @@ input[type=text] {
   -webkit-margin-start: 10px;
 }
 
+#active-character-hp {
+  font-size: 13px;
+}
+
 #current-hp {
-  width: 50px;
+  text-align: right;
+  width: 40px;
+}
+
+#current-temp-hp {
+  width: 20px;
 }
 
 html[role=player] #map-tiles,

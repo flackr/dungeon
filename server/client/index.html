@@ -49,27 +49,8 @@
             <input id="files" type="file" name="files[]" multiple></input>
           </div>
         </div>
-        <div id="combat-tracker-page" class="sidebar-page">
-          <div id="combat-message-area">
-            <div class="combat-message">Click on a character to play.</div>
-          </div>
-          <div id="combat-active-character" hidden>
-            <div id="active-character-name">Select Character</div>
-            <div id="active-character-hp">
-              <input type="text" id="current-hp"/> / <span id="total-hp">??</span> HP
-            </div>
-            <div id="power-summary-template" class="power-summary">
-              <div class="power-summary-name">?</div>
-              <div>
-                <span class="power-summary-attack-bonus">?</span> vs
-                <span class="power-summary-defense">?</span>
-                <span class="power-summary-damage">?</span> damage
-              </div>
-            </div>
-            <div id="active-character-powers">
-            </div>
-          </div>
-        </div>
+        <include id="combat-tracker-page" class="sidebar-page" src="combat-tracker-page.html">
+        </include>
       </div>
     </div>
     <div class="top-navbar-layout">

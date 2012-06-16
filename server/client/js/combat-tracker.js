@@ -1,6 +1,6 @@
 dungeon.CombatTracker = function(client) {
   dungeon.EventSource.apply(this);
-  this.initialize(client);
+  load($('combat-tracker-page'), this.initialize.bind(this, client));
 };
 
 dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
@@ -11,6 +11,7 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
                           this.onCharacterSelect.bind(this));
     client.addEventListener('power-used', this.onPowerUsed.bind(this));
     $('current-hp').addEventListener('change', this.updateHitPoints.bind(this));
+    $('current-temp-hp').addEventListener('change', this.updateTemps.bind(this));
   },
 
   updateHitPoints: function() {
@@ -18,14 +19,24 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
     this.dispatchEvent('use-power', 'Stat-tweak', {stat: 'Hit Points', tweak: value});
   },
 
+  updateTemps: function() {
+    var value = $('current-temp-hp').value;
+    this.dispatchEvent('use-power', 'Stat-tweak', {stat: 'Temps', tweak: value}); 
+  },
+
   onCharacterSelect: function(character) {
     // Only track character/monster instances.
     if (!('condition' in character))
       return;
+    $('active-character-hp').hidden = false;
     $('combat-active-character').hidden = false;
     $('active-character-name').textContent = character.name;
     $('current-hp').value = character.condition.stats['Hit Points'];
     $('total-hp').textContent = character.source.stats['Hit Points'];
+    var temps = character.condition.stats['Temps'];
+    if (temps == undefined)
+      temps = 0;
+    $('current-temp-hp').value = temps;
     var powers = character.condition.powers;
     var setData = function(block, name, value) {
       block.getElementsByClassName(name)[0].textContent = value;
