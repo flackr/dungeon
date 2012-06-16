@@ -15,7 +15,7 @@ dungeon.CombatOverviewPage = (function() {
    * Constructor.
    */
   CombatOverviewPage = function(client) {
-    this.initialize(client);
+    load($('combat-overview-page'), this.initialize.bind(this, client));
   };
 
   CombatOverviewPage.prototype = {
