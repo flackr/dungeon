@@ -7,7 +7,8 @@ dungeon.ParseCharacter = (function() {
     'Fortitude Defense': 'Fortitude',
     'Reflex Defense': 'Reflex',
     'Will Defense': 'Will',
-    'Intelligence Modifier': 'Intelligence modifier' 
+    'Intelligence Modifier': 'Intelligence modifier',
+    'initiative': 'Initiative' 
   };
   
   function parseCharacter_(xmlDoc) {

@@ -125,6 +125,24 @@ input[type=text] {
   background-image: url('./images/undo.png');
 }
 
+#combat-start-button {
+  background-image: url('./images/start.png');
+}
+
+#combat-pause-button {
+  background-image: url('./images/pause.png');
+}
+
+#combat-stop-button {
+  background-image: url('./images/stop.png');
+}
+
+#combat-start-button[disabled=true],
+#combat-pause-button[disabled=true],
+#combat-stop-button[disabled=true] {
+  opacity: 0.4;
+}
+
 #sidebar {
   width: 200px;
 }
@@ -567,7 +585,10 @@ input[type=text] {
 html[role=player] #map-tiles,
 html[role=player] #map-functions,
 html[role=player] #save-button,
-html[role=player] #undo-button {
+html[role=player] #undo-button,
+html[role=player] #combat-start-button,
+html[role=player] #combat-pause-button,
+html[role=player] #combat-stop-button {
   display: none;
 }
 
@@ -578,7 +599,7 @@ html[role=player] #undo-button {
 #combat-overview-list {
   display: table;
   padding: 10px;
-  width: 700px;
+  width: 800px;
 }
 
 .combat-overview-summary {
@@ -599,6 +620,10 @@ html[role=player] #undo-button {
 #combat-overview-summary-template > * {
   font-size: 16px;
   font-weight: bold;
+}
+
+.combat-overview-initiative {
+  text-align: center;
 }
 
 .combat-overview-name,

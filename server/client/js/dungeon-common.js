@@ -165,6 +165,10 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
       // TODO(kellis): Add support for recharge of powers.
     } else if (eventData.type == 'banner-message') {
       this.dispatchEvent('banner-message', eventData.text);
+    } else if (eventData.type == 'combat-state-change') {
+      this.dispatchEvent('combat-state-changed', eventData.state);
+    } else if (eventData.type == 'set-initiative-order') {
+      this.dispatchEvent('initiative-order-changed', eventData.order);
     }
     return true;
   },

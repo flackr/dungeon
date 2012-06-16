@@ -35,6 +35,10 @@ dungeon.CombatOverviewPage = (function() {
     },
 
     updateCharacterInfo: function(entry, character) {
+      var initiative = character.initiative;
+      if (initiative == undefined)
+        initiative = '?';
+      this.setField(entry, 'combat-overview-initiative', initiative);
       this.setField(entry, 
                     'combat-overview-hp', 
                     character.condition.stats['Hit Points'] 
@@ -138,6 +142,34 @@ dungeon.CombatOverviewPage = (function() {
           break;
         }
       }
+    },
+
+    sortIntoInitiativeOrder: function() {
+      var data = [];
+      var entries = $('combat-overview-list').getElementsByClassName('combat-overview-summary');
+      var getValue = function(parent, name) {
+        var entry = parent.getElementsByClassName('combat-overview-' + name)[0];
+        if (entry)
+          return entry.textContent;
+      }
+      for (var i = 1; i < entries.length; i++) {
+        var initiative = getValue(entries[i], 'initiative');
+        var name = getValue(entries[i], 'name');
+        data.push({initiative: initiative, name: name, entry: entries[i]});
+      }
+      var comparator = function(a, b) {
+        var result = 0;
+        if (a.initiative != b.initiative)
+          result = String(b.initiative) > String(a.initiative) ? 1 : -1;
+        else 
+          result = a.name > b.name ? 1 : -1;
+        return result;
+      }
+      data.sort(comparator);
+      for (var i = entries.length - 1; i > 0; i--)
+        $('combat-overview-list').removeChild(entries[i]);
+      for (var i = 0; i < data.length; i++)
+        $('combat-overview-list').appendChild(data[i].entry);
     }
   };
 

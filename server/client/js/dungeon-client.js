@@ -38,6 +38,14 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     $('undo-button').addEventListener('click', this.sendEvent.bind(this, {'type': 'undo'}));
     $('save-button').addEventListener('click', this.saveMap.bind(this));
 
+    // Status of combat.
+    this.combatState = 'stopped';
+    $('combat-start-button').addEventListener('click', this.setCombatState.bind(this, 'start'));
+    $('combat-pause-button').addEventListener('click', this.setCombatState.bind(this, 'pause'));
+    $('combat-stop-button').addEventListener('click', this.setCombatState.bind(this, 'stop'));
+    this.addEventListener('combat-state-changed', this.onCombatStateChanged.bind(this));
+    this.addEventListener('initiative-order-changed', this.onInitiativeOrderChanged.bind(this));
+
     // Drag-n-drop of character files.
     var dropZone = $('sidebar-character-list');
     dropZone.addEventListener('dragover', this.onFileDragOver.bind(this));
@@ -186,6 +194,128 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       evt.data = data;
       this.sendEvent(evt);
     }
+  },
+
+  setCombatState: function(state) {
+    if (state == 'start' && this.combatState != 'stopped')
+      state = 'resume';
+    this.sendEvent({type: 'combat-state-change', state: state});
+    if (state == 'start') {
+      // TODO(kellis): Reset message log.
+
+      // Set initiative.
+      var characterTypeMap = {};
+      var initiativeMap = {};
+      for (var i = 0; i < this.characterPlacement.length; i++) {
+        var character = this.characterPlacement[i];
+        var type = character.source.name;
+        var entry = characterTypeMap[type];
+        if (!entry) {
+          var score = this.rollInitiative(character);
+          entry = characterTypeMap[type] = {initiative: score, list: []};
+          if (!initiativeMap[score])
+            initiativeMap[score] = [];
+          initiativeMap[score].push(character.source);
+        }
+        entry.list.push(character);
+      }
+      // Tie breaks.
+      while (true) {
+        foundCollision = false;
+        for (var entry in initiativeMap) {
+          var list = initiativeMap[entry];
+          if (list.length > 1) {
+            this.sendEvent({type: 'log', text: 'Initiative tiebreak!'});
+            foundCollision = true;
+            for (var i = 0; i < list.length; i++) {
+              var score = this.rollInitiative(list[i]);
+              var revisedScore = String(entry) + '.' + score;
+              var msg = 'Revised initiative = ' + revisedScore;
+              this.sendEvent({type: 'log', text: msg});
+              if (!initiativeMap[revisedScore])
+                initiativeMap[revisedScore] = [];
+              initiativeMap[revisedScore].push(character.source);
+              characterTypeMap[list[i].name].initiative = revisedScore;
+            }
+            initiativeMap[entry] = [];
+          }
+        }
+        if (!foundCollision)
+          break;
+      }
+      // Synchronize initiative order across clients.
+      var evt = {
+        type: 'set-initiative-order',
+        order: []
+      }
+      for (var i = 0; i < this.characterPlacement.length; i++) {
+         var character = this.characterPlacement[i];
+         var entry = characterTypeMap[character.source.name];
+         evt.order.push({name: character.name, initiative: entry.initiative});
+      }
+      this.sendEvent(evt);
+
+    } else if (state == 'stop') {
+      // Restore encounter powers for players.
+    }
+  },
+
+  rollInitiative: function(characterData) {
+    if (characterData.source)
+      characterData = characterData.source;
+    var name = name;
+    var initiative = parseInt(characterData.stats['Initiative']);
+    var score = Math.floor(Math.random() * 20 + 1);
+    var msg = characterData.name + ' rolls initiative.\n' +
+        'd20 + ' + initiative + ' = (' + score + ') ' + ' + ' + initiative +
+        ' = ' + (score += initiative) + '\n';
+    this.sendEvent({type: 'log', text: msg}); 
+    score = String(score);
+    if (score.length == 1)
+      score = '0' + score;
+    return score;
+  },
+
+  onCombatStateChanged: function(state) {
+    switch(state) {
+    case 'start':
+      this.combatState = 'started';
+      break;
+    case 'resume':
+      this.combatState = 'resumed';
+      break;
+    case 'pause':
+      this.combatState = 'paused';
+      break;
+    case 'stop':
+      this.combatState = 'stopped';
+      break;
+    default:
+      console.log('Unknown combat state: ' + state);
+    }
+    // update disabled state of combat controls
+    $('combat-start-button').setAttribute('disabled', 
+        this.combatState == 'started' || this.combatState == 'resumed');
+    $('combat-pause-button').setAttribute('disabled', 
+        this.combatState  == 'paused' || this.combatState == 'stopped');
+    $('combat-stop-button').setAttribute('disabled', 
+        this.combatState  == 'stopped');
+    var msg = 'Combat ' + this.combatState + '.';
+    this.sendEvent({type: 'log', text: msg});
+    this.sendEvent({type: 'banner-message', text: msg});
+  },
+
+  onInitiativeOrderChanged: function(list) {
+    for (var i = 0; i < list.length; i++) {
+      var entry = list[i];
+      var index = this.getCharacterIndex(entry.name);
+      if (index != undefined) {
+        this.characterPlacement[index].initiative = entry.initiative;
+        this.dispatchEvent('character-updated', index);
+      }
+    }
+    // Update ordering in combat overview.
+    this.combatOverviewPage.sortIntoInitiativeOrder();
   },
 
   onSelectView: function(category, view) {
