@@ -178,6 +178,17 @@ dungeon.CharacterDetailsPage = (function() {
         populateField(effectBlock, 'power-damage', weapon.damage);
         populateField(effectBlock, 'power-weapon', weapon.name);
       }
+      var editButton = block.getElementsByClassName('edit-power-button')[0];
+      var editPowerCallback = function(element) {
+        var selectedPower = power;
+        return function() {
+          var dialog = dungeon.Dialog.getInstance('power-editor');
+          dialog.update(selectedPower);
+          dialog.show();
+        }
+      };
+      editButton.addEventListener('click', editPowerCallback());
+
       var category = usage.toLowerCase().trim();
       var index = category.indexOf(' ');
       if (index > 0)

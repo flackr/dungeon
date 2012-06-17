@@ -3,6 +3,7 @@
 <head>
   <title>Dungeon!</title>
   <link rel="stylesheet" type="text/css" href="dungeon.css">
+  <link rel="stylesheet" type="text/css" href="dialog.css">
   <script type="text/javascript" src="js/dungeon-common.js"></script>
   <!-- util.js defines client-side utility functions and as such is purposely
        loaded after dungeon-common.js which must run both client side and
@@ -18,6 +19,8 @@
   <script type="text/javascript" src="js/combat-overview-page.js"></script>
   <script type="text/javascript" src="js/map-editor.js"></script>
   <script type="text/javascript" src="js/combat-tracker.js"></script>
+  <script type="text/javascript" src="js/dialog.js"></script>
+  <script type="text/javascript" src="js/power-editor-dialog.js"></script>
   <script type="text/javascript" src="js/dungeon-client.js"></script>
 </head>
 <body>
@@ -83,6 +86,9 @@
         </include>
       </div>
     </div>
+  </div>
+  <div id="dialogs" src="dialogs.html" hidden>
+    <include id="power-editor-dialog" class="dialog" src="power-editor-dialog.html" hidden>
   </div>
 </body>
 </html>

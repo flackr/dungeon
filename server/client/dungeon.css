@@ -338,7 +338,8 @@ input[type=text] {
   margin: 3px;
 }
 
-.power-block > * {
+.power-type,
+.power-effect {
   margin: 5px;
 }
 
@@ -409,6 +410,10 @@ input[type=text] {
   height: 0;
   margin-top: 4px;
   width: 0;
+}
+
+.power-effect {
+  margin-bottom: 5px;
 }
 
 #map-banner-message,
@@ -653,4 +658,13 @@ html[role=player] #combat-stop-button {
   text-align: center;
   width: 50px;
 }
+
+.button-bar {
+  -webkit-box-orient: horizontal;
+  -webkit-box-pack: end;
+  border-top: 1px solid #999;
+  display: -webkit-box;
+  padding: 5px 10px;
+}
+
 

@@ -14,6 +14,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.combatTracker = new dungeon.CombatTracker(this);
     this.characterDetailsPage = new dungeon.CharacterDetailsPage(this);
     this.combatOverviewPage = new dungeon.CombatOverviewPage(this); 
+    dungeon.initializeDialogs(this);
 
     this.canvas = $('game-canvas');
     this.socket = io.connect('http://' + location.host);
