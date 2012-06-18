@@ -181,7 +181,8 @@ dungeon.CharacterDetailsPage = (function() {
       var editButton = block.getElementsByClassName('edit-power-button')[0];
       var editPowerCallback = function(element) {
         var selectedPower = power;
-        return function() {
+        return function(e) {
+          e.stopPropagation();
           var dialog = dungeon.Dialog.getInstance('power-editor');
           dialog.update(selectedPower);
           dialog.show();

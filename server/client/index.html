@@ -20,6 +20,7 @@
   <script type="text/javascript" src="js/map-editor.js"></script>
   <script type="text/javascript" src="js/combat-tracker.js"></script>
   <script type="text/javascript" src="js/dialog.js"></script>
+  <script type="text/javascript" src="js/info-dialog.js"></script>
   <script type="text/javascript" src="js/power-editor-dialog.js"></script>
   <script type="text/javascript" src="js/dungeon-client.js"></script>
 </head>
@@ -87,8 +88,13 @@
       </div>
     </div>
   </div>
-  <div id="dialogs" src="dialogs.html" hidden>
+  <div id="dialogs" hidden>
     <include id="power-editor-dialog" class="dialog" src="power-editor-dialog.html" hidden>
+    </include>
+  </div>
+  <div id="dialogs-tier2" hidden>
+    <include id="info-dialog" class="dialog" src="info-dialog.html" hidden>
+    </include>
   </div>
 </body>
 </html>

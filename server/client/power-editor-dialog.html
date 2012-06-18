@@ -5,35 +5,102 @@
   </div>
   <div class="dialog-content">
     <!-- TODO(kellis): Flush out format -->
-    <div>Range:
-      <select>
-        <option value="Melee">Melee</option>
-        <option value="Ranged">Ranged</option>
-        <option value="CloseBurst">Close Burst</option>
-        <option value="CloseBlast">Close Blast</option>
-        <option value="TargetBurst">Target Burst</option>
-        <option value="Personal">Personal</option>
-      </select>
-      <select>
-        <option value="Weapon">Weapon</option>
-        <option value="Touch">Touch</option>
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="5">5</option>
-        <option value="10">10</option>
-        <option value="other">Other</option>
-      </select>
-    </div>
-    <div>Targets:
-      <select>
-        <option value="1">1 creature</option>
-        <option value="2">1 or 2 creatures</option>
-        <option value="3">Up to 3 creatures</option>
-        <option value="All">All creatures</option>
-        <option value="Enemies">All enemies</option>
-        <option value="Allies">All allies</option>
-      </select> within range.
-    </div>
+    <section>
+      <title>Keywords</title>
+      <div id="edit-keyword-template" class="edit-keyword">
+        <span class="edit-keyword-label"></span>
+        <div class="edit-keyword-remove close-icon"></div>
+      </div>
+      <div id="edit-keyword-list"></div>
+      <div>
+        Add: <select id="edit-add-keyword"></select>
+      </div>
+    </section>
+
+    <section>
+      <title>Attack</title>
+      <div id="edit-attack-table">
+        <div id="edit-attack-range">
+          <div>Range:</div>
+          <div>
+            <select>
+              <option value="Melee">Melee</option>
+              <option value="Ranged">Ranged</option>
+              <option value="MeleeOrRanged">Melee or Ranged</option>
+              <option value="CloseBurst">Close Burst</option>
+              <option value="CloseBlast">Close Blast</option>
+              <option value="TargetBurst">Target Burst</option>
+              <option value="Personal">Personal</option>
+              <option value="Wall">Wall</option>
+            </select>
+          </div>
+          <div>
+            <select>
+              <option value="Weapon">Weapon</option>
+              <option value="Touch">Touch</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div id="edit-attack-targets">
+          <div>Targets:</div>
+          <div>
+            <select>
+              <option value="1">1 creature</option>
+              <option value="2">1 or 2 creatures</option>
+              <option value="3">Up to 3 creatures</option>
+              <option value="All">All creatures</option>
+              <option value="Enemies">All enemies</option>
+              <option value="Allies">All allies</option>
+            </select>
+          </div>
+          <div>within range.</div>
+        </div>
+        <div id="edit-to-hit">
+          <div>To Hit:</div>
+          <div>
+            <select>
+              <option value="Strength">Strength</option>
+              <option value="Constitution">Constitution</option>
+              <option value="Intelligence">Intelligence</option>
+              <option value="Dexterity">Dexterity</option>
+              <option value="Wisdom">Wisdom</option>
+              <option value="Charisma">Charisma</option>
+              <option value="NA">N/A</option>
+              <option value="Other">other</option>
+            </select>
+          </div>
+          <div>
+            vs.
+            <select>
+              <option value="AC">AC</option>
+              <option value="Fortitude">Fortitude</option>
+              <option value="Reflex">Reflex</option>
+              <option value="Will">Will</option>
+            </select>
+          </div>
+        </div>
+        <div id="edit-damage">
+         <div>Damage:</div>
+         <div>
+           <input type="text">
+         </div>
+        </div>
+        <div id="edit-effects">
+          <div>Effects:</div>
+          <div>
+            <!-- Put effects list here -->
+            <div>
+              <button id="edit-add-effect">Add...</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
   <div class="button-bar">
     <button class="close-button">OK</button>

@@ -13,6 +13,11 @@ dungeon.Dialog = (function() {
   }
 
   Dialog.prototype = {
+
+     client: null,
+
+     name: null,
+
      initialize: function(client, name) {
        this.client = client;
        this.name = name;
@@ -51,21 +56,19 @@ dungeon.Dialog = (function() {
    *     If not specified, the dialog is centered.
    */
   Dialog.show = function(name, opt_position) {
-    console.log('show dialog');
-    if (activeDialog_ && activeDialog_.name != name)
-      dungeon.Dialog.dismiss(activeDialog_.name);
+    console.log('show dialog ' + name);
     activeDialog_ = registry_[name];
     var element = getElement(name);
     element.classList.add('positioning');
     element.style.left = '50%';
     element.style.top = '50%';
     element.hidden = false;
-    $('dialogs').hidden = false;
+    element.parentNode.hidden = false;
     var width = element.clientWidth;
     var height = element.clientHeight;
     var left = element.offsetLeft;
     var top = element.offsetTop;
-    console.log('dialog is ' + width + ' by ' + height);
+    console.log('dialog ' + name + ' is ' + width + ' by ' + height);
     var position = opt_position ? opt_position :
         {x: Math.floor(left - width/2), 
          y: Math.floor(top - height/2)};
@@ -78,7 +81,7 @@ dungeon.Dialog = (function() {
     console.log('dismiss dialog');
     var element = getElement(name);
     element.hidden = true;
-    $('dialogs').hidden = true;
+    element.parentNode.hidden = true;
   }
 
   Dialog.register = function(name, dialog) {
@@ -94,5 +97,6 @@ dungeon.Dialog = (function() {
 })();
 
 dungeon.initializeDialogs = function(client) {
+  dungeon.Dialog.register('info', new dungeon.InfoDialog(client));
   dungeon.Dialog.register('power-editor', new dungeon.PowerEditorDialog(client));
 }
