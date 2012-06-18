@@ -701,7 +701,20 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   addCharacter: function(characterData) {
     var element = new dungeon.CharacterButton(this, characterData); 
     this.characterList[characterData.name] = element;
-    $('sidebar-character-list').appendChild(element);
+    var list = $('sidebar-character-list');
+    var nodes = list.getElementsByClassName('character-button');
+    var insertIndex = -1;
+    for (var i = 0; i < nodes.length; i++) {
+      var name = nodes[i].getElementsByClassName('character-button-title')[0].textContent.trim();
+      if (name > characterData.name) {
+        insertIndex = i;
+        break;
+      }
+    }
+    if (insertIndex >= 0)
+      list.insertBefore(element, nodes[insertIndex]);
+    else
+      list.appendChild(element);
   },
 
   updateCharacter: function(characterData) {
