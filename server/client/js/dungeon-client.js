@@ -70,13 +70,15 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.addEventListener('banner-message', this.displayBannerMessage.bind(this));
     this.addEventListener('character-updated', function(c) {
       var name = self.characterPlacement[c].name;
-      var displayed = this.combatTracker.displayedCharacterName();
+      var displayed = self.combatTracker.displayedCharacterName();
       if (name == displayed)
-        this.dispatchEvent('character-selected', self.characterPlacement[c]);
+        self.dispatchEvent('character-selected', self.characterPlacement[c]);
     });
 
     // Auto-select character when power is activated.
     this.combatTracker.addEventListener('power-selected', function(characterName) {
+      // Deselect any current targets when power selection changes.
+      self.ui.targets = [];
       self.ui.selected = undefined;
       for(var i = 0; i < self.characterPlacement.length; i++) {
         if(self.characterPlacement[i].name == characterName) {
@@ -86,7 +88,11 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       }
       self.update();
     });
-
+    this.addEventListener('character-selected', function() {
+      self.ui.targets = [];
+      self.update();
+    });
+    this.addEventListener('combat-add-target', this.addCombatTarget.bind(this));
     this.combatTracker.addEventListener('use-power', this.onUsePower.bind(this));
 
     this.viewport = {
@@ -98,6 +104,24 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
     dungeon.Game.prototype.initialize.call(this);
     this.resize();
+  },
+
+  addCombatTarget: function(index) {
+    if (!this.ui.targets)
+      this.ui.targets = [];
+    this.ui.targets.push(index);
+    this.update();
+  },
+
+  attackTargets: function() {
+    var power = this.combatTracker.selectedPower();
+    if (power && this.ui.targets && this.ui.selected !== undefined && this.ui.targets.length) {
+      this.dispatchEvent('power-used');
+      this.attack(this.ui.selected, this.ui.targets, power);
+      this.ui.targets = [];
+      this.ui.selected = undefined;
+      this.update();
+    }
   },
 
   getCharacter: function(index) {
@@ -160,19 +184,20 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   logMessage: function(text) {
-    var messageArea = $('combat-message-area');
-    var clientHeight = messageArea.clientHeight;
-    var scrollHeight = messageArea.scrollHeight;
-    var scrollTop = messageArea.scrollTop;
-    var div = document.createElement('div');
-    div.className = 'combat-message';
-    div.textContent = text;
-    messageArea.appendChild(div);
-    // Auto-scroll if at the bottom of the message area.
-    var top = div.offsetTop;
-    var height = div.clientHeight;
-    if (top <= scrollTop + clientHeight && top + height > scrollTop + clientHeight)
-      messageArea.scrollTop = scrollHeight + height - clientHeight;
+    load($('combat-message-area'), function(messageArea) {
+      var clientHeight = messageArea.clientHeight;
+      var scrollHeight = messageArea.scrollHeight;
+      var scrollTop = messageArea.scrollTop;
+      var div = document.createElement('div');
+      div.className = 'combat-message';
+      div.textContent = text;
+      messageArea.appendChild(div);
+      // Auto-scroll if at the bottom of the message area.
+      var top = div.offsetTop;
+      var height = div.clientHeight;
+      if (top <= scrollTop + clientHeight && top + height > scrollTop + clientHeight)
+        messageArea.scrollTop = scrollHeight + height - clientHeight;
+    });
   },
 
   displayBannerMessage: function(text) {
@@ -416,10 +441,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         var power;
         if (this.ui.selected !== undefined &&
             (power = this.combatTracker.selectedPower())) {
-          this.dispatchEvent('power-used');
-          this.attack(this.ui.selected, i, power);
-          this.ui.selected = undefined;
-          this.update();
+          this.dispatchEvent('combat-add-target', i);
         } else {
           this.ui.selected = i;
           this.dispatchEvent('character-selected', this.characterPlacement[i]);
@@ -450,6 +472,16 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       this.zoom(1);
     else if (key == 219 || key == 109) // - or numpad -
       this.zoom(-1);
+    else if (key == 32 || key == 13) {
+      if (this.ui.targets) {
+        this.attackTargets();
+      }
+    } else if (key == 27) {
+      if (this.ui.targets) {
+        this.ui.targets.pop();
+        this.update();
+      }
+    }
   },
   
   /*
@@ -473,20 +505,27 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     
   },
 
-  attack: function(attacker, attackee, power) {
-    var attackMessage = this.characterPlacement[attacker].name + ' attacks ' +
-      this.characterPlacement[attackee].name + ' with ' + power.name + '.';
+  attack: function(attacker, attackees, power) {
+    var attackMessage = this.characterPlacement[attacker].name + ' attacks ';
+    var targetNames = [];
+    for (var i = 0; i < attackees.length; i++)
+      targetNames.push(this.characterPlacement[attackees[i]].name);
+    attackMessage += targetNames.join(', ') + ' with ' + power.name + '.';
     this.sendEvent({type: 'log', text: attackMessage});
     var toHitStr = '1d20 + ' + power.toHit;
     var dmgStr = power.damage;
-    var logStr = 'Rolling attack: ' + toHitStr + '\n';
-    var attack = this.rollDice(this.parseRollString(toHitStr));
-    logStr += attack[1] + '\n';
-    logStr += 'Rolling damage: ' + dmgStr + '\n';
+    var logStr = 'Rolling damage: ' + dmgStr + '\n';
     var damage = this.rollDice(this.parseRollString(dmgStr));
-    logStr += damage[1];
+    logStr += damage[1] + '\n';
+    logStr += 'Rolling attack(s): ' + toHitStr + '\n';
+    var attack = [];
+    for (var i = 0; i < attackees.length; i++) {
+      var curattack = this.rollDice(this.parseRollString(toHitStr));
+      logStr += curattack[1] + '\n';
+      attack.push(curattack[0]);
+    }
     this.sendEvent({type: 'log', text: logStr});
-    this.attackResult(attacker, attackee, power, attack[0], damage[0]);
+    this.attackResult(attacker, attackees, power, attack, damage[0]);
     var usage = power.usage;
     if (usage == 'encounter' || usage == 'daily' || usage == 'recharge') {
       // TODO(kellis): Add support for recharge of powers and multi-use special powers.
@@ -499,29 +538,30 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
   },
 
-  attackResult: function(attacker, attackee, power, tohit, dmg) {
+  attackResult: function(attacker, attackees, power, tohits, dmg) {
     var attackedStat = power.defense;
-    var defStat = parseInt(
-        this.characterPlacement[attackee].condition.stats[attackedStat]);
-    if (defStat <= tohit) {
-      var logStr = this.characterPlacement[attacker].name + ' hits ' + 
-        this.characterPlacement[attackee].name + ' for ' + dmg + ' damage.';
-      this.sendEvent({
-        type: 'attack-result',
-        characters: [
-          [attackee,
-           {'Hit Points':
-           this.characterPlacement[attackee].condition.stats['Hit Points']
-               - dmg}],
-        ],
-        log: logStr,
-      });
-    } else {
-      var logStr = this.characterPlacement[attacker].name + ' misses ' + 
-        this.characterPlacement[attackee].name + '.';
-      this.sendEvent({type: 'log', text: logStr});
-      this.sendEvent({type: 'banner-message', text: logStr});
+    var result = {
+      type: 'attack-result',
+      characters: [],
+      log: '',
     }
+    for (var i = 0; i < attackees.length; i++) {
+      var defStat = parseInt(
+          this.characterPlacement[attackees[i]].condition.stats[attackedStat]);
+      if (defStat <= tohits[i]) {
+        result.log += this.characterPlacement[attacker].name + ' hits ' +
+          this.characterPlacement[attackees[i]].name + ' for ' + dmg + ' damage.\n';
+        result.characters.push(
+            [attackees[i],
+             {'Hit Points':
+             this.characterPlacement[attackees[i]].condition.stats['Hit Points']
+                 - dmg}]);
+      } else {
+        result.log += this.characterPlacement[attacker].name + ' misses ' +
+          this.characterPlacement[attackees[i]].name + '.\n';
+      }
+    }
+    this.sendEvent(result);
   },
 
   rollDice: function(rollArray) {
@@ -749,6 +789,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var role = document.body.parentNode.getAttribute('role');
     for (var i = 0; i < this.characterPlacement.length; i++) {
       var character = this.characterPlacement[i];
+      if (character.x < view.x1 || character.x >= view.x2 ||
+          character.y < view.y1 || character.y >= view.y2)
+        continue;
       var name = character.name;
       var isMonster = character.source.charClass == 'Monster';
 
@@ -761,12 +804,31 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       ctx.arc(x, y, w/4, 0, 2*Math.PI, true);
       ctx.fill();
 
+      // TODO(flackr): This and the following should be outside of the loop
+      // since they will happen for particular characters whose indices they
+      // know.
       if (i == this.ui.selected) {
         ctx.beginPath();
         ctx.strokeStyle = '#ff0';
         ctx.lineWidth = 2;
         ctx.arc(x, y, w/4, 0, 2*Math.PI, true);
         ctx.stroke();
+      }
+
+      if (this.ui.targets) {
+        var targetFreq = 0;
+        for (var j = 0; j < this.ui.targets.length; j++) {
+          if (this.ui.targets[j] == i) {
+            targetFreq++;
+          }
+        }
+        ctx.strokeStyle = '#f00';
+        for (var j = 0; j < targetFreq; j++) {
+          ctx.beginPath();
+          ctx.lineWidth = 2;
+          ctx.arc(x, y, w/3 + j*3, 0, 2*Math.PI, true);
+          ctx.stroke();
+        }
       }
 
       // Health bars
