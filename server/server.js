@@ -8,6 +8,8 @@ var app = require('http').createServer(handler),
   fs = require('fs'),
   path = require('path');
 
+io.set('log level', 1); // reduce logging.
+
 var dungeon = require('./client/js/dungeon-common.js');
 
 app.listen(1337);
