@@ -521,7 +521,16 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     attackMessage += targetNames.join(', ') + ' with ' + power.name + '.';
     this.sendEvent({type: 'log', text: attackMessage});
     var toHitStr = '1d20 + ' + power.toHit;
+
+    // Allow effect bonus for attacker.
+    var bonus = this.getCharacterAttribute(this.characterPlacement[attacker], 'Attack');
+    if (bonus)
+      toHitStr += ' + ' + bonus;
+
     var dmgStr = power.damage;
+    bonus = this.getCharacterAttribute(this.characterPlacement[attacker], 'Damage');
+    if (bonus)
+      dmgStr += ' + ' + bonus;
     var logStr = 'Rolling damage: ' + dmgStr + '\n';
     var damage = this.rollDice(this.parseRollString(dmgStr));
     logStr += damage[1] + '\n';
@@ -532,7 +541,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       var curattack = this.rollDice(this.parseRollString(toHitStr));
       if (curattack[2][0][0] == 20) {
         logStr+= 'Critical HIT '+curattack[1]+'\n';
-        curattack[2][0][0] = 100;
+        curattack[0] = 100;
         damages.push(this.rollDiceMax(this.parseRollString(dmgStr)));
       } else {
         logStr += curattack[1] + '\n';
@@ -562,8 +571,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       log: '',
     }
     for (var i = 0; i < attackees.length; i++) {
-      var defStat = parseInt(
-          this.characterPlacement[attackees[i]].condition.stats[attackedStat]);
+      var defStat = parseInt(this.getCharacterAttribute(
+          this.characterPlacement[attackees[i]],
+          attackedStat));
       if (defStat <= tohits[i]) {
         result.log += this.characterPlacement[attacker].name + ' hits ' +
           this.characterPlacement[attackees[i]].name + ' for ' + dmg[i] + ' damage.\n';
@@ -629,6 +639,10 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       }
     }
     return total;
+  },
+
+  getCharacterAttribute: function(character, attribute) {
+    return character.condition.stats[attribute];
   },
 
   computeMapCoordinatesDouble: function(e) {
