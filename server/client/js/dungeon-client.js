@@ -469,9 +469,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   
   onKeyDown: function(e) {
     var key = e.keyCode;
-    if (key == 221 || key == 107) // = or numpad +
+    if (key == 187 || key == 107) // = or numpad +
       this.zoom(1);
-    else if (key == 219 || key == 109) // - or numpad -
+    else if (key == 189 || key == 109) // - or numpad -
       this.zoom(-1);
     else if (key == 32 || key == 13) {
       if (this.ui.targets) {
