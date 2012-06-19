@@ -142,6 +142,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.ui = {
       selected: undefined,
       mapImages: [],
+      stale: false,
     };
 
     this.characterList = {};
@@ -771,6 +772,16 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   update: function() {
+    // If the UI is marked stale already then a redraw should have already
+    // been queued.
+    if (!this.ui.stale) {
+      this.ui.stale = true;
+      requestAnimFrame(this.redraw.bind(this));
+    }
+  },
+
+  redraw: function() {
+    this.ui.stale = false;
     var ctx = this.canvas.getContext('2d');
     var w = parseInt(this.canvas.getAttribute('width'));
     var h = parseInt(this.canvas.getAttribute('height'));
