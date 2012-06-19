@@ -527,13 +527,21 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     logStr += damage[1] + '\n';
     logStr += 'Rolling attack(s): ' + toHitStr + '\n';
     var attack = [];
+    var damages = [];
     for (var i = 0; i < attackees.length; i++) {
       var curattack = this.rollDice(this.parseRollString(toHitStr));
-      logStr += curattack[1] + '\n';
+      if (curattack[2][0][0] == 20) {
+        logStr+= 'Critical HIT '+curattack[1]+'\n';
+        curattack[2][0][0] = 100;
+        damages.push(this.rollDiceMax(this.parseRollString(dmgStr)));
+      } else {
+        logStr += curattack[1] + '\n';
+        damages.push(damage[0]);
+      }
       attack.push(curattack[0]);
     }
     this.sendEvent({type: 'log', text: logStr});
-    this.attackResult(attacker, attackees, power, attack, damage[0]);
+    this.attackResult(attacker, attackees, power, attack, damages);
     var usage = power.usage;
     if (usage == 'encounter' || usage == 'daily' || usage == 'recharge') {
       // TODO(kellis): Add support for recharge of powers and multi-use special powers.
@@ -558,12 +566,12 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
           this.characterPlacement[attackees[i]].condition.stats[attackedStat]);
       if (defStat <= tohits[i]) {
         result.log += this.characterPlacement[attacker].name + ' hits ' +
-          this.characterPlacement[attackees[i]].name + ' for ' + dmg + ' damage.\n';
+          this.characterPlacement[attackees[i]].name + ' for ' + dmg[i] + ' damage.\n';
         var temps = 0;
         if (this.characterPlacement[attackees[i]].condition.stats['Temps'])
           temps = parseInt(this.characterPlacement[attackees[i]].condition.stats['Temps']);
         var newhp = parseInt(this.characterPlacement[attackees[i]].condition.stats['Hit Points']);
-        temps = temps - dmg;
+        temps = temps - dmg[i];
         if (temps < 0) {
           newhp += temps;
           temps = 0;
@@ -583,18 +591,22 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   rollDice: function(rollArray) {
     var total = 0;
     var rollstr = '';
+    var diceRolls = [];
     // Rolls the given dice.
     for (var i = 0; i < rollArray.length; i++) {
       if (i > 0) rollstr += ' + ';
       var val = rollArray[i][1];
       if (rollArray[i][0] > 0) {
+        var curDieRolls = [];
         rollstr += '(';
         for (var j = 0; j < rollArray[i][0]; j++) {
           if (j > 0) rollstr += ' + ';
           val = Math.floor(Math.random() * rollArray[i][1] + 1);
+          curDieRolls.push(val);
           rollstr += val;
           total += val;
         }
+        diceRolls.push(curDieRolls);
         rollstr += ')';
       } else {
         rollstr += val;
@@ -602,7 +614,21 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       }
     }
     rollstr += ' = ' + total;
-    return [total, rollstr];
+    return [total, rollstr, diceRolls];
+  },
+
+  rollDiceMax: function(rollArray) {
+    var total = 0;
+    // Rolls the given dice.
+    for (var i = 0; i < rollArray.length; i++) {
+      var val = rollArray[i][1];
+      if (rollArray[i][0] > 0) {
+        total += rollArray[i][0] * rollArray[i][1];
+      } else {
+        total += val;
+      }
+    }
+    return total;
   },
 
   computeMapCoordinatesDouble: function(e) {
