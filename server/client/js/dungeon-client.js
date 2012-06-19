@@ -347,6 +347,12 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   onSelectView: function(category, view) {
+    // Check if page is already active
+    var isActive = !!$(view + '-selector').getAttribute('active');
+    var isVisible = !$(view + '-page').hidden;
+    if (isActive == isVisible)
+      return;
+
     var selectors = document.getElementsByClassName(category + '-selector');
     for (var i = 0; i < selectors.length; i++)
       selectors[i].setAttribute('active', false);

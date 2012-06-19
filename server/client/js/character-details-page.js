@@ -20,8 +20,11 @@ dungeon.CharacterDetailsPage = (function() {
     },
 
     onCharacterSelect: function(characterData) {
-      if ('source' in characterData)
+      var selectCharacterView = true;
+      if ('source' in characterData) {
         characterData = characterData.source;
+        selectCharacterView = false;
+      }
       if (!this.initialized_) {
         createCharacterSheet_(characterData);
         this.initialized_ = true;
@@ -32,7 +35,8 @@ dungeon.CharacterDetailsPage = (function() {
         buttons[i].setAttribute('active', false);
       var activeButtonName = characterData.name + '-character-button';
       $(activeButtonName).setAttribute('active', true);
-      this.client.onSelectView('page', 'character');
+      if (selectCharacterView)
+        this.client.onSelectView('page', 'character');
     },
 
     onShowStats: function() {
