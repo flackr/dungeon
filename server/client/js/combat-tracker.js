@@ -124,6 +124,8 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
   },
 
   displayedCharacterName: function() {
+    if (!$('active-character-name'))
+      return undefined;
     return $('active-character-name').textContent;
   },
 
@@ -158,7 +160,6 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
       min += val;
       max += val;
     }
-    console.log(damage + ' = [' + min + ', ' + max + ']');
     return [min, max];
   }
 });
