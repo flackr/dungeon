@@ -169,6 +169,25 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
       this.dispatchEvent('combat-state-changed', eventData.state);
     } else if (eventData.type == 'set-initiative-order') {
       this.dispatchEvent('initiative-order-changed', eventData.order);
+    } else if (eventData.type == 'add-effect') {
+      var character = this.characterPlacement[eventData.character];
+      var effects = character.condition.effects;
+      if (!effects)
+        character.condition.effects = effects = [];
+      effects.push(eventData.effect);
+      this.dispatchEvent('character-updated', eventData.character);
+    } else if (eventData.type == 'remove-effect') {
+      var character = this.characterPlacement[eventData.character];
+      var effects = character.condition.effects;
+      if (effects) {
+        for (var i = 0; i < effects.length; i++) {
+          if (effects[i] == eventData.effect) {
+            effects.splice(i,1);
+            this.dispatchEvent('character-updated', eventData.character);
+            break;
+          }
+        }
+      }
     }
     return true;
   },

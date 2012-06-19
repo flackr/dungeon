@@ -152,8 +152,13 @@
   padding: 0 10px 5px 0;
 }
 
-
 #edit-attack-table > * > *:nth-child(2) > select {
   width: 100%;
 }
 
+/* ------------- Add effect dialog --------------------- */
+
+
+#known-effect-selection {
+  min-width: 200px;
+}

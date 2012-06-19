@@ -1,0 +1,29 @@
+<div class="dialog-container">
+  <div class="dialog-title">
+    <div>Add Effect</div>
+    <div class="close-icon cancel-button"></div>
+  </div>
+  <div class="dialog-content">
+    <div>
+      <label>
+        <input id="select-known-effect" type="radio" disabled>
+        Select a known effect
+      </label>
+    </div>
+    <div>
+      <select id="known-effect-selection" list="effects" size=5 multiple disabled>
+      </select>
+    </div>
+    <div>
+      <label>
+        <input id="select-new-effect" type="radio" checked>
+        Add a new effect
+      </label>
+    </div>
+    <div>New: <input id="new-effect-name" type="text" maxlength="20"></div>
+  </div>
+  <div class="button-bar">
+    <button class="close-button">OK</button>
+    <button class="cancel-button">Cancel</button>
+  </div>
+</div>

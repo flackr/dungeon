@@ -1,16 +1,5 @@
 dungeon.CombatOverviewPage = (function() {
 
-  var sampleEffects = [
-    'slowed',
-    'poison 5',
-    'dazed',
-    'immobalized',
-    'fire 8',
-    'cold 4',
-    'hungry',
-    'grumpy'
-  ];
-
   /**
    * Constructor.
    */
@@ -48,25 +37,41 @@ dungeon.CombatOverviewPage = (function() {
       if (temps == undefined)
         temps = 0;
       this.setField(entry, 'combat-overview-temps', temps, 'Temps');
-      // TODO(kellis): Add list of ongoing effects.
+
+      // List of ongoing effects
       this.setField(entry, 'combat-overview-effects', '');
-      // Assign at random for now, just for illustrative purposes.
-      var nEffects = Math.floor(3*Math.random());
-      var randomEffects = [];
-      var choices =  sampleEffects.length;
-      var map = [];
-      for (var i = 0; i < choices; i++)
-        map.push(i);
-      var effectList = document.createElement('ul');
-      for (var i = 0; i < nEffects; i++, choices--) {
-        var nEffect = Math.floor(choices*Math.random());
-        var choice = map[nEffect];
-        map[nEffect] = map[choices-1];
-        var effect = document.createElement('li');
-        effect.textContent = sampleEffects[choice];
-        effectList.appendChild(effect);
+      var effects = $('ongoing-effects-list-template').cloneNode(true);
+      entry.getElementsByClassName('combat-overview-effects')[0].appendChild(effects);
+      effects.id = '';
+      var addButton = effects.getElementsByClassName('add-ongoing-effect-button')[0];
+      addButton.addEventListener('click', function() {
+        var dialog = dungeon.Dialog.getInstance('add-effect');
+        dialog.setCharacter(character);
+        dialog.show();
+      });
+      var list = character.condition.effects;
+      if (list) {
+        list.sort();
+        for (var i = 0; i < list.length; i++) {
+          var effect = $('ongoing-effect-template').cloneNode(true);
+          effect.id = '';
+          this.setField(effect, 'ongoing-effect-name', list[i]);
+          var removeButton = effect.getElementsByClassName('cancel-ongoing-effect')[0];
+          var self = this;
+          var createRemoveEffectCallback = function(effect) {
+            return function() {
+              var evt = {
+                type: 'remove-effect',
+                character: self.client.getCharacterIndex(character.name),
+                effect: effect
+              };
+              self.client.sendEvent(evt);
+            }
+          };
+          removeButton.addEventListener('click', createRemoveEffectCallback(list[i]));
+          effects.insertBefore(effect, addButton);
+        }
       }
-      entry.getElementsByClassName('combat-overview-effects')[0].appendChild(effectList);
 
       // TODO(kellis): Track action points and heals used.
       var actionPoints = character.condition.stats['Action Points'];

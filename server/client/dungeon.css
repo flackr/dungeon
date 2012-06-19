@@ -632,16 +632,13 @@ html[role=player] #combat-stop-button {
 }
 
 .combat-overview-name,
-.combat-overview-effects {
+.combat-overview-effects,
+.ongoing-effect {
   width: 180px;
 }
 
 .combat-overview-name {
   -webkit-padding-start: 10px;
-}
-
-.combat-overview-effects ul {
-  -webkit-padding-start: 30px;
 }
 
 .combat-overview-hp {
@@ -658,6 +655,23 @@ html[role=player] #combat-stop-button {
   text-align: center;
   width: 50px;
 }
+
+#ongoing-effects-list-template,
+#ongoing-effect-template {
+  display: none
+}
+
+.ongoing-effect {
+  -webkit-box-align: stretch;
+  -webkit-box-orient: horizontal;
+  -webkit-box-pack: justify;
+  display: -webkit-box;
+}
+
+.ongoing-effect-name {
+  -webkit-flex-box: 1;
+}
+
 
 .button-bar {
   -webkit-box-orient: horizontal;

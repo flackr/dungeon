@@ -99,4 +99,5 @@ dungeon.Dialog = (function() {
 dungeon.initializeDialogs = function(client) {
   dungeon.Dialog.register('info', new dungeon.InfoDialog(client));
   dungeon.Dialog.register('power-editor', new dungeon.PowerEditorDialog(client));
+  dungeon.Dialog.register('add-effect', new dungeon.AddEffectDialog(client));
 }
