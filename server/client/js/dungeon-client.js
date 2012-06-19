@@ -551,11 +551,19 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       if (defStat <= tohits[i]) {
         result.log += this.characterPlacement[attacker].name + ' hits ' +
           this.characterPlacement[attackees[i]].name + ' for ' + dmg + ' damage.\n';
+        var temps = 0;
+        if (this.characterPlacement[attackees[i]].condition.stats['Temps'])
+          temps = parseInt(this.characterPlacement[attackees[i]].condition.stats['Temps']);
+        var newhp = parseInt(this.characterPlacement[attackees[i]].condition.stats['Hit Points']);
+        temps = temps - dmg;
+        if (temps < 0) {
+          newhp += temps;
+          temps = 0;
+        }
         result.characters.push(
             [attackees[i],
-             {'Hit Points':
-             this.characterPlacement[attackees[i]].condition.stats['Hit Points']
-                 - dmg}]);
+             {'Hit Points': newhp,
+              'Temps': temps}]);
       } else {
         result.log += this.characterPlacement[attacker].name + ' misses ' +
           this.characterPlacement[attackees[i]].name + '.\n';
