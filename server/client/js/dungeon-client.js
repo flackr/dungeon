@@ -184,7 +184,8 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   logMessage: function(text) {
-    load($('combat-message-area'), function(messageArea) {
+    load($('combat-tracker-page'), function() {
+      var messageArea = $('combat-message-area');
       var clientHeight = messageArea.clientHeight;
       var scrollHeight = messageArea.scrollHeight;
       var scrollTop = messageArea.scrollTop;
