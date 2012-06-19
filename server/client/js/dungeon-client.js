@@ -734,6 +734,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
       // TODO: Only reset images when necessary.
       this.ui.mapImages[i].src = this.mapTiles[i].src;
+      this.ui.mapImages[i].onload = this.update.bind(this);
     }
     this.ui.mapImages.splice(this.mapTiles.length, this.ui.mapImages.length);
     dungeon.MapEditor.loadTiles(this.mapTiles);
