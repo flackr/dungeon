@@ -1,18 +1,31 @@
 dungeon.CombatOverviewPage = (function() {
 
+  var preloadQueue = {};
+
+  var queueLoading = function(character) {
+    preloadQueue[character.name] = character;
+  }
+  
   /**
    * Constructor.
    */
   CombatOverviewPage = function(client) {
+    client.addEventListener('character-added', queueLoading);
+    client.addEventListener('character-updated', queueLoading);
     load($('combat-overview-page'), this.initialize.bind(this, client));
   };
 
   CombatOverviewPage.prototype = {
-
     initialize: function(client) {
       this.client = client;
       client.addEventListener('character-added', this.onAddCharacter.bind(this));
       client.addEventListener('character-updated', this.onUpdateCharacter.bind(this));
+      client.removeEventListener('character-added', queueLoading);
+      client.removeEventListener('character-updated', queueLoading);
+      for (var name in preloadQueue)
+        this.onAddCharcter(preloadQueue[name]);
+      preloadQueue = {};
+      this.sortIntoInitiativeOrder();
     },
 
     onAddCharacter: function(character) {

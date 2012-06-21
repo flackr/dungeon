@@ -177,6 +177,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   receiveEvent: function(eventData) {
+    // >>>>>
+
+
     // TODO(flackr): processEvent can return false if the event description is
     // not possible to execute given the current game state. If this happens it
     // is likely that the game state is incorrect.
