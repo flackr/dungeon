@@ -131,6 +131,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
         for( var i = 0; i < obituary.length; i++) {
           this.dispatchEvent('log', this.characterPlacement[obituary[i]].name 
               + ' is no more.  RIP.\n');
+          this.dispatchEvent('character-removed', this.characterPlacement[obituary[i]].name);
           this.characterPlacement.splice(obituary[i], 1);
         }
       }

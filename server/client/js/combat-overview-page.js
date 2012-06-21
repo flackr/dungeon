@@ -20,6 +20,7 @@ dungeon.CombatOverviewPage = (function() {
       this.client = client;
       client.addEventListener('character-added', this.onAddCharacter.bind(this));
       client.addEventListener('character-updated', this.onUpdateCharacter.bind(this));
+      client.addEventListener('character-removed', this.onRemoveCharacter.bind(this));
       client.removeEventListener('character-added', queueLoading);
       client.removeEventListener('character-updated', queueLoading);
       for (var name in preloadQueue)
@@ -35,6 +36,18 @@ dungeon.CombatOverviewPage = (function() {
       this.updateCharacterInfo(entry, character);
       $('combat-overview-list').appendChild(entry);
     },
+
+     onRemoveCharacter: function(characterName) {
+       var list = $('combat-overview-list');
+       var nodes = list.getElementsByClassName('combat-overview-name');
+       for (var i = 0; i < nodes.length; i++) {
+         var name = nodes[i].textContent;
+         if (name == characterName) {
+           var characterSummary = nodes[i].parentNode;
+           list.removeChild(characterSummary);
+         }
+       }
+     },
 
     updateCharacterInfo: function(entry, character) {
       var initiative = character.initiative;
