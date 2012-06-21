@@ -642,7 +642,26 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   getCharacterAttribute: function(character, attribute) {
-    return character.condition.stats[attribute];
+    var defenseAttrs = ['AC', 'Reflex', 'Fortitude', 'Will'];
+
+    var value = parseInt(character.condition.stats[attribute]);
+    if (!value) value = 0;
+    if (defenseAttrs.indexOf(attribute) >= 0) {
+      value += this.getCharacterAttribute(character, 'Defence');
+    }
+    if (character.condition.effects) {
+      var effectRegex = new RegExp(attribute+'[ ]*([+-])[ ]*([0-9]*)');
+      for (var i = 0; i < character.condition.effects.length; i++) {
+        var effectMatch = effectRegex.exec(character.condition.effects[i]);
+        if (effectMatch) {
+          if (effectMatch[1] == '+')
+            value += parseInt(effectMatch[2]);
+          else
+            value -= parseInt(effectMatch[2]);
+        }
+      }
+    }
+    return value;
   },
 
   computeMapCoordinatesDouble: function(e) {
