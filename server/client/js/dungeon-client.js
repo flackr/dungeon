@@ -6,10 +6,8 @@ dungeon.Client = function() {
 dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   initialize: function() {
     var self = this;
-    var role = 'player';
-    if (window.location.hash == '#dm')
-      role = 'dm';
-    document.body.parentNode.setAttribute('role', role);
+    window.addEventListener('hashchange', this.processHash.bind(this));
+    this.processHash();
 
     this.combatTracker = new dungeon.CombatTracker(this);
     this.characterDetailsPage = new dungeon.CharacterDetailsPage(this);
@@ -104,6 +102,13 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
     dungeon.Game.prototype.initialize.call(this);
     this.resize();
+  },
+
+  processHash: function() {
+    var role = 'player';
+    if (window.location.hash == '#dm')
+      role = 'dm';
+    document.body.parentNode.setAttribute('role', role);
   },
 
   addCombatTarget: function(index) {
