@@ -652,7 +652,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var value = parseInt(character.condition.stats[attribute]);
     if (!value) value = 0;
     if (defenseAttrs.indexOf(attribute) >= 0) {
-      value += this.getCharacterAttribute(character, 'Defence');
+      value += this.getCharacterAttribute(character, 'Defense');
     }
     if (character.condition.effects) {
       var effectRegex = new RegExp(attribute+'[ ]*([+-])[ ]*([0-9]*)');
