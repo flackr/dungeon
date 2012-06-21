@@ -966,5 +966,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-  new dungeon.Client();
+  load(document.body, function() {
+    new dungeon.Client();
+  });
 });
