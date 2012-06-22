@@ -904,6 +904,15 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         ctx.lineWidth = w/32;
         ctx.arc(x, y, w/4, 0, 2*Math.PI, true);
         ctx.stroke();
+        
+        // Movement overlay
+        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+        var speed = parseInt(character.condition.stats['Speed'] || 0);
+        for (var j = -speed; j <= speed; j++)
+          for (var k = -speed; k <= speed; k++) {
+            if (Math.sqrt(j*j + k*k) <= (speed + 0.8))
+              ctx.fillRect(baseX + (character.x + j - view.x1) * w, baseY + (character.y + k - view.y1) * w, w, w);
+          }
       }
 
       if (this.ui.targets) {
