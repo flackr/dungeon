@@ -169,7 +169,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
     } else if (eventData.type == 'combat-state-change') {
       this.dispatchEvent('combat-state-changed', eventData.state);
     } else if (eventData.type == 'set-initiative-order') {
-      this.dispatchEvent('initiative-order-changed', eventData.order);
+      this.dispatchEvent('initiative-order-changed', eventData.order, eventData.log);
     } else if (eventData.type == 'add-effect') {
       var character = this.characterPlacement[eventData.character];
       var effects = character.condition.effects;

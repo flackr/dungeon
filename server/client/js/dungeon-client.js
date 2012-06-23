@@ -237,6 +237,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       // TODO(kellis): Reset message log.
 
       // Set initiative.
+      var msgLog = [];
       var characterTypeMap = {};
       var initiativeMap = {};
       for (var i = 0; i < this.characterPlacement.length; i++) {
@@ -244,7 +245,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         var type = character.source.name;
         var entry = characterTypeMap[type];
         if (!entry) {
-          var score = this.rollInitiative(character);
+          var score = this.rollInitiative(character, msgLog);
           entry = characterTypeMap[type] = {initiative: score, list: []};
           if (!initiativeMap[score])
             initiativeMap[score] = [];
@@ -258,13 +259,12 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         for (var entry in initiativeMap) {
           var list = initiativeMap[entry];
           if (list.length > 1) {
-            this.sendEvent({type: 'log', text: 'Initiative tiebreak!'});
+            msgLog.push('Initiative tiebreak!');
             foundCollision = true;
             for (var i = 0; i < list.length; i++) {
-              var score = this.rollInitiative(list[i]);
+              var score = this.rollInitiative(list[i], msgLog);
               var revisedScore = String(entry) + '.' + score;
-              var msg = 'Revised initiative = ' + revisedScore;
-              this.sendEvent({type: 'log', text: msg});
+              msgLog.push('Revised initiative = ' + revisedScore);
               if (!initiativeMap[revisedScore])
                 initiativeMap[revisedScore] = [];
               initiativeMap[revisedScore].push(character.source);
@@ -279,7 +279,8 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       // Synchronize initiative order across clients.
       var evt = {
         type: 'set-initiative-order',
-        order: []
+        order: [],
+        log: msgLog
       }
       for (var i = 0; i < this.characterPlacement.length; i++) {
          var character = this.characterPlacement[i];
@@ -293,7 +294,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
   },
 
-  rollInitiative: function(characterData) {
+  rollInitiative: function(characterData, msgLog) {
     if (characterData.source)
       characterData = characterData.source;
     var name = name;
@@ -302,7 +303,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var msg = characterData.name + ' rolls initiative.\n' +
         'd20 + ' + initiative + ' = (' + score + ') ' + ' + ' + initiative +
         ' = ' + (score += initiative) + '\n';
-    this.sendEvent({type: 'log', text: msg}); 
+    msgLog.push(msg);
     score = String(score);
     if (score.length == 1)
       score = '0' + score;
@@ -334,11 +335,13 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     $('combat-stop-button').setAttribute('disabled', 
         this.combatState  == 'stopped');
     var msg = 'Combat ' + this.combatState + '.';
-    this.sendEvent({type: 'log', text: msg});
-    this.sendEvent({type: 'banner-message', text: msg});
+    this.dispatchEvent('log',  msg); 
+    this.dispatchEvent('banner-message', msg);
   },
 
-  onInitiativeOrderChanged: function(list) {
+  onInitiativeOrderChanged: function(list, log) {
+    for (var i = 0; i < log.length; i++)
+      this.dispatchEvent('log', log[i]);
     for (var i = 0; i < list.length; i++) {
       var entry = list[i];
       var index = this.getCharacterIndex(entry.name);
