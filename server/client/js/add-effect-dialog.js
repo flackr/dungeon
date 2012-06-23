@@ -53,12 +53,12 @@ dungeon.AddEffectDialog = (function() {
           if (nodes[i].selected)
             effects.push(nodes[i].value);
       }
-      for (var i = 0; i < effects.length; i++) {
+      if (effects.length > 0) {
         index = this.client.getCharacterIndex(this.activeCharacter_.name);
         var evt = {
-          type: 'add-effect',
+          type: 'add-effects',
           character: index,
-          effect: effects[i]
+          effects: effects
         };
         this.client.sendEvent(evt);
       }

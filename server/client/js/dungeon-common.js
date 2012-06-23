@@ -170,12 +170,13 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
       this.dispatchEvent('combat-state-changed', eventData.state);
     } else if (eventData.type == 'set-initiative-order') {
       this.dispatchEvent('initiative-order-changed', eventData.order, eventData.log);
-    } else if (eventData.type == 'add-effect') {
+    } else if (eventData.type == 'add-effects') {
       var character = this.characterPlacement[eventData.character];
       var effects = character.condition.effects;
       if (!effects)
         character.condition.effects = effects = [];
-      effects.push(eventData.effect);
+      for (var i = 0; i < eventData.effects.length; i++)
+        effects.push(eventData.effects[i]);
       this.dispatchEvent('character-updated', eventData.character);
     } else if (eventData.type == 'remove-effect') {
       var character = this.characterPlacement[eventData.character];
