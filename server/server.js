@@ -85,7 +85,7 @@ dungeon.Server.prototype = {
 
     // Tell the client everything that's happened thus far.
     for (var i = 0; i < this.events.length; i++)
-      socket.emit('e', this.events[i]);
+      socket.emit('e', JSON.parse(this.events[i]));
   },
 
   /**

@@ -77,7 +77,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
   },
 
   processEvent: function(eventData) {
-    this.events.push(eventData);
+    this.events.push(JSON.stringify(eventData));
     if (eventData.type == 'map') {
       this.map = eventData.map;
     } else if (eventData.type == 'change') {
@@ -99,7 +99,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
       this.events = [];
       this.reset();
       for (var i = 0; i < gameEvents.length - 2; i++) {
-        this.processEvent(gameEvents[i]);
+        this.processEvent(JSON.parse(gameEvents[i]));
       }
     } else if (eventData.type == 'load-map') {
       this.map = eventData.map;
