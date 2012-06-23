@@ -37,11 +37,67 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
     var entry = $('combat-initiative-list-entry-template').cloneNode(true);
     entry.id = null;
     entry.getElementsByClassName('combat-tracker-name')[0].textContent = characterData.name;
+    var checkbox = entry.getElementsByTagName('INPUT')[0];
+    var self = this;
+    var createCheckCallback = function() {
+      var name = characterData.name;
+      return function(e) {
+        var value = e.target.checked;
+        var characterIndex = self.client.getCharacterIndex(name);
+        if (value) {
+          var evt = {
+            type: 'add-effects',
+            character: characterIndex,
+            effects: ['Grants Combat Advantage']
+          };
+          self.client.sendEvent(evt);
+        } else {
+          var evt = {
+             type: 'remove-effect',
+             character: characterIndex,
+             effect: 'Grants Combat Advantage'
+           };
+          self.client.sendEvent(evt);
+        }
+        self.reportCombatAdvantageStatus(name, value);
+      };
+    };
+    checkbox.addEventListener('change', createCheckCallback());
     $('combat-initiative-list').appendChild(entry);
   },
 
-  onUpdateCharacter: function(characterData) {
-    // TODO: set state of combat-advantage checkbox.
+  onUpdateCharacter: function(characterIndex) {
+    var characterData = this.client.getCharacter(characterIndex);
+    var check = false;
+    var effects = characterData.condition.effects;
+    if (effects) {
+      for (var i = 0; i < effects.length; i++) {
+        var effect = effects[i];
+        if (effect == 'Grants Combat Advantage') {
+          check = true;
+          break;
+        }
+      }
+    }
+    var entries =  $('combat-initiative-list').getElementsByClassName('combat-initiative-list-entry');
+    for (var i = 0; i < entries.length; i++) {
+       var candidate = entries[i].getElementsByClassName('combat-tracker-name')[0].textContent;
+       if (candidate == characterData.name) {
+         var checkbox = entries[i].getElementsByTagName('INPUT')[0];
+         var wasChecked = checkbox.checked;
+         checkbox.checked = check;
+         if (check != wasChecked)
+           this.reportCombatAdvantageStatus(candidate, check);
+         break;
+       }
+    }
+  },
+
+  reportCombatAdvantageStatus: function(name, checked) {
+    var msg = name + (checked ?
+        ' grants combat advantage' :
+        ' no longer granting combat advantage');
+    this.client.dispatchEvent('log', msg);
   },
   
   onRemoveCharacter: function(characterName) {

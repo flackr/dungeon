@@ -537,6 +537,16 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     if (bonus)
       toHitStr += ' + ' + bonus;
 
+    var adjustedToHitString = [];
+    for (var i = 0; i < attackees.length; i++) {
+      if (this.hasEffect(this.characterPlacement[attackees[i]], 'Grants Combat Advantage')) {
+        // TODO(kellis): Not quite generic enough as in some cases the bonus can be higher for
+        // having combat advantage.  Keeping it separate from Defense modifier to more closely
+        // reflect game mechanics and to be more visible.
+        adjustedToHitString[i] = toHitStr + ' + 2';
+      }
+    }
+
     var dmgStr = power.damage;
     bonus = this.getCharacterAttribute(this.characterPlacement[attacker], 'Damage');
     if (bonus)
@@ -548,7 +558,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var attack = [];
     var damages = [];
     for (var i = 0; i < attackees.length; i++) {
-      var curattack = this.rollDice(this.parseRollString(toHitStr));
+      
+      var curattack = this.rollDice(this.parseRollString(adjustedToHitString[i] ?
+          adjustedToHitString[i] : toHitStr));
       if (curattack[2][0][0] == 20) {
         logStr+= 'Critical HIT '+curattack[1]+'\n';
         curattack[0] = 100;
@@ -672,6 +684,16 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       }
     }
     return value;
+  },
+
+  hasEffect: function(character, effect) {
+    if (character.condition.effects) {
+      for (var i = 0; i < character.condition.effects.length; i++) {
+        if (character.condition.effects[i] == effect)
+          return true;
+      }
+    }
+    return false;
   },
 
   computeMapCoordinatesDouble: function(e) {
