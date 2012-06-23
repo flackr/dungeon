@@ -190,6 +190,8 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
           }
         }
       }
+    } else if (eventData.type == 'set-character-turn') {
+      this.dispatchEvent('set-character-turn', eventData.index);
     }
     return true;
   },

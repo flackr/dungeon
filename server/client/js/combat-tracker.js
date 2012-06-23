@@ -13,13 +13,18 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
     client.addEventListener('character-added', this.onAddCharacter.bind(this));
     client.addEventListener('character-updated', this.onUpdateCharacter.bind(this));
     client.addEventListener('character-removed', this.onRemoveCharacter.bind(this));
+    client.addEventListener('set-character-turn', this.onSetCharacterTurn.bind(this));
     client.addEventListener('power-used', this.onPowerUsed.bind(this));
     $('current-hp').addEventListener('change', this.updateHitPoints.bind(this));
     $('current-temp-hp').addEventListener('change', this.updateTemps.bind(this));
 
     var self = this;
     $('combat-end-turn').addEventListener('click', function() {
-      self.setCharacterTurn(self.turnIndex + 1);
+      var evt = {
+        type: 'set-character-turn',
+        index: self.turnIndex + 1
+      };
+      self.client.sendEvent(evt);
     });
   },
 
@@ -136,10 +141,10 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
     for (var i = 0; i < data.length; i++)
       $('combat-initiative-list').appendChild(data[i].entry);
 
-    this.setCharacterTurn(0);
+    this.onSetCharacterTurn(0);
   },
 
-  setCharacterTurn: function(index) {
+  onSetCharacterTurn: function(index) {
     var bounds = [];
     var lastName = null;
     var nodes = $('combat-initiative-list').getElementsByClassName('combat-initiative-list-entry');
