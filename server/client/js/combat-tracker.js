@@ -5,13 +5,22 @@ dungeon.CombatTracker = function(client) {
 
 dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
 
+  turnIndex: 0,
+
   initialize: function(client) {
     this.client = client;
-    client.addEventListener('character-selected', 
-                          this.onCharacterSelect.bind(this));
+    client.addEventListener('character-selected', this.onCharacterSelect.bind(this));
+    client.addEventListener('character-added', this.onAddCharacter.bind(this));
+    client.addEventListener('character-updated', this.onUpdateCharacter.bind(this));
+    client.addEventListener('character-removed', this.onRemoveCharacter.bind(this));
     client.addEventListener('power-used', this.onPowerUsed.bind(this));
     $('current-hp').addEventListener('change', this.updateHitPoints.bind(this));
     $('current-temp-hp').addEventListener('change', this.updateTemps.bind(this));
+
+    var self = this;
+    $('combat-end-turn').addEventListener('click', function() {
+      self.setCharacterTurn(self.turnIndex + 1);
+    });
   },
 
   updateHitPoints: function() {
@@ -22,6 +31,84 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
   updateTemps: function() {
     var value = $('current-temp-hp').value;
     this.dispatchEvent('use-power', 'Stat-tweak', {stat: 'Temps', tweak: value}); 
+  },
+
+  onAddCharacter: function(characterData) {
+    var entry = $('combat-initiative-list-entry-template').cloneNode(true);
+    entry.id = null;
+    entry.getElementsByClassName('combat-tracker-name')[0].textContent = characterData.name;
+    $('combat-initiative-list').appendChild(entry);
+  },
+
+  onUpdateCharacter: function(characterData) {
+    // TODO: set state of combat-advantage checkbox.
+  },
+  
+  onRemoveCharacter: function(characterName) {
+    var nodes = $('combat-initiative-list').getElementsByClassName('combat-initiative-list-entry');
+    for (var i = 0; i < nodes.length; i++) {
+      var candidate = nodes[i].getElementsByClassName('combat-tracker-name')[0].textContent;
+      if (candidate == characterName) {
+        $('combat-initiative-list').removeChild(nodes[i]);
+        break;
+      }
+    }
+  },
+
+  sortIntoInitiativeOrder: function() {
+    var data = [];
+    var entries = $('combat-initiative-list').getElementsByClassName('combat-initiative-list-entry');
+    for (var i = 0; i < entries.length; i++) {
+      entries[i].classList.remove('active-turn');
+      var name = entries[i].getElementsByClassName('combat-tracker-name')[0].textContent;
+      var index = this.client.getCharacterIndex(name);
+      var characterData = this.client.getCharacter(index);
+      var initiative = characterData.initiative;
+      data.push({initiative: initiative, name: name, entry: entries[i]});
+    }
+    var comparator = function(a, b) {
+      var result = 0;
+      if (a.initiative != b.initiative)
+        result = String(b.initiative) > String(a.initiative) ? 1 : -1;
+      else 
+        result = a.name > b.name ? 1 : -1;
+      return result;
+    }
+    data.sort(comparator);
+    for (var i = entries.length - 1; i > 0; i--)
+      $('combat-initiative-list').removeChild(entries[i]);
+    for (var i = 0; i < data.length; i++)
+      $('combat-initiative-list').appendChild(data[i].entry);
+
+    this.setCharacterTurn(0);
+  },
+
+  setCharacterTurn: function(index) {
+    var bounds = [];
+    var lastName = null;
+    var nodes = $('combat-initiative-list').getElementsByClassName('combat-initiative-list-entry');
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].classList.remove('active-turn');
+      var name = nodes[i].getElementsByClassName('combat-tracker-name')[0].textContent;
+      var characterIndex = this.client.getCharacterIndex(name);
+      var characterData = this.client.getCharacter(characterIndex);
+      var sourceName = characterData.source.name;
+      if (sourceName != lastName) {
+        bounds.push(i);
+        lastName = sourceName;
+      }
+    }
+    bounds.push(nodes.length);
+    var startIndex = bounds[index];
+    if (startIndex == nodes.length)
+      startIndex = index = 0;
+    var endIndex = bounds[index + 1];
+    for (var i = startIndex; i < endIndex; i++)
+      nodes[i].classList.add('active-turn');
+
+    $('combat-end-turn').disabled = false;
+
+    this.turnIndex = index;
   },
 
   onCharacterSelect: function(character) {

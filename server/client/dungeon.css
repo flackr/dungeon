@@ -509,6 +509,44 @@ input[type=text] {
   background: #eee;
 }
 
+#combat-initiative-list {
+  -webkit-box-sizing: content-box;
+  max-height: 160px;
+  min-height: 100px;
+  overflow-y: auto;
+}
+
+#combat-initiative-list-entry-template {
+  display: none;
+}
+
+.combat-initiative-list-entry {
+  font: 12px 'sans';
+  height: 20px;
+  margin: 0;
+}
+
+.combat-initiative-list-entry.active-turn {
+  background: rgb(224, 211, 150);
+}
+
+#combat-initiative-controls {
+  border-top: 1px solid #777;
+  border-bottom: 1px solid #777;
+  display: table;
+  padding: 5px;
+}
+
+#combat-initiative-controls > * {
+  display: table-cell;
+  vertical-align: middle;
+}
+
+#combat-initiative-controls > em {
+  color: #777;
+  font-size: 12px;
+}
+
 #combat-active-character {
   -webkit-box-flex: 1;
   -webkit-box-orient: vertical;
@@ -521,7 +559,7 @@ input[type=text] {
 #active-character-name,
 #active-character-hp {
   -webkit-box-flex: 0;
-  margin: 10px 5px; 
+  margin: 5px; 
 }
 
 #active-character-powers {

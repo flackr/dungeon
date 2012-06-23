@@ -159,6 +159,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var messageArea = document.getElementById('combat-message-area');
     if (messageArea)
       messageArea.textContent = '';
+    this.dispatchEvent('log', 'Welcome to dungeon.');
 
     // Map related.
     this.rebuildTiles();
@@ -351,6 +352,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       }
     }
     // Update ordering in combat overview.
+    this.combatTracker.sortIntoInitiativeOrder();
     this.combatOverviewPage.sortIntoInitiativeOrder();
   },
 
