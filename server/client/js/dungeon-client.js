@@ -904,6 +904,60 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
                       this.viewport.tileSize, this.viewport.tileSize);
       }
     }
+
+    // Mark selected character and indicate movement range.
+    if (this.ui.selected != undefined) {
+      var character = this.characterPlacement[this.ui.selected];
+      var w = this.viewport.tileSize;
+      var x = baseX + (character.x - view.x1) * w + w / 2;
+      var y = baseY + (character.y - view.y1) * w + w / 2;
+      
+      ctx.beginPath();
+      ctx.strokeStyle = '#ff0';
+      ctx.lineWidth = w/32;
+      ctx.arc(x, y, w/4 + 2, 0, 2*Math.PI, true);
+      ctx.stroke();
+        
+      // Movement overlay
+      ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+      var speed = parseInt(character.condition.stats['Speed'] || 0);
+      for (var j = -speed; j <= speed; j++) {
+        for (var k = -speed; k <= speed; k++) {
+          if (Math.sqrt(j*j + k*k) <= (speed + 0.8))
+            ctx.fillRect(baseX + (character.x + j - view.x1) * w, 
+                         baseY + (character.y + k - view.y1) * w, 
+                         w, 
+                         w);
+        }
+      }
+    }
+
+    // Draw target indicators.  Critters may be targetted multiple times.
+    if (this.ui.targets) {
+      var targetFreq = {};
+      for (var j = 0; j < this.ui.targets.length; j++) {
+        var index = this.ui.targets[j];
+        if (index in targetFreq)
+          targetFreq[index]++;
+        else
+          targetFreq[index] = 1;
+      }
+      ctx.strokeStyle = '#f00';
+      for (var index in targetFreq) {
+        var character = this.characterPlacement[index];
+        var w = this.viewport.tileSize;
+        var x = baseX + (character.x - view.x1) * w + w / 2;
+        var y = baseY + (character.y - view.y1) * w + w / 2;
+        for (var j = 0; j < targetFreq[index]; j++) {
+          ctx.beginPath();
+          ctx.lineWidth = 2;
+          ctx.arc(x, y, w/3 + j*3, 0, 2*Math.PI, true);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Draw critter indicators including names and health bars.
     var role = document.body.parentNode.getAttribute('role');
     for (var i = 0; i < this.characterPlacement.length; i++) {
       var character = this.characterPlacement[i];
@@ -922,42 +976,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       ctx.arc(x, y, w/4, 0, 2*Math.PI, true);
       ctx.fill();
 
-      // TODO(flackr): This and the following should be outside of the loop
-      // since they will happen for particular characters whose indices they
-      // know.
-      if (i == this.ui.selected) {
-        ctx.beginPath();
-        ctx.strokeStyle = '#ff0';
-        ctx.lineWidth = w/32;
-        ctx.arc(x, y, w/4, 0, 2*Math.PI, true);
-        ctx.stroke();
-        
-        // Movement overlay
-        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
-        var speed = parseInt(character.condition.stats['Speed'] || 0);
-        for (var j = -speed; j <= speed; j++)
-          for (var k = -speed; k <= speed; k++) {
-            if (Math.sqrt(j*j + k*k) <= (speed + 0.8))
-              ctx.fillRect(baseX + (character.x + j - view.x1) * w, baseY + (character.y + k - view.y1) * w, w, w);
-          }
-      }
-
-      if (this.ui.targets) {
-        var targetFreq = 0;
-        for (var j = 0; j < this.ui.targets.length; j++) {
-          if (this.ui.targets[j] == i) {
-            targetFreq++;
-          }
-        }
-        ctx.strokeStyle = '#f00';
-        for (var j = 0; j < targetFreq; j++) {
-          ctx.beginPath();
-          ctx.lineWidth = 2;
-          ctx.arc(x, y, w/3 + j*3, 0, 2*Math.PI, true);
-          ctx.stroke();
-        }
-      }
-
       // Health bars
       var px = 1 / 32 * w;
       var hx = Math.round(x - w / 2 + 1 + 1 * px);
@@ -968,66 +986,50 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       ctx.fillStyle = '#000';
       ctx.fillRect(hx - 1, hy - 1, hw + 2, hh + 2);
       // Interior
-      var curHp = character.condition.stats['Hit Points'];
-      var maxHp = character.source.stats['Hit Points'];
+      var curHp = Number(character.condition.stats['Hit Points']);
+      var maxHp = Number(character.source.stats['Hit Points']);
       var hpFraction = curHp / maxHp;
-      var isBloodied = (curHp <= character.source.stats['Bloodied']);
-      var isDead = (curHp <= 0);
+      var bloodyHp = Number(character.source.stats['Bloodied']);
+      var isBloodied = (curHp <= bloodyHp);
+      var isDying = (curHp <= 0);
       var temps = parseInt(character.condition.stats['Temps'] || 0);
       if (isMonster) {
-        ctx.fillStyle = isBloodied ? '#0ff' : '#0f0';
-        var hx2 = Math.round(hw * 0.5);
+        ctx.fillStyle = isBloodied ? '#f80' : '#0f0';
         if (role == 'dm') {
-          if (!isBloodied) {
-            ctx.fillRect(hx, hy, hx2 - hx, hh);
-            ctx.fillRect(hx2 + 1, hy, Math.max(0, Math.min(hx + hw - hx2, Math.round((hx + hw - hx2) * (hpFraction - 0.5) * 2 - 1))), hh);
-          } else {
-            ctx.fillRect(hx, hy, (hx2 - hx) * hpFraction * 2, hh);
-          }
+          if (hpFraction > 0)
+            ctx.fillRect(hx, hy, Math.min(1, hpFraction) * hw, hh);
         } else {
-          ctx.fillRect(hx, hy, Math.max(0, Math.min(hw, Math.round(hw * (isBloodied ? 0.5 : 1.0)))), hh);
+          ctx.fillRect(hx, hy, isBloodied ? hw / 2 : hw, hh);
         }
         ctx.fillStyle = '#000';
-        ctx.fillRect(Math.round(hx + hw * 1 / 2), hy, 1, hh);
+        ctx.fillRect(Math.round(hx + hw / 2), hy, 1, hh);
       } else {
-        var hx2 = hx + Math.round(hw / 3);
-        var hx3 = hx + Math.round(hw / 3 * 2);
-        var hxc = 0;
-        if (!isDead) {
-          ctx.fillStyle = isBloodied ? '#ff0' : '#0f0';
-          ctx.fillRect(hx, hy, hx2 - hx, hh);
-          if (!isBloodied) {
-            ctx.fillStyle = "rgb(" + Math.round((1 - (hpFraction - 0.5) * 2) * 255) + ",255,0)";
-            ctx.fillRect(hx2 + 1, hy, hx3 - hx2 - 1, hh);
-            var hpWidth = Math.round(Math.min(hx + hw - hx3 - 1, Math.max(0, (hx + hw - hx3) * (hpFraction - 0.5) * 2 - 1)));
-            ctx.fillRect(hx3 + 1, hy, hpWidth, hh);
-            hxc = hx3 + 1 + hpWidth;
-          } else {
-            ctx.fillStyle = "rgb(255," + Math.round(hpFraction * 2 * 255) + ",0)";
-            var hpWidth = Math.round(Math.min(hx2 - hx, Math.max(0, (hx3 - hx2) * hpFraction * 2)));
-            ctx.fillRect(hx2 + 1, hy, hpWidth, hh);
-            hxc = hx2 + 1 + hpWidth;
-          }
-        } else {
-          ctx.fillStyle = '#f00';
-          var hpWidth = Math.round(Math.min(hx2 - hx, Math.max(0, (hx2 - hx) * -hpFraction * 2)));
-          ctx.fillRect(hx, hy, hpWidth, hh);
-          hxc = hx + hpWidth;
-        }
+        ctx.fillStyle = isDying ? '#f00' : (isBloodied ? '#f80' : '#0f0');
+        var total = bloodyHp + maxHp + temps;
+        var healthRatio = (bloodyHp + curHp) / total;
+        var healthWidth = Math.round(healthRatio * hw);
+        ctx.fillRect(hx, hy, healthWidth, hh);
         if (temps > 0) {
-          ctx.fillStyle = '#fff';
-          ctx.fillRect(hxc + 1, hy, Math.round(Math.min(hx + hw - hxc - 1, temps / maxHp * 2.0 / 3.0 * hw)), hh);
+          var tempRatio = temps / total;
+          var tempWidth = Math.round(tempRatio * hw);
+          if (healthWidth + tempWidth > hw)
+            tempWidth = hw - healthWidth;
+          ctx.fillStyle = '#ff0';
+          ctx.fillRect(hx + healthWidth, hy, tempWidth, hh);
         }
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(Math.round(hx + hw * 1 / 3), hy - 1, 1, hh + 2);
+        ctx.fillStyle = '#000';
+        var bloodyRatio = bloodyHp / total;
+        var DyingMarker = Math.round(bloodyRatio * hw);
+        ctx.fillRect(hx + DyingMarker, hy, 1, hh);
+        var BloodyMarker = Math.round(2 * bloodyRatio * hw);
+        ctx.fillRect(hx + BloodyMarker, hy, 1, hh);
       }
+
       // Name
       ctx.font = Math.max(10, w/3) + "px Arial";
       ctx.fillStyle = isMonster ? '#f00' : '#00f';
-      ctx.fillText(name, Math.round(x - ctx.measureText(name).width / 2), Math.round(y - w / 2 - 1 * px));
-      //ctx.strokeStyle = '#fff';
-      //ctx.lineWidth = w/128;
-      //ctx.strokeText(name, Math.round(x - ctx.measureText(name).width / 2), Math.round(y - w / 2 - 1 * px));
+      ctx.fillText(name, Math.round(x - ctx.measureText(name).width / 2), 
+          Math.round(y - w / 2 - 1 * px));
     }
   },
 
