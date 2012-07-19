@@ -21,6 +21,7 @@ dungeon.CombatOverviewPage = (function() {
       client.addEventListener('character-added', this.onAddCharacter.bind(this));
       client.addEventListener('character-updated', this.onUpdateCharacter.bind(this));
       client.addEventListener('character-removed', this.onRemoveCharacter.bind(this));
+      client.addEventListener('reset', this.onReset.bind(this));
       client.removeEventListener('character-added', queueLoading);
       client.removeEventListener('character-updated', queueLoading);
       for (var name in preloadQueue)
@@ -46,6 +47,16 @@ dungeon.CombatOverviewPage = (function() {
            var characterSummary = nodes[i].parentNode;
            list.removeChild(characterSummary);
          }
+       }
+     },
+
+     onReset: function() {
+       // Remove all entries except the template at position 0.
+       var list = $('combat-overview-list');
+       var nodes = list.getElementsByClassName('combat-overview-name');
+       for (var i = nodes.length - 1; i > 0; i--) {
+         var characterSummary = nodes[i].parentNode;
+         list.removeChild(characterSummary);
        }
      },
 

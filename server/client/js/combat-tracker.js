@@ -15,6 +15,7 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
     client.addEventListener('character-removed', this.onRemoveCharacter.bind(this));
     client.addEventListener('set-character-turn', this.onSetCharacterTurn.bind(this));
     client.addEventListener('power-used', this.onPowerUsed.bind(this));
+    client.addEventListener('reset', this.onReset.bind(this));
     $('current-hp').addEventListener('change', this.updateHitPoints.bind(this));
     $('current-temp-hp').addEventListener('change', this.updateTemps.bind(this));
 
@@ -247,6 +248,12 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
 
     // Reset selected power.
     this.selectPower();
+  },
+
+  onReset: function() {
+    var entries = $('combat-initiative-list').getElementsByClassName('combat-initiative-list-entry');
+    for (var i = entries.length - 1; i >= 0; i--)
+      $('combat-initiative-list').removeChild(entries[i]);
   },
 
   selectPower: function(powerElement) {
