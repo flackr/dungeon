@@ -106,8 +106,19 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   processHash: function() {
+    var attributes = window.location.hash.substr(1).split('&');
+    this.attributes = {};
+    for (var i = 0; i < attributes.length; i++) {
+      var pos = attributes[i].indexOf('=');
+      if (pos == -1) {
+        this.attributes[attributes[i]] = true;
+      } else {
+        this.attributes[attributes[i].substr(0, pos)] =
+            attributes[i].substr(pos + 1);
+      }
+    }
     var role = 'player';
-    if (window.location.hash == '#dm')
+    if (this.attributes.dm)
       role = 'dm';
     document.body.parentNode.setAttribute('role', role);
   },
