@@ -18,6 +18,8 @@ dungeon.Dialog = (function() {
 
      name: null,
 
+     dragFrom: null,
+
      initialize: function(client, name) {
        this.client = client;
        this.name = name;
@@ -29,6 +31,10 @@ dungeon.Dialog = (function() {
        var cancelButtons = element.getElementsByClassName('cancel-button');
        for (var i = 0; i < cancelButtons.length; i++)
          cancelButtons[i].addEventListener('click', this.cancel.bind(this));
+
+       var titleBar = element.getElementsByClassName('dialog-title')[0];
+       if (titleBar)
+         titleBar.addEventListener('mousedown', this.onMouseDown_.bind(this));
      },
 
      show: function() {
@@ -46,7 +52,61 @@ dungeon.Dialog = (function() {
 
      commit: function() {
        // Override for specific dialog to commit changes to the dialog before closing.
-     }
+     },
+
+     onMouseDown_: function(e) {
+       this.dragFrom = {
+         x: e.clientX,
+         y: e.clientY
+       };
+       document.addEventListener('mouseup', this.onMouseUp_.bind(this));
+       document.addEventListener('mousemove', this.onMouseMove_.bind(this));
+       return false;
+     },
+
+     onMouseUp_: function(e) {
+       if (this.dragFrom) {
+         this.dragFrom = null;
+         document.removeEventListener('mouseup', this.onMouseUp_);
+         document.removeEventListener('mousemove', this.onMouseMove_);
+         return false;
+       }
+       return true;
+     },
+
+     onMouseMove_: function(e) {
+       if (this.dragFrom) {
+         var dragTo = {
+           x: e.clientX,
+           y: e.clientY
+         };
+         var dx = dragTo.x - this.dragFrom.x;
+         var dy = dragTo.y - this.dragFrom.y;
+         this.dragFrom = dragTo;
+         var dialog = getElement(this.name);
+         var top = dialog.offsetTop + dy;
+         var left = dialog.offsetLeft + dx;
+         var bottom = top + dialog.clientHeight;
+         var right = left + dialog.clientWidth;
+         // Constrain to document bounds.
+         if (bottom > document.body.clientHeight)
+           top = document.body.clientHeight - dialog.clientHeight;
+         // Back off the limit for the right edge of the dialog by the
+         // width of the drop shadow to prevent possible layout changes.
+         var limit = document.body.clientWidth - 5;
+         if (right > limit)
+           left = limit - dialog.clientWidth;
+         if (top < 0)
+           top = 0;
+         if (left < 0)
+           left = 0;
+         dialog.style.left = left + 'px';
+         dialog.style.top = top + 'px';
+         return false;
+       }
+       return true;
+     },
+
   }
 
   /**
