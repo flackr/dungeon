@@ -118,9 +118,13 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       }
     }
     var role = 'player';
+    var ui = 'desktop';
+    if (this.attributes.ui)
+      ui = this.attributes.ui;
     if (this.attributes.dm)
       role = 'dm';
     document.body.parentNode.setAttribute('role', role);
+    document.body.parentNode.setAttribute('ui', ui);
   },
 
   addCombatTarget: function(index) {
