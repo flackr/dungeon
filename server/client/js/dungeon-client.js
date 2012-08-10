@@ -18,7 +18,8 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.socket = io.connect('http://' + location.host);
 
     this.socket.on('e', this.receiveEvent.bind(this));
-    this.canvas.addEventListener('mousedown', this.onPointerDown.bind(this));
+    this.canvas.addEventListener('touchstart', this.onTouchStart.bind(this));
+    this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
     this.canvas.addEventListener('mousewheel', this.onMouseWheel.bind(this));
     document.body.addEventListener('keydown', this.onKeyDown.bind(this));
 
@@ -377,22 +378,43 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       this.onSelectView('page', 'map');
   },
 
-  onPointerDown: function(e) {
-    var selectedTile = dungeon.MapEditor.selectedTile();
+  onTouchStart: function(e) {
     e.preventDefault();
-    if (selectedTile == -1) {
+    function convertSingleTouchEvent(e) {
+      if (e.changedTouches.length > 0) {
+        e.clientX = e.changedTouches[0].clientX;
+        e.clientY = e.changedTouches[0].clientY;
+      }
+      return e;
+    }
+    function convertSingleTouchHandler(fn, e) {
+      fn(convertSingleTouchEvent(e));
+    }
+    e = convertSingleTouchEvent(e);
+    if (e.changedTouches.length == 1) {
       this.pointer = {
-        mode: 'select',
-        x1: e.clientX,
-        y1: e.clientY,
         listeners: {
-          mouseup: this.onPointerUp.bind(this),
-          mouseout: this.onPointerOut.bind(this),
-          mousemove: this.onPointerMove.bind(this)},
-        mapX: this.viewport.x,
-        mapY: this.viewport.y};
-      for (var i in this.pointer.listeners)
-        this.canvas.addEventListener(i, this.pointer.listeners[i]);
+          touchend: convertSingleTouchHandler.bind(null, this.onPointerUp.bind(this)),
+          touchmove: convertSingleTouchHandler.bind(null, this.onPointerMove.bind(this)),
+          touchcancel: convertSingleTouchHandler.bind(null, this.onPointerOut.bind(this))}};
+      this.onPointerDown(e);
+    } else {
+      // More than 1 touch cancels.
+      this.onPointerOut(e);
+    }
+  },
+
+  onMouseDown: function(e) {
+    e.preventDefault();
+    this.pointer = {
+      listeners: {
+        mouseup: this.onPointerUp.bind(this),
+        mouseout: this.onPointerOut.bind(this),
+        mousemove: this.onPointerMove.bind(this)}
+    };
+    var selectedTile = dungeon.MapEditor.selectedTile();
+    if (selectedTile == -1) {
+      this.onPointerDown(e);
     } else {
       var lastpos = this.computeMapCoordinates(e);
 
@@ -423,6 +445,16 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       this.canvas.addEventListener('mouseup', cancel);
       this.canvas.addEventListener('mouseout', cancel);
     }
+  },
+
+  onPointerDown: function(e) {
+    this.pointer.mode = 'select';
+    this.pointer.x1 = e.clientX;
+    this.pointer.y1 = e.clientY;
+    this.pointer.mapX = this.viewport.x;
+    this.pointer.mapY = this.viewport.y;
+    for (var i in this.pointer.listeners)
+      this.canvas.addEventListener(i, this.pointer.listeners[i]);
   },
 
   onPointerMove: function(e) {
@@ -700,9 +732,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var x = e.clientX;
     var y = e.clientY;
     var element = this.canvas;
-    while (element != document.body) {
-      x -= element.offsetLeft;
-      y -= element.offsetTop;
+    while (element != document.body.parentNode) {
+      x -= element.offsetLeft - element.scrollLeft;
+      y -= element.offsetTop - element.scrollTop;
       element = element.parentNode;
     }
     var w = parseInt(this.canvas.getAttribute('width'));
