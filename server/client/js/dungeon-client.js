@@ -925,6 +925,52 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
   },
 
+  drawHealthBar: function(ctx, hx, hy, hw, hh, character, isMonster, role) {
+    // Health bars
+    // Black border
+    ctx.fillStyle = '#000';
+    ctx.fillRect(hx - 1, hy - 1, hw + 2, hh + 2);
+    // Interior
+    var curHp = Number(character.condition.stats['Hit Points']);
+    var maxHp = Number(character.source.stats['Hit Points']);
+    var hpFraction = curHp / maxHp;
+    var bloodyHp = Number(character.source.stats['Bloodied']);
+    var isBloodied = (curHp <= bloodyHp);
+    var isDying = (curHp <= 0);
+    var temps = parseInt(character.condition.stats['Temps'] || 0);
+    if (isMonster) {
+      ctx.fillStyle = isBloodied ? '#f80' : '#0f0';
+      if (role == 'dm') {
+        if (hpFraction > 0)
+          ctx.fillRect(hx, hy, Math.min(1, hpFraction) * hw, hh);
+      } else {
+        ctx.fillRect(hx, hy, isBloodied ? hw / 2 : hw, hh);
+      }
+      ctx.fillStyle = '#000';
+      ctx.fillRect(Math.round(hx + hw / 2), hy, 1, hh);
+    } else {
+      ctx.fillStyle = isDying ? '#f00' : (isBloodied ? '#f80' : '#0f0');
+      var total = bloodyHp + maxHp + temps;
+      var healthRatio = (bloodyHp + curHp) / total;
+      var healthWidth = Math.round(healthRatio * hw);
+      ctx.fillRect(hx, hy, healthWidth, hh);
+      if (temps > 0) {
+        var tempRatio = temps / total;
+        var tempWidth = Math.round(tempRatio * hw);
+        if (healthWidth + tempWidth > hw)
+          tempWidth = hw - healthWidth;
+        ctx.fillStyle = '#ff0';
+        ctx.fillRect(hx + healthWidth, hy, tempWidth, hh);
+      }
+      ctx.fillStyle = '#000';
+      var bloodyRatio = bloodyHp / total;
+      var DyingMarker = Math.round(bloodyRatio * hw);
+      ctx.fillRect(hx + DyingMarker, hy, 1, hh);
+      var BloodyMarker = Math.round(2 * bloodyRatio * hw);
+      ctx.fillRect(hx + BloodyMarker, hy, 1, hh);
+    }
+  },
+
   redraw: function() {
     this.ui.stale = false;
     var ctx = this.canvas.getContext('2d');
@@ -1023,60 +1069,20 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       ctx.arc(x, y, w/4, 0, 2*Math.PI, true);
       ctx.fill();
 
-      // Health bars
-      var px = 1 / 32 * w;
-      var hx = Math.round(x - w / 2 + 1 + 1 * px);
-      var hy = Math.round(y - w / 2 + 1 + 1 * px);
-      var hw = Math.max(10, Math.round(w - 2 - 2 * px));
-      var hh = Math.max(1, Math.round(2 / 32 * w));
-      // Black border
-      ctx.fillStyle = '#000';
-      ctx.fillRect(hx - 1, hy - 1, hw + 2, hh + 2);
-      // Interior
-      var curHp = Number(character.condition.stats['Hit Points']);
-      var maxHp = Number(character.source.stats['Hit Points']);
-      var hpFraction = curHp / maxHp;
-      var bloodyHp = Number(character.source.stats['Bloodied']);
-      var isBloodied = (curHp <= bloodyHp);
-      var isDying = (curHp <= 0);
-      var temps = parseInt(character.condition.stats['Temps'] || 0);
-      if (isMonster) {
-        ctx.fillStyle = isBloodied ? '#f80' : '#0f0';
-        if (role == 'dm') {
-          if (hpFraction > 0)
-            ctx.fillRect(hx, hy, Math.min(1, hpFraction) * hw, hh);
-        } else {
-          ctx.fillRect(hx, hy, isBloodied ? hw / 2 : hw, hh);
-        }
-        ctx.fillStyle = '#000';
-        ctx.fillRect(Math.round(hx + hw / 2), hy, 1, hh);
-      } else {
-        ctx.fillStyle = isDying ? '#f00' : (isBloodied ? '#f80' : '#0f0');
-        var total = bloodyHp + maxHp + temps;
-        var healthRatio = (bloodyHp + curHp) / total;
-        var healthWidth = Math.round(healthRatio * hw);
-        ctx.fillRect(hx, hy, healthWidth, hh);
-        if (temps > 0) {
-          var tempRatio = temps / total;
-          var tempWidth = Math.round(tempRatio * hw);
-          if (healthWidth + tempWidth > hw)
-            tempWidth = hw - healthWidth;
-          ctx.fillStyle = '#ff0';
-          ctx.fillRect(hx + healthWidth, hy, tempWidth, hh);
-        }
-        ctx.fillStyle = '#000';
-        var bloodyRatio = bloodyHp / total;
-        var DyingMarker = Math.round(bloodyRatio * hw);
-        ctx.fillRect(hx + DyingMarker, hy, 1, hh);
-        var BloodyMarker = Math.round(2 * bloodyRatio * hw);
-        ctx.fillRect(hx + BloodyMarker, hy, 1, hh);
-      }
+      this.drawHealthBar(ctx,
+                         Math.round(x - w / 2 + 1 + 1 / 32 * w),
+                         Math.round(y - w / 2 + 1 + 1 / 32 * w),
+                         Math.max(10, Math.round(w - 2 - 2 / 32 * 2)),
+                         Math.max(1, Math.round(2 / 32 * w)),
+                         character,
+                         isMonster,
+                         role);
 
       // Name
       ctx.font = Math.max(10, w/3) + "px Arial";
       ctx.fillStyle = isMonster ? '#f00' : '#00f';
       ctx.fillText(name, Math.round(x - ctx.measureText(name).width / 2), 
-          Math.round(y - w / 2 - 1 * px));
+          Math.round(y - w / 2 - w / 32));
     }
   },
 
