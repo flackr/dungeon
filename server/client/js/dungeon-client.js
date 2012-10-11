@@ -971,6 +971,15 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
   },
 
+  drawTextInBounds: function(ctx, x_center, y, text, x_left, x_right) {
+    var maxWidth = Math.min(x_center - x_left, x_right - x_center) * 2;
+    while (ctx.measureText(text).width > maxWidth)
+      text = text.substring(0, text.length - 1);
+    ctx.fillText(text,
+                 Math.round(x_center - ctx.measureText(text).width / 2),
+                 y);
+  },
+
   redraw: function() {
     this.ui.stale = false;
     var ctx = this.canvas.getContext('2d');
@@ -1001,14 +1010,14 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     // Mark selected character and indicate movement range.
     if (this.ui.selected != undefined) {
       var character = this.characterPlacement[this.ui.selected];
-      var w = this.viewport.tileSize;
-      var x = baseX + (character.x - view.x1) * w + w / 2;
-      var y = baseY + (character.y - view.y1) * w + w / 2;
+      var tw = this.viewport.tileSize;
+      var x = baseX + (character.x - view.x1) * tw + tw / 2;
+      var y = baseY + (character.y - view.y1) * tw + tw / 2;
       
       ctx.beginPath();
       ctx.strokeStyle = '#ff0';
-      ctx.lineWidth = w/32;
-      ctx.arc(x, y, w/4 + 2, 0, 2*Math.PI, true);
+      ctx.lineWidth = tw/32;
+      ctx.arc(x, y, tw/4 + 2, 0, 2*Math.PI, true);
       ctx.stroke();
         
       // Movement overlay
@@ -1017,10 +1026,10 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       for (var j = -speed; j <= speed; j++) {
         for (var k = -speed; k <= speed; k++) {
           if (Math.sqrt(j*j + k*k) <= (speed + 0.8))
-            ctx.fillRect(baseX + (character.x + j - view.x1) * w, 
-                         baseY + (character.y + k - view.y1) * w, 
-                         w, 
-                         w);
+            ctx.fillRect(baseX + (character.x + j - view.x1) * tw,
+                         baseY + (character.y + k - view.y1) * tw,
+                         tw,
+                         tw);
         }
       }
     }
@@ -1038,17 +1047,25 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       ctx.strokeStyle = '#f00';
       for (var index in targetFreq) {
         var character = this.characterPlacement[index];
-        var w = this.viewport.tileSize;
-        var x = baseX + (character.x - view.x1) * w + w / 2;
-        var y = baseY + (character.y - view.y1) * w + w / 2;
+        var tw = this.viewport.tileSize;
+        var x = baseX + (character.x - view.x1) * tw + tw / 2;
+        var y = baseY + (character.y - view.y1) * tw + tw / 2;
         for (var j = 0; j < targetFreq[index]; j++) {
           ctx.beginPath();
           ctx.lineWidth = 2;
-          ctx.arc(x, y, w/3 + j*3, 0, 2*Math.PI, true);
+          ctx.arc(x, y, tw/3 + j*3, 0, 2*Math.PI, true);
           ctx.stroke();
         }
       }
     }
+
+    var self = this;
+    var mapX = function(x) {
+      return baseX + (x - view.x1) * self.viewport.tileSize;
+    };
+    var mapY = function(y) {
+      return baseY + (y - view.y1) * self.viewport.tileSize;
+    };
 
     // Draw critter indicators including names and health bars.
     var role = document.body.parentNode.getAttribute('role');
@@ -1063,26 +1080,35 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       ctx.fillStyle = isMonster ? '#f00' : '#00f';
 
       ctx.beginPath();
-      var w = this.viewport.tileSize;
-      var x = baseX + (character.x - view.x1) * w + w / 2;
-      var y = baseY + (character.y - view.y1) * w + w / 2;
-      ctx.arc(x, y, w/4, 0, 2*Math.PI, true);
+      var tw = this.viewport.tileSize;
+      var x = baseX + (character.x - view.x1) * tw + tw / 2;
+      var y = baseY + (character.y - view.y1) * tw + tw / 2;
+      ctx.arc(x, y, tw/4, 0, 2*Math.PI, true);
       ctx.fill();
 
       this.drawHealthBar(ctx,
-                         Math.round(x - w / 2 + 1 + 1 / 32 * w),
-                         Math.round(y - w / 2 + 1 + 1 / 32 * w),
-                         Math.max(10, Math.round(w - 2 - 2 / 32 * 2)),
-                         Math.max(1, Math.round(2 / 32 * w)),
+                         Math.round(x - tw / 2 + 1 + 1 / 32 * tw),
+                         Math.round(y - tw / 2 + 1 + 1 / 32 * tw),
+                         Math.max(10, Math.round(tw - 2 - 2 / 32 * 2)),
+                         Math.max(1, Math.round(2 / 32 * tw)),
                          character,
                          isMonster,
                          role);
 
       // Name
-      ctx.font = Math.max(10, w/3) + "px Arial";
+      ctx.font = Math.max(10, tw/3) + "px Arial";
       ctx.fillStyle = isMonster ? '#f00' : '#00f';
-      ctx.fillText(name, Math.round(x - ctx.measureText(name).width / 2), 
-          Math.round(y - w / 2 - w / 32));
+      var x_bounds = [0, w - 1];
+      for (var j = 0; j < this.characterPlacement.length; j++) {
+        if (this.characterPlacement[i].x != this.characterPlacement[j].x && this.characterPlacement[j].y == this.characterPlacement[i].y) {
+          if (this.characterPlacement[j].x < this.characterPlacement[i].x) {
+            x_bounds[0] = Math.max(x_bounds[0], mapX((this.characterPlacement[j].x + character.x) / 2 + 0.5));
+          } else {
+            x_bounds[1] = Math.min(x_bounds[1], mapX((this.characterPlacement[j].x + character.x) / 2 + 0.5));
+          }
+        }
+      }
+      this.drawTextInBounds(ctx, x, Math.round(y - tw / 2 - tw / 32), name, x_bounds[0], x_bounds[1]);
     }
   },
 
