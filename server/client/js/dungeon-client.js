@@ -972,12 +972,13 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   drawTextInBounds: function(ctx, x_center, y, text, x_left, x_right) {
-    var maxWidth = Math.min(x_center - x_left, x_right - x_center) * 2;
-    while (ctx.measureText(text).width > maxWidth)
+    var maxWidth = Math.round(x_right - x_left);
+    var textWidth;
+    while ((textWidth = ctx.measureText(text).width) > maxWidth)
       text = text.substring(0, text.length - 1);
-    ctx.fillText(text,
-                 Math.round(x_center - ctx.measureText(text).width / 2),
-                 y);
+    var x = Math.round(Math.min(x_right - textWidth,
+                                Math.max(x_left, x_center - textWidth / 2)));
+    ctx.fillText(text, x, y);
   },
 
   redraw: function() {
