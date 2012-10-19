@@ -971,13 +971,18 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
   },
 
-  drawTextInBounds: function(ctx, x_center, y, text, x_left, x_right) {
+  drawTextInBounds: function(ctx, x_center, y, text, x_left, x_right, textColor, textHeight) {
     var maxWidth = Math.round(x_right - x_left);
     var textWidth;
     while ((textWidth = ctx.measureText(text).width) > maxWidth)
       text = text.substring(0, text.length - 1);
     var x = Math.round(Math.min(x_right - textWidth,
                                 Math.max(x_left, x_center - textWidth / 2)));
+    ctx.fillStyle = 'white';
+    ctx.globalAlpha = 0.6;
+    ctx.fillRect(x, y - textHeight - 1, textWidth, textHeight + 2);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = textColor;
     ctx.fillText(text, x, y);
   },
 
@@ -1097,8 +1102,8 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
                          role);
 
       // Name
-      ctx.font = Math.max(10, tw/3) + "px Arial";
-      ctx.fillStyle = isMonster ? '#f00' : '#00f';
+      var textHeight = Math.max(10, tw/3);
+      ctx.font = textHeight + "px Arial";
       var x_bounds = [0, w - 1];
       for (var j = 0; j < this.characterPlacement.length; j++) {
         if (this.characterPlacement[i].x != this.characterPlacement[j].x && this.characterPlacement[j].y == this.characterPlacement[i].y) {
@@ -1109,7 +1114,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
           }
         }
       }
-      this.drawTextInBounds(ctx, x, Math.round(y - tw / 2 - tw / 32), name, x_bounds[0], x_bounds[1]);
+      this.drawTextInBounds(ctx, x, Math.round(y - tw / 2 - tw / 32), name, x_bounds[0], x_bounds[1], isMonster ? '#f00' : '#00f', textHeight);
     }
   },
 
