@@ -148,8 +148,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
         var character = this.characterPlacement[eventData.character]
         var characterStats = character.condition.stats;
         characterStats[eventData.data.stat] = eventData.data.tweak;
-        this.dispatchEvent('log', character.name + ' has been tweaked: ' +
-            eventData.data.stat + ' = ' + eventData.data.tweak + '.\n');
+        this.dispatchEvent('log', character.name + '\'s ' + eventData.data.stat + ' has been tweaked.\n');
         this.dispatchEvent('character-updated', eventData.character);
       }
     } else if (eventData.type == 'power-consumed') {
