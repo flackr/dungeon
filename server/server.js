@@ -12,7 +12,12 @@ io.set('log level', 1); // reduce logging.
 
 var dungeon = require('./client/js/dungeon-common.js');
 
-app.listen(1337);
+var port = 1337;
+if (process.argv.length > 2) {
+    port = parseInt(process.argv[2]);
+}
+app.listen(port);
+console.log('Listening on port ' + port);
 
 /**
  * Returns if the string ends with the provided suffix.
