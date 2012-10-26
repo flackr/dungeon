@@ -20,6 +20,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.socket.on('e', this.receiveEvent.bind(this));
     this.canvas.addEventListener('touchstart', this.onTouchStart.bind(this));
     this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
+    this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
     this.canvas.addEventListener('mousewheel', this.onMouseWheel.bind(this));
     document.body.addEventListener('keydown', this.onKeyDown.bind(this));
 
@@ -141,6 +142,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       this.attack(this.ui.selected, this.ui.targets, power);
       this.ui.targets = [];
       this.ui.selected = undefined;
+      this.ui.path = null;
       this.update();
     }
   },
@@ -419,6 +421,11 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
   },
 
+  onMouseMove: function(e) {
+    if (!this.pointer)
+      this.onPointerHover(e);
+  },
+
   onMouseDown: function(e) {
     e.preventDefault();
     this.pointer = {
@@ -484,6 +491,19 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
   },
 
+  onPointerHover: function(e) {
+    if ((this.ui.selected!== undefined) && !this.combatTracker.selectedPower()) {
+      var evt = this.computeMapCoordinates(e);
+      if (!this.ui.path || this.ui.path.dx != evt.x || this.ui.path.dy != evt.y) {
+
+        this.ui.path = {dx: evt.x, dy: evt.y,
+                        path: this.computePath(this.characterPlacement[this.ui.selected],
+                                               evt.x, evt.y)};
+        this.update();
+      }
+    }
+  },
+
   onPointerOut: function(e) {
     for (var i in this.pointer.listeners)
       this.canvas.removeEventListener(i, this.pointer.listeners[i]);
@@ -509,6 +529,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
           this.dispatchEvent('combat-add-target', i);
         } else {
           this.ui.selected = i;
+          this.ui.path = null;
           this.dispatchEvent('character-selected', this.characterPlacement[i]);
           this.update();
         }
@@ -925,6 +946,90 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
   },
 
+  computePath: function(character, dest_x, dest_y) {
+    var self = this;
+    // Computes a best case movement for a character.
+    var h = function(dx, dy) {
+      var d = Math.max(dx, dy);
+      d += Math.max(0, Math.min(dx, dy) - Math.floor(d / 2));
+      return d;
+    }
+    var compute_score = function(info) {
+      // TODO: Allow shifting by more than 1 for certain characters.
+      return (info.d > 1 ? (info.oa * 100) : 0) + info.d + (info.diag ? 0.5 : 0);
+    }
+    var in_bounds = function(x, y) {
+      return x >= 0 && y >= 0 && y < self.map.length && x < self.map[0].length;
+    }
+    var char_team = function(character) {
+      return character.source.charClass == 'Monster' ? 2 : 1;
+    }
+    var enemies_adjacent = function(x, y, radius, team) {
+      var enemies = 0;
+      for (var i = 0; i < self.characterPlacement.length; i++) {
+        if ((!team || char_team(self.characterPlacement[i]) != team) &&
+            Math.abs(self.characterPlacement[i].x - x) <= radius &&
+            Math.abs(self.characterPlacement[i].y - y) <= radius)
+        enemies++;
+      }
+      return enemies;
+    }
+    var direction = [[-1, 0], [0, -1], [1, 0], [0, 1],
+                     [-1, -1], [1, -1], [1, 1], [-1, 1]];
+    var pq = new PriorityQueue();
+    pq.enqueue(0, {x: character.x, y: character.y, oa: 0, d: 0, diag: false, score: 0});
+    var path = [];
+    var queue = [];
+    var pos;
+    var move_team = char_team(character);
+    // TODO: Stop searching when the heuristic distance calculation is further
+    // than our range instead of searching up to our range.
+    while ((pos = pq.dequeue()) &&
+           (pos.d <= parseInt(character.condition.stats.Speed) + 2)) {
+      if (!path[pos.y]) path[pos.y] = [];
+      if (path[pos.y][pos.x] && path[pos.y][pos.x].score <= pos.score)
+        continue;
+      path[pos.y][pos.x] = pos;
+      if (pos.y == dest_y && pos.x == dest_x)
+        break;
+      for (var i = 0; i < direction.length; i++) {
+        var next = {x: pos.x + direction[i][0],
+                    y: pos.y + direction[i][1]};
+        if (!in_bounds(next.x, next.y) ||
+            enemies_adjacent(next.x, next.y, 0))
+          continue
+        // TODO: Only allow each enemy to opportunity attack once.
+        next.oa = pos.oa + enemies_adjacent(pos.x, pos.y, 1, move_team);
+        next.d = pos.d + 1;
+        next.diag = false;
+        if (i >= 4) {
+          if (pos.diag)
+            next.d++;
+          else
+            next.diag = true;
+        }
+        next.dir = i;
+        next.score = compute_score(next);
+        pq.enqueue(next.score + h(Math.abs(dest_x - next.x), Math.abs(dest_y - next.y)), next);
+      }
+    }
+    if (path && path[dest_y] && path[dest_y][dest_x]) {
+      var dir;
+      var spath = [];
+      while(dest_y != character.y || dest_x != character.x) {
+        spath.push(pos = path[dest_y][dest_x]);
+        dest_x -= direction[pos.dir][0];
+        dest_y -= direction[pos.dir][1];
+      }
+      spath.push(path[dest_y][dest_x]);
+      spath.reverse();
+      for (var i = 0; i < spath.length - 1; i++)
+        spath[i].dir = spath[i + 1].dir;
+      return spath;
+    }
+    return null;
+  },
+
   drawHealthBar: function(ctx, hx, hy, hw, hh, character, isMonster, role) {
     // Health bars
     // Black border
@@ -1063,6 +1168,21 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
           ctx.stroke();
         }
       }
+    }
+
+    if (this.ui.path && this.ui.path.path && this.ui.path.path.length) {
+      ctx.strokeStyle = '#f00';
+      ctx.beginPath();
+      ctx.lineWidth = 2;
+      for (var j = 0; j < this.ui.path.path.length; j++) {
+        var x = baseX + (this.ui.path.path[j].x - view.x1) * tw + tw / 2;
+        var y = baseY + (this.ui.path.path[j].y - view.y1) * tw + tw / 2;
+        if (j == 0)
+          ctx.moveTo(x, y);
+        else
+          ctx.lineTo(x, y);
+      }
+      ctx.stroke();
     }
 
     var self = this;

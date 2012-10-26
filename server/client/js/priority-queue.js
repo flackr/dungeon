@@ -9,9 +9,10 @@ PriorityQueue.prototype = {
   },
 
   dequeue: function() {
-    if (this.data.length <= 1) {
+    if (this.data.length == 0)
+      return null;
+    if (this.data.length <= 1)
       return this.data.pop()[1];
-    }
     var val = this.data[0][1];
     this.data[0] = this.data.pop();
     this.bubbleDown(0);
