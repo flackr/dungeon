@@ -21,9 +21,14 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
 
     var self = this;
     $('combat-end-turn').addEventListener('click', function() {
+      var nodes = $('combat-initiative-list').getElementsByClassName('active-turn');
+      // If the last monster of its kind dies on its own turn, nothing will be
+      // highlighted in the initiative list.  Resume at the same index in order to
+      // avoid skipping a critters turn. 
+      next = nodes.length > 0 ? self.turnIndex + 1 : self.turnIndex;
       var evt = {
         type: 'set-character-turn',
-        index: self.turnIndex + 1
+        index: next
       };
       self.client.sendEvent(evt);
     });
