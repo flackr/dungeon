@@ -132,8 +132,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
         var character = this.characterPlacement[eventData.character]
         var characterStats = character.condition.stats;
         characterStats[eventData.data.stat] = eventData.data.tweak;
-        this.dispatchEvent('log', character.name + ' has been tweaked: ' +
-            eventData.data.stat + ' = ' + eventData.data.tweak + '.\n');
+        this.dispatchEvent('log', character.name + '\'s ' + eventData.data.stat + ' has been tweaked.\n');
         this.dispatchEvent('character-updated', eventData.character);
         this.removeDeadMonsters();
       }
@@ -238,6 +237,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
     var dice = [];
     var val = 0;
     var num = 0;
+    var mul = 1;
     for (var i = 0; i < damage.length; i++) {
       var ch = damage.charAt(i);
       if (ch >= '0' && ch <= '9') {
@@ -245,14 +245,18 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
       } else if (ch == 'd') {
         num = val;
         val = 0;
+        mul = 1;
+      } else if (ch == '-' && val == 0) {
+        mul = -1;
       } else {
         if (val > 0)
-          dice.push([num, val]);
+          dice.push([num, mul * val]);
+        mul = 1;
         val = 0;
         num = 0;
       }
     }
-    dice.push([num, val]);
+    dice.push([num, mul * val]);
     return dice;
   },
 

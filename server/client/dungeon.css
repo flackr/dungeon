@@ -147,6 +147,10 @@ input[type=text] {
   width: 200px;
 }
 
+html[ui=mobile] #sidebar {
+  display: none;
+}
+
 #sidebar-tabs {
   display: -webkit-box;
   position: relative;

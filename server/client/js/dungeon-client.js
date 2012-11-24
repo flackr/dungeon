@@ -20,6 +20,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.socket.on('e', this.receiveEvent.bind(this));
     this.canvas.addEventListener('touchstart', this.onTouchStart.bind(this));
     this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
+    this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
     this.canvas.addEventListener('mousewheel', this.onMouseWheel.bind(this));
     document.body.addEventListener('keydown', this.onKeyDown.bind(this));
 
@@ -113,10 +114,25 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   processHash: function() {
+    var attributes = window.location.hash.substr(1).split('&');
+    this.attributes = {};
+    for (var i = 0; i < attributes.length; i++) {
+      var pos = attributes[i].indexOf('=');
+      if (pos == -1) {
+        this.attributes[attributes[i]] = true;
+      } else {
+        this.attributes[attributes[i].substr(0, pos)] =
+            attributes[i].substr(pos + 1);
+      }
+    }
     var role = 'player';
-    if (window.location.hash == '#dm')
+    var ui = 'desktop';
+    if (this.attributes.ui)
+      ui = this.attributes.ui;
+    if (this.attributes.dm)
       role = 'dm';
     document.body.parentNode.setAttribute('role', role);
+    document.body.parentNode.setAttribute('ui', ui);
   },
 
   addCombatTarget: function(index) {
@@ -133,6 +149,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       this.attack(this.ui.selected, this.ui.targets, power);
       this.ui.targets = [];
       this.ui.selected = undefined;
+      this.ui.path = null;
       this.update();
     }
   },
@@ -422,6 +439,11 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
   },
 
+  onMouseMove: function(e) {
+    if (!this.pointer)
+      this.onPointerHover(e);
+  },
+
   onMouseDown: function(e) {
     e.preventDefault();
     this.pointer = {
@@ -487,6 +509,19 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
   },
 
+  onPointerHover: function(e) {
+    if ((this.ui.selected!== undefined) && !this.combatTracker.selectedPower()) {
+      var evt = this.computeMapCoordinates(e);
+      if (!this.ui.path || this.ui.path.dx != evt.x || this.ui.path.dy != evt.y) {
+
+        this.ui.path = {dx: evt.x, dy: evt.y,
+                        path: this.computePath(this.characterPlacement[this.ui.selected],
+                                               evt.x, evt.y)};
+        this.update();
+      }
+    }
+  },
+
   onPointerOut: function(e) {
     for (var i in this.pointer.listeners)
       this.canvas.removeEventListener(i, this.pointer.listeners[i]);
@@ -512,6 +547,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
           this.dispatchEvent('combat-add-target', i);
         } else {
           this.ui.selected = i;
+          this.ui.path = null;
           this.dispatchEvent('character-selected', this.characterPlacement[i]);
           this.update();
         }
@@ -928,6 +964,151 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
   },
 
+  computePath: function(character, dest_x, dest_y) {
+    var self = this;
+    // Computes a best case movement for a character.
+    var h = function(dx, dy) {
+      var d = Math.max(dx, dy);
+      d += Math.max(0, Math.min(dx, dy) - Math.floor(d / 2));
+      return d;
+    }
+    var compute_score = function(info) {
+      // TODO: Allow shifting by more than 1 for certain characters.
+      return (info.d > 1 ? (info.oa * 100) : 0) + info.d + (info.diag ? 0.5 : 0);
+    }
+    var in_bounds = function(x, y) {
+      return x >= 0 && y >= 0 && y < self.map.length && x < self.map[0].length;
+    }
+    var char_team = function(character) {
+      return character.source.charClass == 'Monster' ? 2 : 1;
+    }
+    var enemies_adjacent = function(x, y, radius, team) {
+      var enemies = 0;
+      for (var i = 0; i < self.characterPlacement.length; i++) {
+        if ((!team || char_team(self.characterPlacement[i]) != team) &&
+            Math.abs(self.characterPlacement[i].x - x) <= radius &&
+            Math.abs(self.characterPlacement[i].y - y) <= radius)
+        enemies++;
+      }
+      return enemies;
+    }
+    var direction = [[-1, 0], [0, -1], [1, 0], [0, 1],
+                     [-1, -1], [1, -1], [1, 1], [-1, 1]];
+    var pq = new PriorityQueue();
+    pq.enqueue(0, {x: character.x, y: character.y, oa: 0, d: 0, diag: false, score: 0});
+    var path = [];
+    var queue = [];
+    var pos;
+    var move_team = char_team(character);
+    // TODO: Stop searching when the heuristic distance calculation is further
+    // than our range instead of searching up to our range.
+    while ((pos = pq.dequeue()) &&
+           (pos.d <= parseInt(character.condition.stats.Speed) + 2)) {
+      if (!path[pos.y]) path[pos.y] = [];
+      if (path[pos.y][pos.x] && path[pos.y][pos.x].score <= pos.score)
+        continue;
+      path[pos.y][pos.x] = pos;
+      if (pos.y == dest_y && pos.x == dest_x)
+        break;
+      for (var i = 0; i < direction.length; i++) {
+        var next = {x: pos.x + direction[i][0],
+                    y: pos.y + direction[i][1]};
+        if (!in_bounds(next.x, next.y) ||
+            enemies_adjacent(next.x, next.y, 0))
+          continue
+        // TODO: Only allow each enemy to opportunity attack once.
+        next.oa = pos.oa + enemies_adjacent(pos.x, pos.y, 1, move_team);
+        next.d = pos.d + 1;
+        next.diag = false;
+        if (i >= 4) {
+          if (pos.diag)
+            next.d++;
+          else
+            next.diag = true;
+        }
+        next.dir = i;
+        next.score = compute_score(next);
+        pq.enqueue(next.score + h(Math.abs(dest_x - next.x), Math.abs(dest_y - next.y)), next);
+      }
+    }
+    if (path && path[dest_y] && path[dest_y][dest_x]) {
+      var dir;
+      var spath = [];
+      while(dest_y != character.y || dest_x != character.x) {
+        spath.push(pos = path[dest_y][dest_x]);
+        dest_x -= direction[pos.dir][0];
+        dest_y -= direction[pos.dir][1];
+      }
+      spath.push(path[dest_y][dest_x]);
+      spath.reverse();
+      for (var i = 0; i < spath.length - 1; i++)
+        spath[i].dir = spath[i + 1].dir;
+      return spath;
+    }
+    return null;
+  },
+
+  drawHealthBar: function(ctx, hx, hy, hw, hh, character, isMonster, role) {
+    // Health bars
+    // Black border
+    ctx.fillStyle = '#000';
+    ctx.fillRect(hx - 1, hy - 1, hw + 2, hh + 2);
+    // Interior
+    var curHp = Number(character.condition.stats['Hit Points']);
+    var maxHp = Number(character.source.stats['Hit Points']);
+    var hpFraction = curHp / maxHp;
+    var bloodyHp = Number(character.source.stats['Bloodied']);
+    var isBloodied = (curHp <= bloodyHp);
+    var isDying = (curHp <= 0);
+    var temps = parseInt(character.condition.stats['Temps'] || 0);
+    if (isMonster) {
+      ctx.fillStyle = isBloodied ? '#f80' : '#0f0';
+      if (role == 'dm') {
+        if (hpFraction > 0)
+          ctx.fillRect(hx, hy, Math.min(1, hpFraction) * hw, hh);
+      } else {
+        ctx.fillRect(hx, hy, isBloodied ? hw / 2 : hw, hh);
+      }
+      ctx.fillStyle = '#000';
+      ctx.fillRect(Math.round(hx + hw / 2), hy, 1, hh);
+    } else {
+      ctx.fillStyle = isDying ? '#f00' : (isBloodied ? '#f80' : '#0f0');
+      var total = bloodyHp + maxHp + temps;
+      var healthRatio = (bloodyHp + curHp) / total;
+      var healthWidth = Math.round(healthRatio * hw);
+      ctx.fillRect(hx, hy, healthWidth, hh);
+      if (temps > 0) {
+        var tempRatio = temps / total;
+        var tempWidth = Math.round(tempRatio * hw);
+        if (healthWidth + tempWidth > hw)
+          tempWidth = hw - healthWidth;
+        ctx.fillStyle = '#ff0';
+        ctx.fillRect(hx + healthWidth, hy, tempWidth, hh);
+      }
+      ctx.fillStyle = '#000';
+      var bloodyRatio = bloodyHp / total;
+      var DyingMarker = Math.round(bloodyRatio * hw);
+      ctx.fillRect(hx + DyingMarker, hy, 1, hh);
+      var BloodyMarker = Math.round(2 * bloodyRatio * hw);
+      ctx.fillRect(hx + BloodyMarker, hy, 1, hh);
+    }
+  },
+
+  drawTextInBounds: function(ctx, x_center, y, text, x_left, x_right, textColor, textHeight) {
+    var maxWidth = Math.round(x_right - x_left);
+    var textWidth;
+    while ((textWidth = ctx.measureText(text).width) > maxWidth)
+      text = text.substring(0, text.length - 1);
+    var x = Math.round(Math.min(x_right - textWidth,
+                                Math.max(x_left, x_center - textWidth / 2)));
+    ctx.fillStyle = 'white';
+    ctx.globalAlpha = 0.6;
+    ctx.fillRect(x, y - textHeight - 1, textWidth, textHeight + 2);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = textColor;
+    ctx.fillText(text, x, y);
+  },
+
   redraw: function() {
     this.ui.stale = false;
     var ctx = this.canvas.getContext('2d');
@@ -958,14 +1139,14 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     // Mark selected character and indicate movement range.
     if (this.ui.selected != undefined) {
       var character = this.characterPlacement[this.ui.selected];
-      var w = this.viewport.tileSize;
-      var x = baseX + (character.x - view.x1) * w + w / 2;
-      var y = baseY + (character.y - view.y1) * w + w / 2;
+      var tw = this.viewport.tileSize;
+      var x = baseX + (character.x - view.x1) * tw + tw / 2;
+      var y = baseY + (character.y - view.y1) * tw + tw / 2;
       
       ctx.beginPath();
       ctx.strokeStyle = '#ff0';
-      ctx.lineWidth = w/32;
-      ctx.arc(x, y, w/4 + 2, 0, 2*Math.PI, true);
+      ctx.lineWidth = tw/32;
+      ctx.arc(x, y, tw/4 + 2, 0, 2*Math.PI, true);
       ctx.stroke();
         
       // Movement overlay
@@ -974,10 +1155,10 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       for (var j = -speed; j <= speed; j++) {
         for (var k = -speed; k <= speed; k++) {
           if (Math.sqrt(j*j + k*k) <= (speed + 0.8))
-            ctx.fillRect(baseX + (character.x + j - view.x1) * w, 
-                         baseY + (character.y + k - view.y1) * w, 
-                         w, 
-                         w);
+            ctx.fillRect(baseX + (character.x + j - view.x1) * tw,
+                         baseY + (character.y + k - view.y1) * tw,
+                         tw,
+                         tw);
         }
       }
     }
@@ -995,17 +1176,40 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       ctx.strokeStyle = '#f00';
       for (var index in targetFreq) {
         var character = this.characterPlacement[index];
-        var w = this.viewport.tileSize;
-        var x = baseX + (character.x - view.x1) * w + w / 2;
-        var y = baseY + (character.y - view.y1) * w + w / 2;
+        var tw = this.viewport.tileSize;
+        var x = baseX + (character.x - view.x1) * tw + tw / 2;
+        var y = baseY + (character.y - view.y1) * tw + tw / 2;
         for (var j = 0; j < targetFreq[index]; j++) {
           ctx.beginPath();
           ctx.lineWidth = 2;
-          ctx.arc(x, y, w/3 + j*3, 0, 2*Math.PI, true);
+          ctx.arc(x, y, tw/3 + j*3, 0, 2*Math.PI, true);
           ctx.stroke();
         }
       }
     }
+
+    if (this.ui.path && this.ui.path.path && this.ui.path.path.length) {
+      ctx.strokeStyle = '#f00';
+      ctx.beginPath();
+      ctx.lineWidth = 2;
+      for (var j = 0; j < this.ui.path.path.length; j++) {
+        var x = baseX + (this.ui.path.path[j].x - view.x1) * tw + tw / 2;
+        var y = baseY + (this.ui.path.path[j].y - view.y1) * tw + tw / 2;
+        if (j == 0)
+          ctx.moveTo(x, y);
+        else
+          ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    var self = this;
+    var mapX = function(x) {
+      return baseX + (x - view.x1) * self.viewport.tileSize;
+    };
+    var mapY = function(y) {
+      return baseY + (y - view.y1) * self.viewport.tileSize;
+    };
 
     // Draw critter indicators including names and health bars.
     var role = document.body.parentNode.getAttribute('role');
@@ -1020,66 +1224,35 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       ctx.fillStyle = isMonster ? '#f00' : '#00f';
 
       ctx.beginPath();
-      var w = this.viewport.tileSize;
-      var x = baseX + (character.x - view.x1) * w + w / 2;
-      var y = baseY + (character.y - view.y1) * w + w / 2;
-      ctx.arc(x, y, w/4, 0, 2*Math.PI, true);
+      var tw = this.viewport.tileSize;
+      var x = baseX + (character.x - view.x1) * tw + tw / 2;
+      var y = baseY + (character.y - view.y1) * tw + tw / 2;
+      ctx.arc(x, y, tw/4, 0, 2*Math.PI, true);
       ctx.fill();
 
-      // Health bars
-      var px = 1 / 32 * w;
-      var hx = Math.round(x - w / 2 + 1 + 1 * px);
-      var hy = Math.round(y - w / 2 + 1 + 1 * px);
-      var hw = Math.max(10, Math.round(w - 2 - 2 * px));
-      var hh = Math.max(1, Math.round(2 / 32 * w));
-      // Black border
-      ctx.fillStyle = '#000';
-      ctx.fillRect(hx - 1, hy - 1, hw + 2, hh + 2);
-      // Interior
-      var curHp = Number(character.condition.stats['Hit Points']);
-      var maxHp = Number(character.source.stats['Hit Points']);
-      var hpFraction = curHp / maxHp;
-      var bloodyHp = Number(character.source.stats['Bloodied']);
-      var isBloodied = (curHp <= bloodyHp);
-      var isDying = (curHp <= 0);
-      var temps = parseInt(character.condition.stats['Temps'] || 0);
-      if (isMonster) {
-        ctx.fillStyle = isBloodied ? '#f80' : '#0f0';
-        if (role == 'dm') {
-          if (hpFraction > 0)
-            ctx.fillRect(hx, hy, Math.min(1, hpFraction) * hw, hh);
-        } else {
-          ctx.fillRect(hx, hy, isBloodied ? hw / 2 : hw, hh);
-        }
-        ctx.fillStyle = '#000';
-        ctx.fillRect(Math.round(hx + hw / 2), hy, 1, hh);
-      } else {
-        ctx.fillStyle = isDying ? '#f00' : (isBloodied ? '#f80' : '#0f0');
-        var total = bloodyHp + maxHp + temps;
-        var healthRatio = (bloodyHp + curHp) / total;
-        var healthWidth = Math.round(healthRatio * hw);
-        ctx.fillRect(hx, hy, healthWidth, hh);
-        if (temps > 0) {
-          var tempRatio = temps / total;
-          var tempWidth = Math.round(tempRatio * hw);
-          if (healthWidth + tempWidth > hw)
-            tempWidth = hw - healthWidth;
-          ctx.fillStyle = '#ff0';
-          ctx.fillRect(hx + healthWidth, hy, tempWidth, hh);
-        }
-        ctx.fillStyle = '#000';
-        var bloodyRatio = bloodyHp / total;
-        var DyingMarker = Math.round(bloodyRatio * hw);
-        ctx.fillRect(hx + DyingMarker, hy, 1, hh);
-        var BloodyMarker = Math.round(2 * bloodyRatio * hw);
-        ctx.fillRect(hx + BloodyMarker, hy, 1, hh);
-      }
+      this.drawHealthBar(ctx,
+                         Math.round(x - tw / 2 + 1 + 1 / 32 * tw),
+                         Math.round(y - tw / 2 + 1 + 1 / 32 * tw),
+                         Math.max(10, Math.round(tw - 2 - 2 / 32 * 2)),
+                         Math.max(1, Math.round(2 / 32 * tw)),
+                         character,
+                         isMonster,
+                         role);
 
       // Name
-      ctx.font = Math.max(10, w/3) + "px Arial";
-      ctx.fillStyle = isMonster ? '#f00' : '#00f';
-      ctx.fillText(name, Math.round(x - ctx.measureText(name).width / 2), 
-          Math.round(y - w / 2 - 1 * px));
+      var textHeight = Math.max(10, tw/3);
+      ctx.font = textHeight + "px Arial";
+      var x_bounds = [0, w - 1];
+      for (var j = 0; j < this.characterPlacement.length; j++) {
+        if (this.characterPlacement[i].x != this.characterPlacement[j].x && this.characterPlacement[j].y == this.characterPlacement[i].y) {
+          if (this.characterPlacement[j].x < this.characterPlacement[i].x) {
+            x_bounds[0] = Math.max(x_bounds[0], mapX((this.characterPlacement[j].x + character.x) / 2 + 0.5));
+          } else {
+            x_bounds[1] = Math.min(x_bounds[1], mapX((this.characterPlacement[j].x + character.x) / 2 + 0.5));
+          }
+        }
+      }
+      this.drawTextInBounds(ctx, x, Math.round(y - tw / 2 - tw / 32), name, x_bounds[0], x_bounds[1], isMonster ? '#f00' : '#00f', textHeight);
     }
   },
 
