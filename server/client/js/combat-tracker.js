@@ -21,14 +21,9 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
 
     var self = this;
     $('combat-end-turn').addEventListener('click', function() {
-      var nodes = $('combat-initiative-list').getElementsByClassName('active-turn');
-      // If the last monster of its kind dies on its own turn, nothing will be
-      // highlighted in the initiative list.  Resume at the same index in order to
-      // avoid skipping a critters turn. 
-      next = nodes.length > 0 ? self.turnIndex + 1 : self.turnIndex;
       var evt = {
         type: 'set-character-turn',
-        index: next
+        index: self.turnIndex + 1
       };
       self.client.sendEvent(evt);
     });
@@ -74,7 +69,38 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
       };
     };
     checkbox.addEventListener('change', createCheckCallback());
-    $('combat-initiative-list').appendChild(entry);
+
+    var baseName = characterData.source.name;
+    var entries =  $('combat-initiative-list').getElementsByClassName(
+        'combat-initiative-list-entry');
+
+    // If initiative has not been rolled, simple append to list.
+    if (entries.length == 0 || entries[0].getAttribute('index') == undefined) {
+      $('combat-initiative-list').appendChild(entry);
+      return;
+    }
+    // Initiative has already been rolled so insert new critter into the list
+    // grouping with other critters of same type.  A new critter type is added
+    // to the end of the list.  
+    // TODO: Should new critters roll initiative?
+    var insertPoint = null;
+    for (var i = entries.length - 1; i >= 0; i--) {
+      var name = entries[i].getElementsByClassName('combat-tracker-name')[0].textContent;
+      var index = this.client.getCharacterIndex(name);
+      var characterData = this.client.getCharacter(index);
+      if (characterData.source.name == baseName) {
+        insertPoint = entries[i];
+        break;
+      }
+    }
+    if (insertPoint) {
+      $('combat-initiative-list').insertBefore(entry, insertPoint.nextSibling);
+      entry.setAttribute('index', insertPoint.getAttribute('index'));
+    } else {
+      var index = parseInt(entries[entries.length-1].getAttribute('index'));
+      entry.setAttribute('index', index + 1);
+      $('combat-initiative-list').appendChild(entry);
+    }
   },
 
   onUpdateCharacter: function(characterIndex) {
@@ -147,35 +173,64 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
     for (var i = 0; i < data.length; i++)
       $('combat-initiative-list').appendChild(data[i].entry);
 
-    this.onSetCharacterTurn(0);
-  },
-
-  onSetCharacterTurn: function(index) {
-    var bounds = [];
-    var lastName = null;
-    var nodes = $('combat-initiative-list').getElementsByClassName('combat-initiative-list-entry');
-    for (var i = 0; i < nodes.length; i++) {
-      nodes[i].classList.remove('active-turn');
-      var name = nodes[i].getElementsByClassName('combat-tracker-name')[0].textContent;
+    // Assign a placement index based on initiative order. New critters added
+    // during combat are merged into the list with an assigned index.  When a
+    // monster dies, other creatures retain their index leaving holes in the
+    // numbering in order to simplify bookkeepping during turn order advancement.
+    var index = 0;
+    var last = '';
+    for (var i = 0; i < entries.length; i++) {
+      entries[i].setAttribute('index', index);
+      var name = entries[i].getElementsByClassName('combat-tracker-name')[0].textContent;
       var characterIndex = this.client.getCharacterIndex(name);
       var characterData = this.client.getCharacter(characterIndex);
       var sourceName = characterData.source.name;
-      if (sourceName != lastName) {
-        bounds.push(i);
-        lastName = sourceName;
+      if (sourceName != last) {
+        index++;
+        last = sourceName;
       }
     }
-    bounds.push(nodes.length);
-    var startIndex = bounds[index];
-    if (startIndex == nodes.length)
-      startIndex = index = 0;
-    var endIndex = bounds[index + 1];
-    for (var i = startIndex; i < endIndex; i++)
-      nodes[i].classList.add('active-turn');
+    this.onSetCharacterTurn(0);
+  },
 
+  onSetCharacterTurn: function(nextIndex) {
+    var bounds = [];
+    var lastName = null;
+    var nodes = $('combat-initiative-list').getElementsByClassName('combat-initiative-list-entry');
+
+    // Clear turn highlight
+    for (var i = 0; i < nodes.length; i++)
+      nodes[i].classList.remove('active-turn');
+
+    // Find first critter matching turn order criterion.
+    var first = null;
+    for (var i = 0; i < nodes.length; i++) {
+      var index = parseInt(nodes[i].getAttribute('index'));
+      if (index >= nextIndex) {
+        first = i;
+        nodes[i].classList.add('active-turn');
+        nextIndex = index; // In case skipping over a dead monster.
+        break;
+      }
+    }
+    // Check for wrap.
+    if (first == null) {
+      if (nextIndex != 0) {
+        // Restart at top of the order.
+        this.onSetCharacterTurn(0);
+      }
+      return;
+    }
+    // Select remainder in group.
+    for (var i = first + 1; i < nodes.length; i++) {
+      var index = parseInt(nodes[i].getAttribute('index'));
+      if (index == nextIndex)
+        nodes[i].classList.add('active-turn');
+      else
+        break;
+    }
     $('combat-end-turn').disabled = false;
-
-    this.turnIndex = index;
+    this.turnIndex = nextIndex;
   },
 
   onCharacterSelect: function(character) {
