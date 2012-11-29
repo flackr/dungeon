@@ -41,11 +41,18 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
     // Status of combat.
     this.combatState = 'stopped';
-    $('combat-start-button').addEventListener('click', this.setCombatState.bind(this, 'start'));
-    $('combat-pause-button').addEventListener('click', this.setCombatState.bind(this, 'pause'));
-    $('combat-stop-button').addEventListener('click', this.setCombatState.bind(this, 'stop'));
-    this.addEventListener('combat-state-changed', this.onCombatStateChanged.bind(this));
-    this.addEventListener('initiative-order-changed', this.onInitiativeOrderChanged.bind(this));
+    $('combat-start-button').addEventListener('click',
+        this.setCombatState.bind(this, 'start'));
+    $('combat-pause-button').addEventListener('click',
+        this.setCombatState.bind(this, 'pause'));
+    $('combat-stop-button').addEventListener('click', 
+        this.setCombatState.bind(this, 'stop'));
+    this.addEventListener('combat-state-changed', 
+        this.onCombatStateChanged.bind(this));
+    this.addEventListener('initiative-order-changed',
+        this.onInitiativeOrderChanged.bind(this));
+    this.addEventListener('character-removed', 
+        this.onRemoveCharacter.bind(this));
 
     // Drag-n-drop of character files.
     var dropZone = $('sidebar-character-list');
@@ -372,6 +379,17 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     // Update ordering in combat overview.
     this.combatTracker.sortIntoInitiativeOrder();
     this.combatOverviewPage.sortIntoInitiativeOrder();
+  },
+
+  /**
+   * Deselect character if removed from game.
+   */
+  onRemoveCharacter: function(characterName) {
+    var index = this.getCharacterIndex(characterName);
+    if (index == this.ui.selected) {
+      this.ui.selected = undefined;
+      this.update();
+    } 
   },
 
   onSelectView: function(category, view) {

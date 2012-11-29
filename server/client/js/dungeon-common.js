@@ -108,33 +108,17 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
     } else if (eventData.type == 'log') {
       this.dispatchEvent('log', eventData.text);
     } else if (eventData.type == 'attack-result') {
-      var obituary = [];
       for (var i = 0; i < eventData.characters.length; i++) {
         var index = eventData.characters[i][0];
         for (var j in eventData.characters[i][1]) {
           this.characterPlacement[index].condition.stats[j] =
                   eventData.characters[i][1][j];
           this.dispatchEvent('character-updated', index);
-          // Monsters are removed from the map on extermination.
-          if (j == 'Hit Points' && eventData.characters[i][1][j] < 0) {
-            if (this.characterPlacement[index].source.charClass == 'Monster') {
-              // Mark dead monster for removal from the game.
-              obituary.push(index);
-            }
-          }
         }
       }
       this.dispatchEvent('log', eventData.log);
       this.dispatchEvent('banner-message', eventData.log);
-      if( obituary.length > 0) {
-        obituary.sort(function(a, b) {return b - a});
-        for( var i = 0; i < obituary.length; i++) {
-          this.dispatchEvent('log', this.characterPlacement[obituary[i]].name 
-              + ' is no more.  RIP.\n');
-          this.dispatchEvent('character-removed', this.characterPlacement[obituary[i]].name);
-          this.characterPlacement.splice(obituary[i], 1);
-        }
-      }
+      this.removeDeadMonsters();
     } else if (eventData.type == 'use-power') {
       if (eventData.power == 'healing-surge') {
         this.characterPlacement[eventData.character].condition.stats[
@@ -150,6 +134,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
         characterStats[eventData.data.stat] = eventData.data.tweak;
         this.dispatchEvent('log', character.name + '\'s ' + eventData.data.stat + ' has been tweaked.\n');
         this.dispatchEvent('character-updated', eventData.character);
+        this.removeDeadMonsters();
       }
     } else if (eventData.type == 'power-consumed') {
       var character = this.characterPlacement[eventData.character];
@@ -273,6 +258,22 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
     }
     dice.push([num, mul * val]);
     return dice;
+  },
+
+  /**
+   * Remove dead monsters from play.
+   */
+  removeDeadMonsters: function() {
+    for (var i = this.characterPlacement.length - 1; i >= 0; i--) {
+      var character = this.characterPlacement[i];
+      if (character.condition.stats['Hit Points'] <= 0 &&
+          character.source.charClass == 'Monster') {
+        this.dispatchEvent('log', character.name 
+            + ' is no more.  RIP.\n');
+        this.dispatchEvent('character-removed', character.name);
+        this.characterPlacement.splice(i, 1);
+      }
+    }
   },
 
 });
