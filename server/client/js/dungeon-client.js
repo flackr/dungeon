@@ -984,8 +984,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var move_team = char_team(character);
     // TODO: Stop searching when the heuristic distance calculation is further
     // than our range instead of searching up to our range.
-    while ((pos = pq.dequeue()) &&
-           (pos.d <= parseInt(character.condition.stats.Speed) + 2)) {
+    while (pos = pq.dequeue()) {
+      if (pos.d > parseInt(character.condition.stats.Speed) + 2)
+        continue;
       if (!path[pos.y]) path[pos.y] = [];
       if (path[pos.y][pos.x] && path[pos.y][pos.x].score <= pos.score)
         continue;
