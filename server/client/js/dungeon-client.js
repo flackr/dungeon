@@ -660,6 +660,8 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.sendEvent({type: 'log', text: logStr});
     this.attackResult(attacker, attackees, power, attack, damages);
     var usage = power.usage;
+
+    /* Disable until we have support for reliable powers.
     if (usage == 'encounter' || usage == 'daily' || usage == 'recharge') {
       // TODO(kellis): Add support for recharge of powers and multi-use special powers.
       var evt = {
@@ -669,6 +671,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       };
       this.sendEvent(evt);
     }
+    */
   },
 
   attackResult: function(attacker, attackees, power, tohits, dmg) {
