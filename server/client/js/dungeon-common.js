@@ -176,6 +176,10 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
       }
     } else if (eventData.type == 'set-character-turn') {
       this.dispatchEvent('set-character-turn', eventData.index);
+    } else if (eventData.type == 'dm-attack-result') {
+      // DM messages should not "replay"
+      this.events.pop(); 
+      this.dispatchEvent('dm-attack-result', eventData);//'dmAttackResultMsg', eventData);
     }
     return true;
   },

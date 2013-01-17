@@ -100,8 +100,8 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       self.update();
     });
     this.addEventListener('combat-add-target', this.addCombatTarget.bind(this));
+    this.addEventListener('dm-attack-result', this.onDmAttackResultMsg.bind(this));
     this.combatTracker.addEventListener('use-power', this.onUsePower.bind(this));
-
     this.viewport = {
       x: 30,
       y: 30,
@@ -657,13 +657,14 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       }
       attack.push(curattack[0]);
     }
-    this.sendEvent({type: 'log', text: logStr});
-    this.attackResult(attacker, attackees, power, attack, damages);
+///    this.sendEvent({type: 'log', text: logStr});
+    this.dmAttackResult(attacker, attackees, power, attack, damages, logStr);
     var usage = power.usage;
 
     /* Disable until we have support for reliable powers.
     if (usage == 'encounter' || usage == 'daily' || usage == 'recharge') {
       // TODO(kellis): Add support for recharge of powers and multi-use special powers.
+      // TODO: Reliable powers.
       var evt = {
         type: 'power-consumed',
         character: attacker,
@@ -707,6 +708,63 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       }
     }
     this.sendEvent(result);
+  },
+
+  onDmAttackResultMsg: function(result) {
+    this.dmAttackResult( result.attacker, result.attackees, result.tohits, result.dmg, result.logMsg);
+  },
+
+  dmAttackResult: function(attacker, attackees, power, tohits, dmg, logMsg) {
+    // TODO(eg): Determine how to do a timeout if there is no DM.  Can we know this at the
+    //  start?
+    var role = document.body.parentNode.getAttribute('role');
+    if (role == 'dm') {
+        var attackedStat = power.defense;
+        var result = {
+          type: 'attack-result',
+          characters: [],
+          log: '',
+        }
+        for (var i = 0; i < attackees.length; i++) {
+          var defStat = parseInt(this.getCharacterAttribute(
+              this.characterPlacement[attackees[i]],
+              attackedStat));
+          if (defStat <= tohits[i]) {
+            result.log += this.characterPlacement[attacker].name + ' hits ' +
+              this.characterPlacement[attackees[i]].name + ' for ' + dmg[i] + ' damage.\n';
+            var temps = 0;
+            if (this.characterPlacement[attackees[i]].condition.stats['Temps'])
+              temps = parseInt(this.characterPlacement[attackees[i]].condition.stats['Temps']);
+            var newhp = parseInt(this.characterPlacement[attackees[i]].condition.stats['Hit Points']);
+            temps = temps - dmg[i];
+            if (temps < 0) {
+              newhp += temps;
+              temps = 0;
+            }
+            result.characters.push(
+                [attackees[i],
+                 {'Hit Points': newhp,
+                  'Temps': temps}]);
+          } else {
+            result.log += this.characterPlacement[attacker].name + ' misses ' +
+              this.characterPlacement[attackees[i]].name + '.\n';
+          }
+          alert("Combat result:" + logMsg + result.log);
+        }
+        this.sendEvent({type: 'log', text: logMsg});
+        this.sendEvent(result);
+        } else {
+          // Players wait for 30 s for a response, then proceed?
+          var message = {
+            type: 'dm-attack-result',
+            attacker: attacker,
+            attackees: attackees,
+            tohits: tohits,
+            dmg: dmg,
+            logMsg: logMsg,
+          }
+          this.sendEvent(message);
+        }
   },
 
   rollDice: function(rollArray) {
