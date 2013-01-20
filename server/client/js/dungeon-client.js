@@ -711,7 +711,10 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   onDmAttackResultMsg: function(result) {
-    this.dmAttackResult( result.attacker, result.attackees, result.tohits, result.dmg, result.logMsg);
+    var role = document.body.parentNode.getAttribute('role');
+    if (role == 'dm') {
+      this.dmAttackResult( result.attacker, result.attackees, result.power, result.tohits, result.dmg, result.logMsg);
+    }
   },
 
   dmAttackResult: function(attacker, attackees, power, tohits, dmg, logMsg) {
@@ -759,6 +762,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
             type: 'dm-attack-result',
             attacker: attacker,
             attackees: attackees,
+            power: power,
             tohits: tohits,
             dmg: dmg,
             logMsg: logMsg,
