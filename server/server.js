@@ -1,7 +1,7 @@
 /**
  * Dungeon Server
  */
-var socketio = process.platform == 'win32' ? 'socket' : 'socket.io';
+var socketio = 'socket.io';
 
 var app = require('http').createServer(handler),
   io = require(socketio).listen(app),
