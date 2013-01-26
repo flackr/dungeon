@@ -3,10 +3,16 @@
  */
 var socketio = 'socket.io';
 
-var app = require('http').createServer(handler),
+var app;
+try {
+  app = require('http').createServer(handler),
   io = require(socketio).listen(app),
   fs = require('fs'),
   path = require('path');
+
+} catch (e) {
+  console.log('Error loading pre-requisite libraries.  Try npm install socket.io?');
+}
 
 io.set('log level', 1); // reduce logging.
 
