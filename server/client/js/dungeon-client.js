@@ -9,6 +9,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     window.addEventListener('hashchange', this.processHash.bind(this));
     this.processHash();
 
+    // Repository of powers.
+    this.powers = new dungeon.Powers(this);
+
     this.combatTracker = new dungeon.CombatTracker(this);
     this.characterDetailsPage = new dungeon.CharacterDetailsPage(this);
     this.combatOverviewPage = new dungeon.CombatOverviewPage(this); 
@@ -82,19 +85,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         self.dispatchEvent('character-selected', self.characterPlacement[c]);
     });
 
-    // Auto-select character when power is activated.
-    this.combatTracker.addEventListener('power-selected', function(characterName) {
-      // Deselect any current targets when power selection changes.
-      self.ui.targets = [];
-      self.ui.selected = undefined;
-      for(var i = 0; i < self.characterPlacement.length; i++) {
-        if(self.characterPlacement[i].name == characterName) {
-          self.ui.selected = i;
-          break;
-        }
-      }
-      self.update();
-    });
+    this.combatTracker.addEventListener('power-selected', 
+                                        this.selectPower.bind(this));
+
     this.addEventListener('character-selected', function() {
       self.ui.targets = [];
       self.update();
@@ -142,16 +135,21 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.update();
   },
 
+  // TODO: rename since we're really using a power on targets, which may be allies.
   attackTargets: function() {
     var power = this.combatTracker.selectedPower();
     if (power && this.ui.targets && this.ui.selected !== undefined && this.ui.targets.length) {
+      // Power respository handles resolution of power.
       this.dispatchEvent('power-used');
-      this.attack(this.ui.selected, this.ui.targets, power);
       this.ui.targets = [];
       this.ui.selected = undefined;
       this.ui.path = null;
       this.update();
     }
+  },
+
+  getTargets: function() {
+    return this.ui.targets;
   },
 
   getCharacter: function(index) {
@@ -164,6 +162,76 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       if (candidate == name)
         return i;
     }
+  },
+
+  getCharacterByName: function(name) {
+    var index = this.getCharacterIndex(name);
+    return (index != undefined) ? this.getCharacter(index) : undefined;
+  },
+
+  /**
+   * Select a character and power.
+   * @param {string} characterName Name of the character.
+   * @param {stirng} powerName Name of the power.
+   * @return {boolean} True if successful.
+   */
+  selectPower: function(characterName, powerName) {
+    if (!powerName) {
+      this.ui.activePower = null;
+      return;
+    }
+    var success = false;
+    if (this.selectCharacterByName(characterName)) {
+      this.ui.activePower = this.powers.get(powerName);
+      this.dispatchEvent('power-selected', characterName, powerName);
+    }
+    return success;
+  },
+
+  /**
+   * Selects a character by name.  Multiple monsters in the same group have
+   * a numeric suffix to ensure uniqueness of the name.
+   * @param {string} characterName  Unique name of the character.
+   * @return {boolean} True if successful.
+   */
+  selectCharacterByName: function(characterName) {
+    var index = characterName ?
+        this.getCharacterIndex(characterName) : undefined;
+    var success = index != undefined;
+    if (index != this.ui.selected) {
+      this.ui.selected = index;
+      this.update();
+      this.dispatchEvent('character-selected', success ? characterName : null);
+    }
+    return success;
+  },
+
+  /**
+   * Updates target selection.  For generic powers, each target needs to be
+   * selected separately, and there is constraints on range or allegience.
+   * Multiple selection of the same target is also possible. Well defined,
+   * powers, indicate if the selection is cummulative, and may impose any
+   * constriants.
+   * param{{x: integer, y:integer}} position Map coordinates to use as a
+   *    reference for selection.  The position may mark the target critter,
+   *    burst center, or blast direction.
+   */
+  selectTargets: function(position) {
+    if (this.ui.selected != undefined && this.ui.activePower) {
+      var power = this.ui.activePower;
+      // Burst, blast, and single target powers are reset so that the new
+      // selection replaces the former.  Generic and mutli-target powers
+      // are cummulative.
+      if (power.resetSelectionOnUpdate())
+        this.ui.targets = [];
+      var source = this.characterPlacement[this.ui.selected];
+      for (var i = 0; i < this.characterPlacement.length; i++) {
+        if (power.selectionMatch(position, this.characterPlacement[i])) {
+          this.ui.targets.push(i);
+        }
+      }
+    }
+    this.update();
   },
 
   reset: function() {
@@ -510,14 +578,23 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   onPointerHover: function(e) {
-    if ((this.ui.selected!== undefined) && !this.combatTracker.selectedPower()) {
+    if (this.ui.selected !== undefined) {
       var evt = this.computeMapCoordinates(e);
-      if (!this.ui.path || this.ui.path.dx != evt.x || this.ui.path.dy != evt.y) {
+      if (this.ui.activePower) {
+        // Conditional update of selection on hover.
+        var power = this.ui.activePower;
+        if (power.selectOnMove() &&
+            power.getPhase() == dungeon.Power.Phase.TARGET_SELECTION)
+          this.selectTargets(evt);
+      } else {
+        // TODO: Should moves be treated as a special category of powers?
+        if (!this.ui.path || this.ui.path.dx != evt.x || this.ui.path.dy != evt.y) {
 
-        this.ui.path = {dx: evt.x, dy: evt.y,
-                        path: this.computePath(this.characterPlacement[this.ui.selected],
-                                               evt.x, evt.y)};
-        this.update();
+          this.ui.path = {dx: evt.x, dy: evt.y,
+                          path: this.computePath(this.characterPlacement[this.ui.selected],
+                                                 evt.x, evt.y)};
+          this.update();
+        }
       }
     }
   },
@@ -539,21 +616,27 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var evt = this.computeMapCoordinates(e);
     if (evt.x < 0 || evt.y < 0 || evt.x >= this.map[0].length || evt.y >= this.map.length)
       return;
-    for (var i = 0; i < this.characterPlacement.length; i++) {
-      if (this.characterPlacement[i].x == evt.x && this.characterPlacement[i].y == evt.y) {
-        var power;
-        if (this.ui.selected !== undefined &&
-            (power = this.combatTracker.selectedPower())) {
-          this.dispatchEvent('combat-add-target', i);
-        } else {
+
+    if (this.ui.activePower) {
+      // Update target selection if power is selected.
+      var power = this.ui.activePower;
+      if(power.getPhase() == dungeon.Power.Phase.TARGET_SELECTION) {
+        this.selectTargets(evt);
+      }
+      return;
+    } else {
+      // If target square is occupied, select the character.
+      for (var i = 0; i < this.characterPlacement.length; i++) {
+        if (this.characterPlacement[i].x == evt.x && this.characterPlacement[i].y == evt.y) {
           this.ui.selected = i;
           this.ui.path = null;
           this.dispatchEvent('character-selected', this.characterPlacement[i]);
           this.update();
+          return;
         }
-        return;
       }
     }
+    // If no power is active and target square is empty, then move the selected character.
     if (this.ui.selected !== undefined) {
       evt.type = 'move';
       evt.index = this.ui.selected;
@@ -607,107 +690,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       this.update();
     }
     
-  },
-
-  attack: function(attacker, attackees, power) {
-    var attackMessage = this.characterPlacement[attacker].name + ' attacks ';
-    var targetNames = [];
-    for (var i = 0; i < attackees.length; i++)
-      targetNames.push(this.characterPlacement[attackees[i]].name);
-    attackMessage += targetNames.join(', ') + ' with ' + power.name + '.';
-    this.sendEvent({type: 'log', text: attackMessage});
-    var toHitStr = '1d20 + ' + power.toHit;
-
-    // Allow effect bonus for attacker.
-    var bonus = this.getCharacterAttribute(this.characterPlacement[attacker], 'Attack');
-    if (bonus)
-      toHitStr += ' + ' + bonus;
-
-    var adjustedToHitString = [];
-    for (var i = 0; i < attackees.length; i++) {
-      if (this.hasEffect(this.characterPlacement[attackees[i]], 'Grants Combat Advantage')) {
-        // TODO(kellis): Not quite generic enough as in some cases the bonus can be higher for
-        // having combat advantage.  Keeping it separate from Defense modifier to more closely
-        // reflect game mechanics and to be more visible.
-        adjustedToHitString[i] = toHitStr + ' + 2';
-      }
-    }
-
-    var dmgStr = power.damage;
-    bonus = this.getCharacterAttribute(this.characterPlacement[attacker], 'Damage');
-    if (bonus)
-      dmgStr += ' + ' + bonus;
-    var logStr = 'Rolling damage: ' + dmgStr + '\n';
-    var damage = this.rollDice(this.parseRollString(dmgStr));
-    logStr += damage[1] + '\n';
-    logStr += 'Rolling attack(s): ' + toHitStr + '\n';
-    var attack = [];
-    var damages = [];
-    for (var i = 0; i < attackees.length; i++) {
-      
-      var curattack = this.rollDice(this.parseRollString(adjustedToHitString[i] ?
-          adjustedToHitString[i] : toHitStr));
-      if (curattack[2][0][0] == 20) {
-        logStr+= 'Critical HIT '+curattack[1]+'\n';
-        curattack[0] = 100;
-        damages.push(this.rollDiceMax(this.parseRollString(dmgStr)));
-      } else {
-        logStr += curattack[1] + '\n';
-        damages.push(damage[0]);
-      }
-      attack.push(curattack[0]);
-    }
-///    this.sendEvent({type: 'log', text: logStr});
-    this.dmAttackResult(attacker, attackees, power, attack, damages, logStr);
-    var usage = power.usage;
-
-    /* Disable until we have support for reliable powers.
-    if (usage == 'encounter' || usage == 'daily' || usage == 'recharge') {
-      // TODO(kellis): Add support for recharge of powers and multi-use special powers.
-      // TODO: Reliable powers.
-      var evt = {
-        type: 'power-consumed',
-        character: attacker,
-        power: power.name
-      };
-      this.sendEvent(evt);
-    }
-    */
-  },
-
-  attackResult: function(attacker, attackees, power, tohits, dmg) {
-    var attackedStat = power.defense;
-    var result = {
-      type: 'attack-result',
-      characters: [],
-      log: '',
-    }
-    for (var i = 0; i < attackees.length; i++) {
-      var defStat = parseInt(this.getCharacterAttribute(
-          this.characterPlacement[attackees[i]],
-          attackedStat));
-      if (defStat <= tohits[i]) {
-        result.log += this.characterPlacement[attacker].name + ' hits ' +
-          this.characterPlacement[attackees[i]].name + ' for ' + dmg[i] + ' damage.\n';
-        var temps = 0;
-        if (this.characterPlacement[attackees[i]].condition.stats['Temps'])
-          temps = parseInt(this.characterPlacement[attackees[i]].condition.stats['Temps']);
-        var newhp = parseInt(this.characterPlacement[attackees[i]].condition.stats['Hit Points']);
-        temps = temps - dmg[i];
-        if (temps < 0) {
-          newhp += temps;
-          temps = 0;
-        }
-        result.characters.push(
-            [attackees[i],
-             {'Hit Points': newhp,
-              'Temps': temps}]);
-      } else {
-        result.log += this.characterPlacement[attacker].name + ' misses ' +
-          this.characterPlacement[attackees[i]].name + '.\n';
-      }
-    }
-    this.sendEvent(result);
   },
 
   onDmAttackResultMsg: function(result) {
@@ -771,49 +753,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         }
   },
 
-  rollDice: function(rollArray) {
-    var total = 0;
-    var rollstr = '';
-    var diceRolls = [];
-    // Rolls the given dice.
-    for (var i = 0; i < rollArray.length; i++) {
-      if (i > 0) rollstr += ' + ';
-      var val = rollArray[i][1];
-      if (rollArray[i][0] > 0) {
-        var curDieRolls = [];
-        rollstr += '(';
-        for (var j = 0; j < rollArray[i][0]; j++) {
-          if (j > 0) rollstr += ' + ';
-          val = Math.floor(Math.random() * rollArray[i][1] + 1);
-          curDieRolls.push(val);
-          rollstr += val;
-          total += val;
-        }
-        diceRolls.push(curDieRolls);
-        rollstr += ')';
-      } else {
-        rollstr += val;
-        total += val;
-      }
-    }
-    rollstr += ' = ' + total;
-    return [total, rollstr, diceRolls];
-  },
-
-  rollDiceMax: function(rollArray) {
-    var total = 0;
-    // Rolls the given dice.
-    for (var i = 0; i < rollArray.length; i++) {
-      var val = rollArray[i][1];
-      if (rollArray[i][0] > 0) {
-        total += rollArray[i][0] * rollArray[i][1];
-      } else {
-        total += val;
-      }
-    }
-    return total;
-  },
-
+  // TODO: Get rid of this method >>>>>
   getCharacterAttribute: function(character, attribute) {
     var defenseAttrs = ['AC', 'Reflex', 'Fortitude', 'Will'];
 
@@ -835,16 +775,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       }
     }
     return value;
-  },
-
-  hasEffect: function(character, effect) {
-    if (character.condition.effects) {
-      for (var i = 0; i < character.condition.effects.length; i++) {
-        if (character.condition.effects[i] == effect)
-          return true;
-      }
-    }
-    return false;
   },
 
   computeMapCoordinatesDouble: function(e) {

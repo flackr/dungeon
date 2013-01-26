@@ -317,17 +317,20 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
   },
 
   selectPower: function(powerElement) {
+    var characterName = $('active-character-name').textContent;
+    var powerName = null;
     if (powerElement && powerElement.getAttribute('selected')) {
       powerElement.removeAttribute('selected');
-      return;
+    } else {
+      var nodes = $('active-character-powers').getElementsByClassName('power-summary');
+      for (var i = 0; i < nodes.length; i++)
+        nodes[i].removeAttribute('selected');
+      if (powerElement) {
+        powerElement.setAttribute('selected', true);
+        powerName = powerElement.data.name;
+      } 
     }
-    var nodes = $('active-character-powers').getElementsByClassName('power-summary');
-    for (var i = 0; i < nodes.length; i++)
-      nodes[i].removeAttribute('selected');
-    if (powerElement) {
-      powerElement.setAttribute('selected', true);
-      this.dispatchEvent('power-selected', $('active-character-name').textContent);
-    }
+    this.dispatchEvent('power-selected', characterName, powerName);
   },
 
   selectedPower: function() {
