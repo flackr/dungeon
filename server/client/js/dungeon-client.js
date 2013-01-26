@@ -22,7 +22,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
     this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
     this.canvas.addEventListener('mousewheel', this.onMouseWheel.bind(this));
-    document.body.addEventListener('keydown', this.onKeyDown.bind(this));
+    document.body.addEventListener('keyup', this.onKeyUp.bind(this));
 
     // Switching between views.
     $('character-selector').addEventListener(
@@ -570,7 +570,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.zoom(delta, mouse);
   },
   
-  onKeyDown: function(e) {
+  onKeyUp: function(e) {
     var key = e.keyCode;
     if (key == 187 || key == 107) // = or numpad +
       this.zoom(1);
@@ -658,7 +658,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       attack.push(curattack[0]);
     }
 ///    this.sendEvent({type: 'log', text: logStr});
-    this.dmAttackResult(attacker, attackees, power, attack, damages, logStr);
+    this.dmAttackResult(attacker, attackees, power, attack, damages, logStr, false);
     var usage = power.usage;
 
     /* Disable until we have support for reliable powers.
@@ -687,6 +687,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
           this.characterPlacement[attackees[i]],
           attackedStat));
       if (defStat <= tohits[i]) {
+        //TODO: Flag critical hit, or miss.
         result.log += this.characterPlacement[attacker].name + ' hits ' +
           this.characterPlacement[attackees[i]].name + ' for ' + dmg[i] + ' damage.\n';
         var temps = 0;
@@ -713,11 +714,11 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   onDmAttackResultMsg: function(result) {
     var role = document.body.parentNode.getAttribute('role');
     if (role == 'dm') {
-      this.dmAttackResult( result.attacker, result.attackees, result.power, result.tohits, result.dmg, result.logMsg);
+      this.dmAttackResult( result.attacker, result.attackees, result.power, result.tohits, result.dmg, result.logMsg, true);
     }
   },
 
-  dmAttackResult: function(attacker, attackees, power, tohits, dmg, logMsg) {
+  dmAttackResult: function(attacker, attackees, power, tohits, dmg, logMsg, fromMessage) {
     // TODO(eg): Determine how to do a timeout if there is no DM.  Can we know this at the
     //  start?
     var role = document.body.parentNode.getAttribute('role');
@@ -753,6 +754,8 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
               this.characterPlacement[attackees[i]].name + '.\n';
           }
           alert("Combat result:" + logMsg + result.log);
+          if (fromMessage)
+            alert("Combat result:" + logMsg + result.log);
         }
         this.sendEvent({type: 'log', text: logMsg});
         this.sendEvent(result);
