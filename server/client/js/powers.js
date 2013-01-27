@@ -147,31 +147,74 @@ dungeon.Power.prototype = {
    */
   resolve: function(targets) {
     this.phase_ = dungeon.Power.Phase.RESOLUTION;
-    this.broadcastPowerUse(targets);
 
-    var results = null;
-    var log = '';
-    var damage = this.rollDamage(); // TODO: check if this power does damage.
-    if (this.requiresToHitRoll()) {
-      results = this.resolveToHit(targets, damage);
-      if (results.log)
-        log += results.log;
+    // Results of using the power are fully resolved. By require DM 
+    // repsonse before taking effect. 
+    var result = {
+      type: 'attack-result',  // TODO(kellis): Change to power-result
+      characters: [],
+      details: '', // Gory details about each roll.
+      log: '', // Hit and miss messages (concise log).
+      summary: '', // Who is hitting whom with what.
+    };
 
-      // TODO: Cleanup method signature.
-      var powerInfo = this.weapon_ ? this.weapon_ : this.details_;
-      var attacker = this.client_.getCharacterIndex(this.characterInfo_.name);
-      var attackees = [];
-      for (var i = 0; i < targets.length; i++) {
-        attackees[i] = this.client_.getCharacterIndex(targets[i].name);
+    result.summary = this.broadcastPowerUse(targets);
+
+    if (this.powerDealsDamage()) {
+      var damage = this.rollDamage();
+      result.details += damage.log;
+      var attackResults = null;
+      if (this.requiresToHitRoll()) {
+        attackResults = this.resolveToHit(targets, damage);
+        if (attackResults.log)
+          result.details  += attackResults.log;
       }
-      var attack = results.attack;
-      var damage = results.damage;
-      this.client_.dmAttackResult(attacker, attackees, powerInfo, attack, damage, log);
+      var attackedStat = null;
+      if (attackResults) {
+         attackedStat = this.weapon_? this.weapon_.defense : this.details_.defense;
+         result.details += 'Attacking versus ' + attackedStat + '\n';
+      }
+      for (var i = 0; i < targets.length; i++) {
+        var target = targets[i].name;
+        var hit = true; // Automatically hit if no roll required.
+        var damage = damage.value;
+        if (attackResults) {
+          var defStat = parseInt(this.getCharacterAttribute(
+                                 targets[i], attackedStat));
+          hit = (defStat <= attackResults.attack[i]);
+          damage = attackResults.damage[i];
+        }
+        if (hit) {
+          result.log += this.characterInfo_.name + ' hits ' + target
+              + ' for ' + damage + ' damage.\n'; 
+        } else {
+          // TODO: Check for 1/2 damage on a miss.
+          // TODO: Handle Effect on miss.
+          result.log += this.characterInfo_.name + ' misses ' +
+              target + '.\n';
+          damage = 0;
+        }
+        if (damage) {
+          var tempStr = targets[i].condition.stats['Temps'];
+          var temps = tempStr ? parseInt(tempStr) : 0;
+          var newhp = parseInt(targets[i].condition.stats['Hit Points']);
+          temps -= damage;
+          if (temps < 0) {
+            newhp += temps;
+            temps = 0;
+          }
+          var targetIndex = this.client_.getCharacterIndex(target);
+          result.characters.push(
+              [targetIndex,
+               {'Hit Points': newhp,
+                'Temps': temps}]);
+          // TODO: Handle effect on hit.
+        } // if damage
+      } // for target
+      this.client_.dmAttackResult(result); // TODO: Deferred result?
+    } // if attack deals damage
 
-    } else {
-      // resolve auto-hits.
-    }
-    
+    // TODO: Handle powers that do not deal damage.
   },
 
   /**
@@ -183,8 +226,17 @@ dungeon.Power.prototype = {
     for (var i = 0; i < targets.length; i++)
       targetNames.push(targets[i].name);
     var message = this.characterInfo_.name + ' uses "' + this.data_.name +
-      '" on ' + targetNames.join(',') + '.';
+      '" on ' + targetNames.join(',') + '.\n';
     this.client_.sendEvent({type: 'log', text: message});
+    return message;
+  },
+
+  /**
+   * Indicates if the power deal damage.
+   * @return {boolean} True if the power deals damage to targets.
+   */
+  powerDealsDamage: function() {
+    return true; // TODO(kellis): implement me.
   },
 
   /**
@@ -192,7 +244,7 @@ dungeon.Power.prototype = {
    * @return {boolean} True if a to-hit roll is required.
    */
   requiresToHitRoll: function() {
-    return true; // TODO(kevers): implement me.
+    return true; // TODO(kellis): implement me.
   },
 
   /**
@@ -244,7 +296,7 @@ dungeon.Power.prototype = {
       // TODO: Add modifiers for target concealment, running, ...
     }
 
-    logStr = damage.log + 'Rolling attack(s): ' + toHitStr + '\n';
+    logStr = 'Rolling attack(s): ' + toHitStr + '\n';
     var attack = [];
     var damages = [];
     for (var i = 0; i < targets.length; i++) {
@@ -254,7 +306,7 @@ dungeon.Power.prototype = {
         logStr += 'Critical HIT '+ curattack.str +'\n';
         curattack.value = 100; // Hack to ensure a hit.
         // TODO: Add effect of magic weapons.
-        damages.push(damge.max);
+        damages.push(damage.max);
       } else {
         logStr += curattack.str + '\n';
         damages.push(damage.value);

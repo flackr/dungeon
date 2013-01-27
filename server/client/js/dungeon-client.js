@@ -25,7 +25,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
     this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
     this.canvas.addEventListener('mousewheel', this.onMouseWheel.bind(this));
-    document.body.addEventListener('keydown', this.onKeyDown.bind(this));
+    document.body.addEventListener('keyup', this.onKeyUp.bind(this));
 
     // Switching between views.
     $('character-selector').addEventListener(
@@ -653,7 +653,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.zoom(delta, mouse);
   },
   
-  onKeyDown: function(e) {
+  onKeyUp: function(e) {
     var key = e.keyCode;
     if (key == 187 || key == 107) // = or numpad +
       this.zoom(1);
@@ -692,89 +692,62 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     
   },
 
-  onDmAttackResultMsg: function(result) {
-    var role = document.body.parentNode.getAttribute('role');
-    if (role == 'dm') {
-      this.dmAttackResult( result.attacker, result.attackees, result.power, result.tohits, result.dmg, result.logMsg);
+  attackResult: function(attacker, attackees, power, tohits, dmg) {
+    var attackedStat = power.defense;
+    var result = {
+      type: 'attack-result',
+      characters: [],
+      log: '',
     }
-  },
-
-  dmAttackResult: function(attacker, attackees, power, tohits, dmg, logMsg) {
-    // TODO(eg): Determine how to do a timeout if there is no DM.  Can we know this at the
-    //  start?
-    var role = document.body.parentNode.getAttribute('role');
-    if (role == 'dm') {
-        var attackedStat = power.defense;
-        var result = {
-          type: 'attack-result',
-          characters: [],
-          log: '',
+    for (var i = 0; i < attackees.length; i++) {
+      var defStat = parseInt(this.getCharacterAttribute(
+          this.characterPlacement[attackees[i]],
+          attackedStat));
+      if (defStat <= tohits[i]) {
+        //TODO: Flag critical hit, or miss.
+        result.log += this.characterPlacement[attacker].name + ' hits ' +
+          this.characterPlacement[attackees[i]].name + ' for ' + dmg[i] + ' damage.\n';
+        var temps = 0;
+        if (this.characterPlacement[attackees[i]].condition.stats['Temps'])
+          temps = parseInt(this.characterPlacement[attackees[i]].condition.stats['Temps']);
+        var newhp = parseInt(this.characterPlacement[attackees[i]].condition.stats['Hit Points']);
+        temps = temps - dmg[i];
+        if (temps < 0) {
+          newhp += temps;
+          temps = 0;
         }
-        for (var i = 0; i < attackees.length; i++) {
-          var defStat = parseInt(this.getCharacterAttribute(
-              this.characterPlacement[attackees[i]],
-              attackedStat));
-          if (defStat <= tohits[i]) {
-            result.log += this.characterPlacement[attacker].name + ' hits ' +
-              this.characterPlacement[attackees[i]].name + ' for ' + dmg[i] + ' damage.\n';
-            var temps = 0;
-            if (this.characterPlacement[attackees[i]].condition.stats['Temps'])
-              temps = parseInt(this.characterPlacement[attackees[i]].condition.stats['Temps']);
-            var newhp = parseInt(this.characterPlacement[attackees[i]].condition.stats['Hit Points']);
-            temps = temps - dmg[i];
-            if (temps < 0) {
-              newhp += temps;
-              temps = 0;
-            }
-            result.characters.push(
-                [attackees[i],
-                 {'Hit Points': newhp,
-                  'Temps': temps}]);
-          } else {
-            result.log += this.characterPlacement[attacker].name + ' misses ' +
-              this.characterPlacement[attackees[i]].name + '.\n';
-          }
-          alert("Combat result:" + logMsg + result.log);
-        }
-        this.sendEvent({type: 'log', text: logMsg});
-        this.sendEvent(result);
-        } else {
-          // Players wait for 30 s for a response, then proceed?
-          var message = {
-            type: 'dm-attack-result',
-            attacker: attacker,
-            attackees: attackees,
-            power: power,
-            tohits: tohits,
-            dmg: dmg,
-            logMsg: logMsg,
-          }
-          this.sendEvent(message);
-        }
-  },
-
-  // TODO: Get rid of this method >>>>>
-  getCharacterAttribute: function(character, attribute) {
-    var defenseAttrs = ['AC', 'Reflex', 'Fortitude', 'Will'];
-
-    var value = parseInt(character.condition.stats[attribute]);
-    if (!value) value = 0;
-    if (defenseAttrs.indexOf(attribute) >= 0) {
-      value += this.getCharacterAttribute(character, 'Defense');
-    }
-    if (character.condition.effects) {
-      var effectRegex = new RegExp(attribute+'[ ]*([+-])[ ]*([0-9]*)');
-      for (var i = 0; i < character.condition.effects.length; i++) {
-        var effectMatch = effectRegex.exec(character.condition.effects[i]);
-        if (effectMatch) {
-          if (effectMatch[1] == '+')
-            value += parseInt(effectMatch[2]);
-          else
-            value -= parseInt(effectMatch[2]);
-        }
+        result.characters.push(
+            [attackees[i],
+             {'Hit Points': newhp,
+              'Temps': temps}]);
+      } else {
+        result.log += this.characterPlacement[attacker].name + ' misses ' +
+          this.characterPlacement[attackees[i]].name + '.\n';
       }
     }
-    return value;
+    this.sendEvent(result);
+  },
+
+  onDmAttackResultMsg: function(message) {
+    var role = document.body.parentNode.getAttribute('role');
+    if (role == 'dm') {
+      this.dmAttackResult(message.result);
+    }
+  },
+
+  dmAttackResult: function(result) {
+    var role = document.body.parentNode.getAttribute('role');
+    if (role == 'dm') {
+      alert("Combat result:\n" + result.summary + result.details + result.log);
+      this.sendEvent({type: 'log', text: result.details});
+      this.sendEvent(result);
+    } else {
+      var message = {
+        type: 'dm-attack-result',
+        result: result
+      }
+      this.sendEvent(message);
+    }
   },
 
   computeMapCoordinatesDouble: function(e) {
