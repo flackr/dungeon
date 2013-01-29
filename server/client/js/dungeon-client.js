@@ -182,8 +182,17 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
     var success = false;
     if (this.selectCharacterByName(characterName)) {
-      this.ui.activePower = this.powers.get(powerName);
+      var power = this.ui.activePower = this.powers.get(powerName);
       this.dispatchEvent('power-selected', characterName, powerName);
+      this.ui.targets = [];
+      if(power.autoSelect()) {
+        var source = this.characterPlacement[this.ui.selected];
+        for (var i = 0; i < this.characterPlacement.length; i++) {
+          if (power.selectionMatch(source, this.characterPlacement[i]))
+            this.ui.targets.push(i);
+        }
+        this.update();
+      }
     }
     return success;
   },
@@ -224,7 +233,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       // are cummulative.
       if (power.resetSelectionOnUpdate())
         this.ui.targets = [];
-      var source = this.characterPlacement[this.ui.selected];
       for (var i = 0; i < this.characterPlacement.length; i++) {
         if (power.selectionMatch(position, this.characterPlacement[i])) {
           this.ui.targets.push(i);

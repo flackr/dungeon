@@ -18,6 +18,9 @@ dungeon.ParseFile = function(client, file) {
         if (json.type == 'map') {
           json.type = 'load-map';
           client.sendEvent(json);
+        } else if (json.type == 'powers') {
+          json.type = 'load-powers';
+          client.sendEvent(json);
         }
         return;
       }

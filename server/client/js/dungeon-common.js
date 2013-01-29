@@ -15,6 +15,25 @@ function extend(base, derived) {
   return proto;
 }
 
+/**
+ * Splits condition name and modifier.
+ * @param {string} effect Name of the effect with optional modifier value.
+ * @return {[string,numeric=]}  Split effect name and modifier.
+ */
+function parseEffect(effect) {
+  var suffixRegex = /[ ]*([+-])[ ]*([0-9]*)$/;
+  var separator = effect.regexIndexOf(suffixRegex);
+  if (separator < 0)
+    return [effect];
+  return [effect.substring(0, separator),
+          parseInt(effect.substring(separator).replace(/[ ]/g, ''))];
+}
+
+String.prototype.regexIndexOf = function(regex, startpos) {
+    var indexOf = this.substring(startpos || 0).search(regex);
+    return (indexOf >= 0) ? (indexOf + (startpos || 0)) : indexOf;
+}
+
 var dungeon = {};
 
 dungeon.EventSource = function() {
@@ -110,11 +129,51 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
     } else if (eventData.type == 'attack-result') {
       for (var i = 0; i < eventData.characters.length; i++) {
         var index = eventData.characters[i][0];
-        for (var j in eventData.characters[i][1]) {
-          this.characterPlacement[index].condition.stats[j] =
-                  eventData.characters[i][1][j];
-          this.dispatchEvent('character-updated', index);
+        var mods = eventData.characters[i][1];
+        var condition = this.characterPlacement[index].condition;
+        for (var j in mods) {
+          // Modifying a stat such as HP or temps.
+          if (j in condition.stats)
+            condition.stats[i] = mods[j];
         }
+        var effectMods = mods.effects;
+        if (effectMods) {
+
+          // Adding or removing a condition.
+          var list = condition.effects;
+          if (!list)
+             list = condition.effects = [];
+          for (var j = 0; j < effectMods.length; j++) {
+            var found = false;
+            // Effects with potency are are the form:
+            // "Name +/- #"
+            var effect = parseEffect(effectMods[i]);
+            var effectRemoval = false;
+            // A leading '-' indicates condition removal.
+            if (effect[0].charAt(0) == '-') {
+              effectRemoval == true;
+              effect[0] = effect[0].substring(1, effect[0].length);
+            }
+            for (var k = 0; k < list.length; k++) {
+              var e = parseEffect(list[k]);
+              if (e[0] == effect[0]) {
+                found = true;
+                if (conditionRemoval) {
+                  list.splice(k, 1);
+                  break;
+                }
+                // Typically effects of the same type are non-stacking.
+                // Replace effect only if new effect is more potent.
+                if (e[1] && effect[1] && effect[1] > e[1])
+                  list[k] = effectMods[i];
+                break;
+              }
+            }
+            if (!found)
+              list.push(effectMods[i]);
+          }
+        }
+        this.dispatchEvent('character-updated', index);
       }
       this.dispatchEvent('log', eventData.log);
       this.dispatchEvent('banner-message', eventData.log);
@@ -179,7 +238,9 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
     } else if (eventData.type == 'dm-attack-result') {
       // DM messages should not "replay"
       this.events.pop(); 
-      this.dispatchEvent('dm-attack-result', eventData);//'dmAttackResultMsg', eventData);
+      this.dispatchEvent('dm-attack-result', eventData);
+    } else if (eventData.type == 'load-powers') {
+      this.dispatchEvent('load-powers', eventData);
     }
     return true;
   },

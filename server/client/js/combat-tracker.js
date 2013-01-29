@@ -260,6 +260,10 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
     $('active-character-powers').appendChild(block);
 
     for (var i = 0; i < powers.length; i++) {
+
+      // TODO(kellis): Use resolved power to pick up description.  Current
+      // descriptions heavily biased toward attack powers.
+
       var power = powers[i];
       block = $('power-summary-template').cloneNode(true);
       block.id = '';
@@ -279,7 +283,8 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
         minDamage: '?',
         maxDamage: '?'
       };
-      // Fill in block data with correct values.
+      
+    
       // Make assumption that first weapon in list is best.  TODO(kellis): Check assumption.
       var weapon = power.weapons && power.weapons.length > 0 ? power.weapons[0] : null;
       if (weapon) {
@@ -291,6 +296,9 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
           block.data.minDamage = damageRange[0];
           block.data.maxDamage = damageRange[1];
         }
+      }
+      // Suppress move power for now. Eventually show all powers.
+      if (powers[i]['Action Type'] != 'Move Action') {
         setData(block, 'power-summary-name', power.name);
         setData(block, 'power-summary-attack-bonus', block.data.toHit);
         setData(block, 'power-summary-defense', block.data.defense);

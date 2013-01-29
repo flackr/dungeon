@@ -4,10 +4,6 @@
 dungeon.Powers = function(client) {
   dungeon.EventSource.apply(this);
   this.initialize(client);
-  var self = this;
-  dungeon.Powers.getInstance = function() {
-    return self;
-  }
 }
 
 dungeon.Powers.prototype = {
@@ -16,6 +12,10 @@ dungeon.Powers.prototype = {
    * Initialize the repository of powers.
    */
   initialize: function(client) {
+    var self = this;
+    dungeon.Powers.getInstance = function() {
+      return self;
+    }
     this.client_ = client;
     this.powers_ = {};
     this.activePower_ = null;
@@ -25,6 +25,17 @@ dungeon.Powers.prototype = {
     // Resolve effect of using power.
     client.addEventListener('power-used',
                             this.onPowerUsed.bind(this));
+    // Import powers represented in json format.
+    client.addEventListener('load-powers',
+                            this.onLoadPowers.bind(this));
+
+    var list = this.customizedPowers;
+    for (var i = 0; i < list.length; i++) {
+      var name = list[i].name;
+      var variant = list[i].variant;
+      // TODO add support for alternate base class.
+      this.create(name, variant);
+    }
   },
 
   /**
@@ -75,6 +86,47 @@ dungeon.Powers.prototype = {
         targets.push(this.client_.getCharacter(targetIndicies[i]));
       }
       this.activePower_.resolve(targets);
+    }
+  },
+
+
+  /**
+   * Loads details description of player and monster powers.
+   */
+  onLoadPowers: function() {
+    console.log('ping');
+  },
+
+  /**
+   * Create a new power as a variant on another.
+   * @param {string} name  The name of the power.
+   * @param {Object} variant Set of modifications to  the power.
+   * @param {dungeon.Power} opt_base Optional base power from which this power
+   *     is derived. 
+   */
+  create: function(name, variant, opt_base) {
+    var power = new dungeon.Power({name: name}); 
+    if (opt_base) {
+      for (key in opt_base) {
+        power[key] = opt_base[key];
+      }
+    }
+    this.injectMethods(power, variant);
+    this.add(name, power);
+    return power;
+  },
+
+  /**
+   * Overrides methods in a power. This is the means by which powers are
+   * customized.
+   */
+  injectMethods: function(power, methods) {
+    for (key in methods) {
+      var addition = methods[key];
+      if (addition instanceof Function)
+        power[key] = addition;
+      else
+        this.injectMethods(power, addition);
     }
   },
 
@@ -139,6 +191,7 @@ dungeon.Power.prototype = {
       var weapons = this.details_.weapons;
       this.weapon_ = weapons && weapons.length > 0 ? weapons[0] : null;
     }
+    this.applyPreTargettingEffects();
   },
 
   /**
@@ -158,14 +211,14 @@ dungeon.Power.prototype = {
       summary: '', // Who is hitting whom with what.
     };
 
-    result.summary = this.broadcastPowerUse(targets);
+    result.summary = this.logPowerUse(targets);
 
     if (this.powerDealsDamage()) {
-      var damage = this.rollDamage();
-      result.details += damage.log;
+      var damageRoll = this.rollDamage();
+      result.details += damageRoll.log;
       var attackResults = null;
       if (this.requiresToHitRoll()) {
-        attackResults = this.resolveToHit(targets, damage);
+        attackResults = this.resolveToHit(targets, damageRoll);
         if (attackResults.log)
           result.details  += attackResults.log;
       }
@@ -177,22 +230,42 @@ dungeon.Power.prototype = {
       for (var i = 0; i < targets.length; i++) {
         var target = targets[i].name;
         var hit = true; // Automatically hit if no roll required.
-        var damage = damage.value;
+        var damage = damageRoll.value;
         if (attackResults) {
           var defStat = parseInt(this.getCharacterAttribute(
                                  targets[i], attackedStat));
           hit = (defStat <= attackResults.attack[i]);
           damage = attackResults.damage[i];
         }
+        var damageModifier = this.getDamageModifier(targets[i]);
+        damage += damageModifier;
         if (hit) {
           result.log += this.characterInfo_.name + ' hits ' + target
-              + ' for ' + damage + ' damage.\n'; 
+              + ' for ' + damage + ' damage.\n';
+          if (damageModifier) {
+             if (damageModifier < 0) {
+               result.log +='[resisted ' + (-damageModifier) +
+                   ' damage.]\n';
+             } else {
+                result.log += '[took ' + damageModifier +
+                    ' extra damage.]\n';
+             }
+          }
+          result.log += this.applyOnHitEffects(targets[i]);
         } else {
-          // TODO: Check for 1/2 damage on a miss.
           // TODO: Handle Effect on miss.
           result.log += this.characterInfo_.name + ' misses ' +
-              target + '.\n';
-          damage = 0;
+              target;
+          var missDamage = this.damageOnMiss(damage);
+          if (missDamage && attackResults.attack[i] > 0 ) {
+             // Non-crit-fail attack doing reduced damage.
+             damage = missDamage;
+             result.log += ', but still deals ' + missDamage + ' damage';
+          } else {
+            damage = 0;
+          }
+          result.log += '.\n';
+          result.log += this.applyOnMissEffects(target);
         }
         if (damage) {
           var tempStr = targets[i].condition.stats['Temps'];
@@ -211,17 +284,20 @@ dungeon.Power.prototype = {
           // TODO: Handle effect on hit.
         } // if damage
       } // for target
-      this.client_.dmAttackResult(result); // TODO: Deferred result?
-    } // if attack deals damage
 
-    // TODO: Handle powers that do not deal damage.
+    } else {
+      // Power does not deal damage.
+      for (var j = 0; j < targets.length; j++) 
+        result.log += this.applyOnHitEffects(targets[j], result);
+    }
+    this.client_.dmAttackResult(result); // TODO: Deferred result?
   },
 
   /**
    * Sends notification that power has been used on one or more targets.
    * @param {Array.<Object>} targets List of character info for targets.
    */
-  broadcastPowerUse: function(targets) {
+  logPowerUse: function(targets) {
     var targetNames = [];
     for (var i = 0; i < targets.length; i++)
       targetNames.push(targets[i].name);
@@ -232,11 +308,38 @@ dungeon.Power.prototype = {
   },
 
   /**
+   * Determines the damage string with modified based on the condition of the
+   * target.
+   * @return {string} The damage.
+   */
+  getDamageString: function() {
+    var base = this.weapon_ ? this.weapon_.damage : this.details_.damage;
+    bonus = this.getCharacterAttribute(this.characterInfo_, 'Damage');
+    if (bonus)
+      dmgStr += ' + ' + bonus;
+    return base;
+  },
+
+  /**
+   * Determine situational damage modifier.
+   * @param {Object} target Character info for target.
+   * @return {numeric} Damage modifier.
+   */
+  getDamageModifier: function(target) {
+    // TODO - Test for target vulnerabilities and resistances.
+    return 0;
+  },
+
+  /**
    * Indicates if the power deal damage.
    * @return {boolean} True if the power deals damage to targets.
    */
   powerDealsDamage: function() {
-    return true; // TODO(kellis): implement me.
+    return this.getDamageString() != undefined;
+  },
+
+  toHit: function() {
+    return this.weapon_ ? this.weapon_.toHit : this.details_.toHit;
   },
 
   /**
@@ -244,7 +347,7 @@ dungeon.Power.prototype = {
    * @return {boolean} True if a to-hit roll is required.
    */
   requiresToHitRoll: function() {
-    return true; // TODO(kellis): implement me.
+    return this.toHit() != undefined;
   },
 
   /**
@@ -254,10 +357,7 @@ dungeon.Power.prototype = {
   rollDamage: function() {
     // Characters typically do damage based on weapon and monsters use 
     // "natural" weapons.
-    var dmgStr = this.weapon_ ? this.weapon_.damage : this.details_.damage;
-    bonus = this.getCharacterAttribute(this.characterInfo_, 'Damage');
-    if (bonus)
-      dmgStr += ' + ' + bonus;
+    var dmgStr = this.getDamageString();
     var damage = this.rollDice(dmgStr);
     var logStr = 'Rolling damage: ' + dmgStr + '\n';
     logStr += damage.str + '\n';
@@ -267,6 +367,14 @@ dungeon.Power.prototype = {
       value: damage.value,
       max: damage.max
     };
+  },
+
+  /**
+   * Returns the damage on a miss.
+   * @param{numeric} damageOnHit Damage roll for a non-crit hit.
+   */
+  damageOnMiss: function(damageOnHit) {
+    return 0;
   },
 
   /**
@@ -307,11 +415,14 @@ dungeon.Power.prototype = {
         curattack.value = 100; // Hack to ensure a hit.
         // TODO: Add effect of magic weapons.
         damages.push(damage.max);
+      } else if (curattack.rolls[0][0] == 1) {
+        logStr += 'Critical FAIL '+ curattack.str +'\n';
+        curattack.value = -100; // Hack to ensure a miss.
+        damages.push(0);
       } else {
         logStr += curattack.str + '\n';
         damages.push(damage.value);
       }
-      // TODO: handle crit fails.
       attack.push(curattack.value);
     }
 
@@ -322,12 +433,42 @@ dungeon.Power.prototype = {
     };
   },
 
-  toCharacterIndices: function(targets) {
-    var indices = [];
-    for(var i = 0; i < targets.length; i++) {
-      indices[i] = this.client_.getCharacterIndex(targets[i].name);
-    }
-    return indices;
+  /**
+   * Apply an effect that triggers prior to targetting.
+   * Includes effects that do not require targetting.
+   * @return {string} Description of effects for logging.
+   */
+  applyPreTargettingEffects: function() {
+    return '';
+  },
+
+  /**
+   * Apply effects that triggers on a successful hit. May include
+   * effecs on friendlies that auto-hit.
+   * @param {Object} target CharacterInformation for the target.
+   * @param {Object} result Object for storing effects.
+   * @return {string} Description of effects for logging.
+   */
+  applyOnHitEffects: function(target, result) {
+    return '';
+  },
+
+  /**
+   * Apply effects that trigger on a miss.
+   * @param {Object} target CharacterInformation for the target.
+   * @param {Object} result Object for storing effects.
+   * @return {string} Description of effects for logging.
+   */
+  applyOnMissEffects: function(target, result) {
+    return '';
+  },
+
+  /**
+   * Apply effects that trigger after all other effects are resolved.
+   * @return {string} Description of effects for logging.
+   */
+  applyPostResolutionEffects: function() {
+    return '';
   },
 
   // DM confirmation of effect.
@@ -338,6 +479,14 @@ dungeon.Power.prototype = {
   // DM or player cancelled a power.
   cancel: function() {
     this.phase_ = dungeon.Power.Phase.RESET;
+  },
+
+  /**
+   * Indicates if targets should be auto-selected.  Return true for personal
+   * and close-burst powers. 
+   */
+  autoSelect: function() {
+    return false;
   },
 
   /**
@@ -405,6 +554,29 @@ dungeon.Power.prototype = {
     return value;
   },
 
+  addCondition: function(target, condition, result) {
+    var index = this.client_.getCharacterIndex(target.name);
+    var list = result.characters;
+    var entry = null;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i][0] == index) {
+        entry = list[i];
+        break;
+      }
+    }
+    if (!entry) {
+      entry = [index, {}];
+      result.characters.push(entry);
+    }
+    if (!entry[1].effects)
+      entry[1].effects = [];
+    entry[1].effects.push(condition);
+  },
+
+  removeCondition: function(target, condition, result) {
+    addCondition(target, '-' + condition, result);
+  },
+
   /**
    * Determines if a condition is in effect.
    */
@@ -467,4 +639,106 @@ dungeon.Power.prototype = {
   },
   
 };
+
+// ---------------------------- Specialized Powers ----------------------------
+
+dungeon.Powers.prototype.customizedPowers = (function() {
+
+  // Stone fist flurry of blows.
+  var SFFoB = {
+    getDamageString: function() {
+      var modifier = this.characterInfo_.source.stats['Strength modifier'];
+      var damage = 3 + parseInt(modifier); // TODO: +2 if switching targets.
+      return "" + damage;
+    }
+  };
+
+  // Open the gate of battle.
+  var OtGoB = {
+    getDamageModifier: function(target) {
+      var modifier = dungeon.Power.prototype.getDamageModifier.apply(
+          this, [target]);
+      // 1D10 extra damage to uninjured target.
+      var maxHp = parseInt(target.source.stats['Hit Points']);
+      var currentHp = parseInt(target.condition.stats['Hit Points']);
+      if (maxHp == currentHp)
+        modifier += Math.floor(Math.random() * 10 + 1);
+      return modifier; 
+    }
+  };
+
+  // Furious assault.
+  var FurAslt = {
+    getDamageString: function() {
+      return "1d8";  // actually 1[W].
+    }
+  };
+
+  // Attacks that do half damage.
+  var HalfDmg = {
+    damageOnMiss: function(damageOnHit) {
+      return Math.floor(damageOnHit/2);
+    }
+  };
+
+  var Push = function(n) {
+    return {
+      applyOnHitEffects: function(target) {
+        // Not a persistant condition. Simply logging the effect is
+        // sufficient for now to remind player and DM.
+        var messageSuffix = (n == 1) ? ' space.\n' : ' spaces.\n' 
+        return target.name + ' pushed ' + n + messageSuffix;
+      }
+    };
+  };
+
+  var Personal = {
+    autoSelect: function() {
+      return true;
+    },
+
+    selectionMatch: function(position, target) {
+      return target.x == this.characterInfo_.x &&
+          target.y == this.characterInfo_.y;
+    },
+  }
+
+  var Defense = function(n) {
+    return {
+      applyOnHitEffects: function(target, result) {
+        this.addCondition(target, 'Defense+2', result);
+        return target.name + ' has +' + n + ' to all defenses.';
+      }
+    };
+  }
+
+  return [
+    {name: 'Stone Fist Flurry of Blows',
+     variant: SFFoB
+    },
+    {name: 'Supreme Flurry',
+     variant: SFFoB
+    },
+    {name: 'Furious Assault',
+     variant: FurAslt
+    },
+    {name: 'Open the Gate of Battle',
+     variant: OtGoB
+    },
+    {name: 'Masterful Spiral',
+     variant: HalfDmg
+    },
+    {name: 'One Hundred Leaves',
+     variant: [HalfDmg, Push(2)]
+    },
+    {name: 'Arc of the Flashing Storm',
+     variant: Push(2)
+    },
+    {name: 'Centered Defense',
+     variant: [Personal, Defense(2)]
+    },
+  ];
+
+})();
+
 
