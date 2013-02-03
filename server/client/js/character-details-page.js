@@ -1,7 +1,5 @@
 dungeon.CharacterDetailsPage = (function() {
 
-  var initialized_ = false;
-
   /**
    * Constructor.
    */
@@ -25,10 +23,7 @@ dungeon.CharacterDetailsPage = (function() {
         characterData = characterData.source;
         selectCharacterView = false;
       }
-      if (!this.initialized_) {
-        createCharacterSheet_(characterData);
-        this.initialized_ = true;
-      }
+      createCharacterSheet_(characterData);
       populateCharacterSheet_(characterData);
       var buttons = document.getElementsByClassName('character-button');
       for (var i = 0; i < buttons.length; i++)
@@ -70,6 +65,10 @@ dungeon.CharacterDetailsPage = (function() {
   function createCharacterSheet_(characterData) {
     var createStatEntries = function(category) {
       var list = $(category + '-list');
+      // Clear existing content.
+      while (list.firstChild)
+        list.removeChild(list.firstChild);
+      // Populate fields.
       var stats = characterData[category];
       for (var i = 0; i < stats.length; i++) {
         var name = stats[i];
@@ -113,13 +112,23 @@ dungeon.CharacterDetailsPage = (function() {
 
   function populateCharacterSheet_(characterData) {
     var populateField = function(parent, name, value) {
-      parent.getElementsByClassName(name)[0].textContent = value;
+      var field = parent ? parent.getElementsByClassName(name)[0] : null;
+      if (field) {
+        field.textContent = value;
+      } else {
+        console.log('Unable to set ' + name + '=' + value +
+            ' on character sheet.');
+      }
     }
     var populateStatEntries = function(category) {
       var list = characterData[category];
       for (var i = 0; i < list.length; i++) {
         var name = list[i];
         var stat = $(name + '-stat');
+        if (!stat) {
+          console.log('Unable to populate stat "' + name + '".');
+          continue;
+        }
         var value = characterData.stats[name];
         if (value == undefined)
           value = '?';
