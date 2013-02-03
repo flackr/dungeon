@@ -181,7 +181,6 @@ dungeon.CharacterDetailsPage = (function() {
       block.getElementsByClassName('power-type')[0].textContent = type;
       var effectBlock = block.getElementsByClassName('power-effect')[0];
       if (power.weapons && power.weapons.length > 0) {
-        effectBlock.hidden = false;
         effectBlock.getElementsByClassName('power-to-hit-section')[0].hidden = false;
         effectBlock.getElementsByClassName('power-damage-section')[0].hidden = false;
         // Assume preferred weapon is at the top of the list.
@@ -193,11 +192,33 @@ dungeon.CharacterDetailsPage = (function() {
         populateField(effectBlock, 'power-damage', weapon.damage);
         populateField(effectBlock, 'power-weapon', weapon.name);
       }
+      var recharge = power['Recharge'];
+      if (recharge) {
+        var rechargeSection = block.getElementsByClassName('power-recharge-section')[0];
+        rechargeSection.hidden = false;
+        var rechargeElement = rechargeSection.getElementsByClassName('power-value')[0];
+        rechargeElement.textContent = recharge;
+      }
+      var trigger = power['Trigger'];
+      if (trigger) {
+        var triggerSection = block.getElementsByClassName('power-trigger-section')[0];
+        triggerSection.hidden = false;
+        var triggerElement = triggerSection.getElementsByClassName('power-value')[0];
+        triggerElement.textContent = trigger;
+      }
       var range = power['Range'];
       if (range) {
         var rangeSection = block.getElementsByClassName('power-range-section')[0];
         rangeSection.hidden = false;
-        rangeSection.textContent = range;
+        var rangeElement = rangeSection.getElementsByClassName('power-value')[0];
+        rangeElement.textContent = range;
+      }
+      var targets = power['Targets'];
+      if (targets) {
+        var targetSection = block.getElementsByClassName('power-targets-section')[0];
+        targetSection.hidden = false;
+        var targetElement = targetSection.getElementsByClassName('power-value')[0];
+        targetElement.textContent = targets;
       }
       var description = power['Description'];
       if (description) {
@@ -214,6 +235,8 @@ dungeon.CharacterDetailsPage = (function() {
         var index = url.indexOf('?');
         linkElement.textContent = (index > 0) ? url.substring(index + 1) : url;          
       } 
+      /*
+       * Disabling for time being until editor is functional
       var editButton = block.getElementsByClassName('edit-power-button')[0];
       var editPowerCallback = function(element) {
         var selectedPower = power;
@@ -225,7 +248,7 @@ dungeon.CharacterDetailsPage = (function() {
         }
       };
       editButton.addEventListener('click', editPowerCallback());
-
+      */
       var category = usage.toLowerCase().trim();
       var index = category.indexOf(' ');
       if (index > 0)

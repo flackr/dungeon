@@ -395,9 +395,14 @@ html[ui=mobile] #sidebar {
   background: hsl(34, 100%, 68%);
 }
 
+.power-effect .label {
+  font-weight: bold;
+}
+
 .power-attack-bonus,
 .power-defense,
-.power-damage {
+.power-damage,
+.power-value {
   display: inline;
 }
 

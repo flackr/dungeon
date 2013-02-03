@@ -10,9 +10,14 @@ dungeon.ParseMonster = (function() {
 
   var aliasMap_ = {
     'Standard': 'Standard Action',
+    'standard': 'Standard Action',
     'At-Will': 'At-Will Action',
     'Free': 'Free Action',
-    'free': 'Free Action'
+    'free': 'Free Action',
+    'Minor': 'Minor Action',
+    'minor': 'Minor Action',
+    'Move': 'Move Action',
+    'move': 'Move Action',
   };
 
   function parseMonster_(xmlDoc) {
@@ -105,6 +110,31 @@ dungeon.ParseMonster = (function() {
       return match.textContent;
   }
 
+  function findAncestor_(el, tag) {
+    while(el) {
+      var parent = el.parentNode;
+      if (parent && parent.tagName == tag)
+        return parent;
+      el = parent;
+    }
+  }
+
+  /**
+   * Extract all description snippets for a power except for keyword descriptions.
+   */
+  function extractDescription_(el) {
+    var matches = el.getElementsByTagName('Description');
+    if (matches) {
+      var value = [];
+      for (var i = 0; i < matches.length; i++) {
+        var match = matches[i];
+        if (!findAncestor_(match, 'Keywords'))
+          value.push(matches[i].textContent);
+      }
+      return value.join('\n\n');
+    }
+  }
+
   function extractValueFromChild_(el, tag) {
     var list = el.childNodes;
     for (var i = 0; i < list.length; i++) {
@@ -133,6 +163,9 @@ dungeon.ParseMonster = (function() {
       var type = extractBasicAttribute_(power, 'Action');
       var usage = extractBasicAttribute_(power, 'Usage');
       var range = extractBasicAttribute_(power, 'Range');
+      var trigger = extractBasicAttribute_(power, 'Trigger');
+      var targets = extractBasicAttribute_(power, 'Targets');
+      var usageDetails = extractBasicAttribute_(power, 'UsageDetails');
       if (type in aliasMap_)
         type = aliasMap_[type];
       // TODO(kellis): Investigate suitable defaults for missing properties.
@@ -144,6 +177,12 @@ dungeon.ParseMonster = (function() {
       data['Power Usage'] = usage;
       if (range)
         data['Range'] = range;
+      if (trigger)
+        data['Trigger'] = trigger;
+      if (targets)
+        data['Targets'] = targets;
+      if (usage == 'Recharge' && usageDetails)
+        data['Recharge'] = usageDetails;
       data.name = extractValueFromChild_(power, 'Name');
 
       var attack = {};
@@ -157,7 +196,7 @@ dungeon.ParseMonster = (function() {
         attack.damage = 'special';
       if (attack.toHit)
         data.weapons = [attack];
-      var description = extractBasicAttribute_(power, 'Description');
+      var description = extractDescription_(power, 'Description');
       if (description)
         data['Description'] = description;
       powers.push(data);

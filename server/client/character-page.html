@@ -42,18 +42,30 @@
     <div class="power-details" hidden>
       <div class="power-type"></div>
       <div class="power-effect">
+        <div class="power-recharge-section" hidden>
+          <span class="label">Recharge: </span>
+          <div class="power-value"></div>
+        </div>
+        <div class="power-trigger-section" hidden>
+          <span class="label">Trigger: </span>
+          <div class="power-value"></div>
+        </div>
         <div class="power-range-section" hidden>
-          <span>Range: </span>
-          <div class="power-range"></div>
+          <span class="label">Range: </span>
+          <div class="power-value"></div>
+        </div>
+        <div class="power-targets-section" hidden>
+          <span class="label">Targets: </span>
+          <div class="power-value"></div>
         </div>
         <div class="power-to-hit-section" hidden>
-          <span>To Hit: +</span>
+          <span class="label">To Hit: +</span>
           <div class="power-attack-bonus"></div>
           <span> versus </span>
           <div class="power-defense"></div>
         </div>
         <div class="power-damage-section" hidden>
-          <span>Damage: <span>
+          <span class="label">Damage: </span>
           <div class="power-damage"></div>
         </div>
         <div class="power-weapon"></div>
@@ -62,9 +74,11 @@
           <a class="power-url" target="compendium"></a>
         </div>
       </div>
+      <!-- Remove power edit button until funcitonal.
       <div class="button-bar">
         <button class="edit-power-button">Edit</button>
       </div>
+      -->
     </div>
   </div>
   <section id="powers-tab" hidden>
