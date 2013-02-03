@@ -173,6 +173,8 @@ dungeon.CharacterDetailsPage = (function() {
       var effectBlock = block.getElementsByClassName('power-effect')[0];
       if (power.weapons && power.weapons.length > 0) {
         effectBlock.hidden = false;
+        effectBlock.getElementsByClassName('power-to-hit-section')[0].hidden = false;
+        effectBlock.getElementsByClassName('power-damage-section')[0].hidden = false;
         // Assume preferred weapon is at the top of the list.
         var weapon = power.weapons[0];
         var weaponName = weapon.name;
@@ -182,6 +184,27 @@ dungeon.CharacterDetailsPage = (function() {
         populateField(effectBlock, 'power-damage', weapon.damage);
         populateField(effectBlock, 'power-weapon', weapon.name);
       }
+      var range = power['Range'];
+      if (range) {
+        var rangeSection = block.getElementsByClassName('power-range-section')[0];
+        rangeSection.hidden = false;
+        rangeSection.textContent = range;
+      }
+      var description = power['Description'];
+      if (description) {
+        var descriptionSection = block.getElementsByClassName('power-description')[0];
+        descriptionSection.hidden = false;
+        descriptionSection.textContent = description;
+      }
+      var url = power.url;
+      if (url) {
+        var linkBlock = block.getElementsByClassName('power-conpendium-link')[0];
+        linkBlock.hidden = false;
+        var linkElement = linkBlock.getElementsByClassName('power-url')[0];
+        linkElement.href = url;
+        var index = url.indexOf('?');
+        linkElement.textContent = (index > 0) ? url.substring(index + 1) : url;          
+      } 
       var editButton = block.getElementsByClassName('edit-power-button')[0];
       var editPowerCallback = function(element) {
         var selectedPower = power;

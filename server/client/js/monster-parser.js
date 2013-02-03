@@ -132,6 +132,7 @@ dungeon.ParseMonster = (function() {
       var data = {};
       var type = extractBasicAttribute_(power, 'Action');
       var usage = extractBasicAttribute_(power, 'Usage');
+      var range = extractBasicAttribute_(power, 'Range');
       if (type in aliasMap_)
         type = aliasMap_[type];
       // TODO(kellis): Investigate suitable defaults for missing properties.
@@ -141,6 +142,8 @@ dungeon.ParseMonster = (function() {
         usage = 'Encounter';
       data['Action Type'] = type;
       data['Power Usage'] = usage;
+      if (range)
+        data['Range'] = range;
       data.name = extractValueFromChild_(power, 'Name');
 
       var attack = {};
@@ -154,6 +157,9 @@ dungeon.ParseMonster = (function() {
         attack.damage = 'special';
       if (attack.toHit)
         data.weapons = [attack];
+      var description = extractBasicAttribute_(power, 'Description');
+      if (description)
+        data['Description'] = description;
       powers.push(data);
     }
     return powers;

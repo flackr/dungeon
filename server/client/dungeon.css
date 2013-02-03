@@ -347,6 +347,12 @@ html[ui=mobile] #sidebar {
   margin: 5px;
 }
 
+.power-description,
+.power-conpendium-link,
+.power-weapon {
+ margin-top: 5px;
+}
+
 #power-template,
 #power-damage-template {
   display: none;

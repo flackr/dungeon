@@ -197,8 +197,28 @@ dungeon.ParseCharacter = (function() {
       }
       powers.push(data);
     }
+    extractRuleLinks_(node, powers);
     return powers;
   }
+
+  function extractRuleLinks_(node, powers) {
+    var rules = node.querySelectorAll('RulesElement');
+    var map = {};
+    for (var i = 0; i < powers.length; i++) {
+      map[powers[i].name] = powers[i];
+    }
+    for (var i = 0; i < rules.length; i++) {
+      var rule = rules[i];
+      var url = rule.getAttribute('url');
+      if (url) {
+        var name = rule.getAttribute('name');
+        var power = name ? map[name] : null;
+        if (power)
+          power.url = url;
+      }
+    }
+  }
+
   return parseCharacter_;
 })();
 
