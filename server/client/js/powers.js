@@ -31,10 +31,7 @@ dungeon.Powers.prototype = {
 
     var list = this.customizedPowers;
     for (var i = 0; i < list.length; i++) {
-      var name = list[i].name;
-      var variant = list[i].variant;
-      // TODO add support for alternate base class.
-      this.create(name, variant);
+      this.create(list[i]);
     }
   },
 
@@ -57,8 +54,7 @@ dungeon.Powers.prototype = {
   get: function(name) {
     var power = this.powers_[name];
     if (!power) {
-      power = new dungeon.Power({name: name, 
-                                 generic: true});
+      power = new dungeon.Power(name);
       this.add(name, power);
     }
     return power;
@@ -99,20 +95,30 @@ dungeon.Powers.prototype = {
 
   /**
    * Create a new power as a variant on another.
-   * @param {string} name  The name of the power.
-   * @param {Object} variant Set of modifications to  the power.
-   * @param {dungeon.Power} opt_base Optional base power from which this power
-   *     is derived. 
+   * @param {name: string,
+   *         variant=: {string: function}|Array.<{string, function}>,
+   *         onHit=: Array.<{applyEffect: function, getTooltip: function}>,
+   *         onMiss=: Array.<{applyEffect: function, getTooltip: function}}> data  
+   *    Description of the power.
+   *    |variant| is a set of replacement functions or a list of sets.
+   *    |onHitEffects| is a list of function pairs for applying effects on a hit.
+   *    |onMissEffects| is a list of function pairs for applying effects on a miss.
    */
-  create: function(name, variant, opt_base) {
-    var power = new dungeon.Power({name: name}); 
-    if (opt_base) {
-      for (key in opt_base) {
-        power[key] = opt_base[key];
+  create: function(data) {
+    var power = new dungeon.Power(data.name);
+    if (data.variant)
+      this.injectMethods(power, data.variant);
+    if (data.onHit) {
+      for (var i = 0; i < data.onHit.length; i++) {
+        power.addOnHitEffect(data.onHit[i]);
       }
     }
-    this.injectMethods(power, variant);
-    this.add(name, power);
+    if (data.onMissEffects) {
+      for (var i = 0; i < data.onMiss.length; i++) {
+        power.addOnMissEffect(data.onMiss[i]);
+      }
+    }
+    this.add(data.name, power);
     return power;
   },
 
@@ -139,9 +145,10 @@ dungeon.Powers.prototype = {
  * Base class for D&D powers.  The base implementation is a generic
  * power, relying solely in information extracted from the character
  * or monster file.
+ * @param {string} name The name of the power.
  */
-dungeon.Power = function(data) {
-  this.data_ = data;
+dungeon.Power = function(name) {
+  this.initialize(name);
   var repository = dungeon.Powers.getInstance();
   this.client_ = repository.client();
 };
@@ -156,6 +163,16 @@ dungeon.Power.Phase = {
  * Generic representation of a power.  
  */
 dungeon.Power.prototype = {
+
+  /**
+   * Initializes a power.
+   * @param {string} name of the power.
+   */
+  initialize: function(name) {
+    this.name_ = name;
+    this.onHitEffects_ = [];
+    this.onMissEffects_ = [];
+  },
 
   /**
    * Indicates the current state of progress in using a power.  Typically,
@@ -189,8 +206,9 @@ dungeon.Power.prototype = {
 
     // Fetch details of the power.  These details contain character specific
     // information such as resolved modifiers.
+    var targetName = this.getName();
     for (var i = 0; i < list.length; i++) {
-      if (list[i].name == this.data_.name) {
+      if (list[i].name == targetName) {
         this.details_ = list[i];
         break;
       }
@@ -310,13 +328,11 @@ dungeon.Power.prototype = {
     var targetNames = [];
     for (var i = 0; i < targets.length; i++)
       targetNames.push(targets[i].name);
-    var message = this.characterInfo_.name + ' uses "' + this.data_.name +
+    var message = this.characterInfo_.name + ' uses "' + this.getName() +
       '" on ' + targetNames.join(',') + '.\n';
     this.client_.sendEvent({type: 'log', text: message});
     return message;
   },
-
-  
 
   /**
    * Indicates if the power deal damage.
@@ -417,6 +433,16 @@ dungeon.Power.prototype = {
     };
   },
 
+  // Effects -------------------------------------
+
+  addOnHitEffect: function(effect) {
+    this.onHitEffects_.push(effect); 
+  },
+
+  addOnMissEffect: function(effect) {
+    this.onMissEffects_.push(effect);
+  },
+
   /**
    * Apply an effect that triggers prior to targetting.
    * Includes effects that do not require targetting.
@@ -434,7 +460,12 @@ dungeon.Power.prototype = {
    * @return {string} Description of effects for logging.
    */
   applyOnHitEffects: function(target, result) {
-    return '';
+    var outcome = [];
+    for (var i = 0; i < this.onHitEffects_.length; i++) {
+      var effect = this.onHitEffects_[i];
+      outcome.push(effect.applyEffect.apply(this, [target, result]));
+    }
+    return outcome.join('\n');
   },
 
   /**
@@ -655,7 +686,7 @@ dungeon.Power.prototype = {
   },
 
   getName: function() {
-    return this.data_.name;
+    return this.name_;
   },
 
   /**
@@ -702,8 +733,11 @@ dungeon.Power.prototype = {
       tooltip.push(this.getToHit() + ' versus ' + this.getAttackedStat() + '.');
     if (this.powerDealsDamage())
       tooltip.push(this.getDamageString() + ' damage.');
-    if (this.getEffectsTooltip())
-      tooltip.push(this.getEffectsTooltip());
+    for (var i = 0; i < this.onHitEffects_.length; i++) {
+      var effect = this.onHitEffects_[i];
+      if ('getTooltip' in effect)
+        tooltip.push(effect.getTooltip.apply(this));
+    }
     return tooltip.join(' ');
   },
 
@@ -808,25 +842,60 @@ dungeon.Powers.prototype.customizedPowers = (function() {
     damageOnMiss: function(damageOnHit) {
       return Math.floor(damageOnHit/2);
     },
-    getEffectsTooltip: function() {
-      return '1/2 on miss.';
-    }
+  };
+
+  /**
+   * Forced movement, which may be a push, pull, slide or teleport.
+   */
+  var ForceMove = function(type, past, distance) {
+    return {
+      applyEffect: function(target) {
+        // Not a persistant condition. Simply logging the effect is
+        // sufficient for now to remind player and DM.
+        var messageSuffix = (distance == 1) ? ' space.\n' : ' spaces.\n'        
+        return target.name + ' ' + past + ' ' + distance + messageSuffix;
+      },
+
+      getTooltip: function() {
+        return type + ' ' + distance + '.';
+      }
+    };
+
   };
 
   var Push = function(n) {
-    return {
-      applyOnHitEffects: function(target) {
-        // Not a persistant condition. Simply logging the effect is
-        // sufficient for now to remind player and DM.
-        var messageSuffix = (n == 1) ? ' space.\n' : ' spaces.\n' 
-        return target.name + ' pushed ' + n + messageSuffix;
-      },
-      getEffectsTooltip: function() {
-        return 'Push ' + n + '.';
-      }
-    };
+    return ForceMove('Push', 'pushed', n);
   };
 
+  var Pull = function(n) {
+    return ForceMove('Pull', 'pulled', n);
+  };
+
+  var Slide = function(n) {
+    return ForceMove('Slide', 'slid', n);
+  };
+
+  var Teleport = function(n) {
+    return ForceMove('Teleport', 'teleported', n);
+  };
+
+  /**
+   * Target is slowed.
+   */
+  var Slow = {
+    applyEffect: function(target, result) {
+        this.addCondition(target, 'slow', result);
+        return target.name + ' has been slowed.';
+    },
+
+    getTooltip: function() {
+      return 'Slow.';
+    }
+  }
+
+  /**
+   * Target self.
+   */
   var Personal = {
     autoSelect: function() {
       return true;
@@ -838,36 +907,46 @@ dungeon.Powers.prototype.customizedPowers = (function() {
     },
   };
 
+  /**
+   * Bonus or penalty to all defense.
+   */
   var Defense = function(n) {
     return {
-      applyOnHitEffects: function(target, result) {
-        this.addCondition(target, 'Defense+' + n, result);
-        return target.name + ' has +' + n + ' to all defenses.';
+      applyEffect: function(target, result) {
+        var delta = (n < 0) ? n : '+' + n;
+        var condition = 'Defense' + delta;
+        this.addCondition(target, condition, result);
+        return target.name + ' has ' + delta + ' to all defenses.';
       },
-      getEffectsTooltip: function() {
-        return '+' + n + ' to all defenses.';
+      getTooltip: function() {
+        var delta = (n < 0) ? n : '+' + n;
+        return 'Defense' + delta;
       }
     };
   };
 
+  /**
+   * Heal for 1/4 max HP.
+   */
   var HealingSurge = {
-    applyOnHitEffects: function(target, result) {
+    applyEffect: function(target, result) {
       // TODO: Track number of healing surges remaining.
       var maxHP = parseInt(target.source.stats['Hit Points']);
       return this.heal(target, result, Math.floor(maxHP / 4));
     },
 
-    getEffectsTooltip: function() {
-      return 'Restore 1/4 HP.';
+    getTooltip: function() {
+      return 'Heal.';
     }
   };
 
   return [
     {name: 'Second Wind',
-     variant: [HealingSurge, Personal]
+     onHit: [HealingSurge],
+     variant: Personal
     },
     {name: 'Healing Surge',
-     variant: HealingSurge
+     onHit: [HealingSurge]
     },
     {name: 'Stone Fist Flurry of Blows',
      variant: SFFoB
@@ -885,13 +964,36 @@ dungeon.Powers.prototype.customizedPowers = (function() {
      variant: HalfDmg
     },
     {name: 'One Hundred Leaves',
-     variant: [HalfDmg, Push(2)]
+     variant: HalfDmg,
+     onHit: [Push(2)]
     },
     {name: 'Arc of the Flashing Storm',
-     variant: Push(2)
+     onHit: [Push(2)]
     },
     {name: 'Centered Defense',
-     variant: [Personal, Defense(2)]
+     variant: [Personal],
+     onHit: [Defense(2)]
+    },
+    {name: 'Encaging Spirits',
+     onHit: [Push(1), Slow]
+    },
+    {name: 'Bastion of Health',
+     onHit: [HealingSurge]
+    },
+    {name: 'Healing Word',
+     onHit: [HealingSurge]
+    },
+    {name: 'Feyjump Shot',
+     onHit: [Teleport(3)]
+    },
+    {name: 'Hymn of Resurgence',
+     onHit: [Defense(-2)]
+    },
+    {name: 'Servitude in Death',
+     variant: HalfDmg
+    },
+    {name: 'Storm of Spirit Shards',
+     variant: HalfDmg
     },
   ];
 
