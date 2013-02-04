@@ -870,6 +870,10 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         extension == 'bmp') {
       this.loadMapTile(file);
     } else if (extension == 'dnd4e' || extension == 'monster') {
+      // character or monster.
+      dungeon.ParseFile(this, file);
+    } else {
+      // map.
       dungeon.ParseFile(this, file);
     }
   },
