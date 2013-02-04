@@ -134,7 +134,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
         for (var j in mods) {
           // Modifying a stat such as HP or temps.
           if (j in condition.stats)
-            condition.stats[i] = mods[j];
+            condition.stats[j] = mods[j];
         }
         var effectMods = mods.effects;
         if (effectMods) {

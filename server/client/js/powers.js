@@ -170,14 +170,25 @@ dungeon.Power.prototype = {
    * Call to initiate use of the power.  Typically starts with target
    * selection.  Override to perform specialized actions.  Only one power
    * may be in use at a time per client.
-   * @param {String} character Name of the character using the power.
+   * @param {String|Object} character Name or description of the character
+   *     using the power.
    */
-  useBy: function(characterName) {
+  useBy: function(character) {
     this.phase_ = dungeon.Power.Phase.TARGET_SELECTION;
-    this.characterInfo_ = this.client_.getCharacterByName(characterName);
+    var list;
+
+    // Name of character instance.
+    if (typeof character == 'string') {
+      this.characterInfo_ = this.client_.getCharacterByName(character);
+      list = this.characterInfo_.source.powers;
+    } else {
+      this.characterInfo_ = character;
+      list = ('powers' in character) ?
+          character.powers : character.source.powers;
+    }
+
     // Fetch details of the power.  These details contain character specific
     // information such as resolved modifiers.
-    var list = this.characterInfo_.source.powers;
     for (var i = 0; i < list.length; i++) {
       if (list[i].name == this.data_.name) {
         this.details_ = list[i];
@@ -222,11 +233,9 @@ dungeon.Power.prototype = {
         if (attackResults.log)
           result.details  += attackResults.log;
       }
-      var attackedStat = null;
-      if (attackResults) {
-         attackedStat = this.weapon_? this.weapon_.defense : this.details_.defense;
+      var attackedStat = this.getAttackedStat();
+      if (attackResults)
          result.details += 'Attacking versus ' + attackedStat + '\n';
-      }
       for (var i = 0; i < targets.length; i++) {
         var target = targets[i].name;
         var hit = true; // Automatically hit if no roll required.
@@ -307,28 +316,7 @@ dungeon.Power.prototype = {
     return message;
   },
 
-  /**
-   * Determines the damage string with modified based on the condition of the
-   * target.
-   * @return {string} The damage.
-   */
-  getDamageString: function() {
-    var base = this.weapon_ ? this.weapon_.damage : this.details_.damage;
-    bonus = this.getCharacterAttribute(this.characterInfo_, 'Damage');
-    if (bonus)
-      dmgStr += ' + ' + bonus;
-    return base;
-  },
-
-  /**
-   * Determine situational damage modifier.
-   * @param {Object} target Character info for target.
-   * @return {numeric} Damage modifier.
-   */
-  getDamageModifier: function(target) {
-    // TODO - Test for target vulnerabilities and resistances.
-    return 0;
-  },
+  
 
   /**
    * Indicates if the power deal damage.
@@ -338,16 +326,12 @@ dungeon.Power.prototype = {
     return this.getDamageString() != undefined;
   },
 
-  toHit: function() {
-    return this.weapon_ ? this.weapon_.toHit : this.details_.toHit;
-  },
-
   /**
    * Does the power require a roll to hit its target.
    * @return {boolean} True if a to-hit roll is required.
    */
   requiresToHitRoll: function() {
-    return this.toHit() != undefined;
+    return this.getToHit() != undefined;
   },
 
   /**
@@ -384,7 +368,7 @@ dungeon.Power.prototype = {
    *     Result of damage roll. 
    */
   resolveToHit: function(targets, damage) {
-    var toHitBase = this.weapon_ ? this.weapon_.toHit : this.details_.toHit;
+    var toHitBase = this.getToHit();
     var toHitStr = '1d20 + ' + toHitBase;
 
     // Allow effect bonus for attacker.
@@ -578,6 +562,34 @@ dungeon.Power.prototype = {
   },
 
   /**
+   * Heals target.
+   * @param {string} target Name of the target.
+   * @param {Object} result Structure for storing "attack" results.
+   * @param {number} hp Number of hit points to add.
+   */
+  heal: function(target, result, hp) {
+    var index = this.client_.getCharacterIndex(target.name);
+    var list = result.characters;
+    var entry = null;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i][0] == index) {
+        entry = list[i];
+        break;
+      }
+    }
+    if (!entry) {
+      entry = [index, {}];
+      result.characters.push(entry);
+    }
+    var maxHp = parseInt(target.source.stats['Hit Points']);  
+    var currentHp = parseInt(target.condition.stats['Hit Points']);
+    var newHp = Math.min(maxHp, currentHp + hp);
+    var healedHp = newHp - currentHp;
+    entry[1]['Hit Points'] = newHp;
+    return 'Healed ' + healedHp + ' (from ' + currentHp + ' to ' + newHp + ').';
+  },
+
+  /**
    * Determines if a condition is in effect.
    */
   hasEffect: function(character, effect) {
@@ -589,6 +601,123 @@ dungeon.Power.prototype = {
     }
     return false;
   },
+
+  // Getters -------------------------------------------
+
+  getActionType: function() {
+    if (this.details_)
+      return this.details_['Action Type'];
+  },
+
+  /**
+   * Stat used to determine target toHit roll, which may depend on choice of
+   * weapon for player attacks.
+   */
+  getAttackedStat: function() {
+    if (this.weapon_)
+      return this.weapon_.defense;
+    if (this.details_)
+      return this.details_.defense;
+  },
+
+  /**
+   * Determines the damage string, including bonuses based on the condition of
+   * for the attacker.  Does not include defensive bonuses.
+   * @return {string} The damage.
+   */
+  getDamageString: function() {
+    var dmgStr;
+    if (this.weapon_)
+      dmgStr = this.weapon_.damage;
+    else if (this.details_)
+      dmgStr = this.details_.damage;
+    if (!dmgStr)
+      return;
+    // TODO: Might be better to defer including this bonus to allow for DM
+    // modification.
+    bonus = this.getCharacterAttribute(this.characterInfo_, 'Damage');
+    if (bonus)
+      dmgStr += ' + ' + bonus;
+    return dmgStr;
+  },
+
+  /**
+   * Determine situational damage modifier.
+   * @param {Object} target Character info for target.
+   * @return {numeric} Damage modifier.
+   */
+  getDamageModifier: function(target) {
+    // TODO - Test for target vulnerabilities and resistances.
+    return 0;
+  },
+
+  getEffectsTooltip: function() {
+  },
+
+  getName: function() {
+    return this.data_.name;
+  },
+
+  /**
+   * Range of the attack.
+   */
+  getRange: function() {
+    if (this.details_)
+      return this.details_['Range'];
+  },
+
+  /**
+   * Threshold value for recharging a power.
+   */
+  getRecharge: function() {
+    if (this.details_)
+      return this.details_['Recharge'];
+  },
+
+  /**
+   * Conditions for limiting number of targets.  May be a maximum target count
+   * within range, or specify friend versus foe.
+   */
+  getTargets: function() {
+    if (this.details_)
+      return this.details_['Targets'];
+  },
+
+  /**
+   * Base toHit modifier.
+   */
+  getToHit: function() {
+    if (this.weapon_)
+      return this.weapon_.toHit;
+    if (this.details_)
+      return this.details_.toHit;
+  },
+
+  /**
+   * Short description of power.
+   */
+  getTooltip: function() {
+    var tooltip = [];
+    if (this.requiresToHitRoll())
+      tooltip.push(this.getToHit() + ' versus ' + this.getAttackedStat() + '.');
+    if (this.powerDealsDamage())
+      tooltip.push(this.getDamageString() + ' damage.');
+    if (this.getEffectsTooltip())
+      tooltip.push(this.getEffectsTooltip());
+    return tooltip.join(' ');
+  },
+
+  getTrigger: function() {
+    if (this.details_)
+      return this.details_['Trigger'];
+  },
+
+  getUsage: function() {
+    if (this.details_)
+      return this.details_['Power Usage'];
+  },
+
+  // Random Goodness -----------------------------------  
 
   /**
    * Resolves a dice roll.
@@ -678,6 +807,9 @@ dungeon.Powers.prototype.customizedPowers = (function() {
   var HalfDmg = {
     damageOnMiss: function(damageOnHit) {
       return Math.floor(damageOnHit/2);
+    },
+    getEffectsTooltip: function() {
+      return '1/2 on miss.';
     }
   };
 
@@ -688,6 +820,9 @@ dungeon.Powers.prototype.customizedPowers = (function() {
         // sufficient for now to remind player and DM.
         var messageSuffix = (n == 1) ? ' space.\n' : ' spaces.\n' 
         return target.name + ' pushed ' + n + messageSuffix;
+      },
+      getEffectsTooltip: function() {
+        return 'Push ' + n + '.';
       }
     };
   };
@@ -701,18 +836,39 @@ dungeon.Powers.prototype.customizedPowers = (function() {
       return target.x == this.characterInfo_.x &&
           target.y == this.characterInfo_.y;
     },
-  }
+  };
 
   var Defense = function(n) {
     return {
       applyOnHitEffects: function(target, result) {
-        this.addCondition(target, 'Defense+2', result);
+        this.addCondition(target, 'Defense+' + n, result);
         return target.name + ' has +' + n + ' to all defenses.';
+      },
+      getEffectsTooltip: function() {
+        return '+' + n + ' to all defenses.';
       }
     };
-  }
+  };
+
+  var HealingSurge = {
+    applyOnHitEffects: function(target, result) {
+      // TODO: Track number of healing surges remaining.
+      var maxHP = parseInt(target.source.stats['Hit Points']);
+      return this.heal(target, result, Math.floor(maxHP / 4));
+    },
+
+    getEffectsTooltip: function() {
+      return 'Restore 1/4 HP.';
+    }
+  };
 
   return [
+    {name: 'Second Wind',
+     variant: [HealingSurge, Personal]
+    },
+    {name: 'Healing Surge',
+     variant: HealingSurge
+    },
     {name: 'Stone Fist Flurry of Blows',
      variant: SFFoB
     },

@@ -252,61 +252,34 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
     }
     $('active-character-powers').textContent = '';
 
-    var block = $('power-summary-template').cloneNode(true);
-    block.id = '';
-    setData(block, 'power-summary-name', 'Healing surge');
-    block.addEventListener('click',
-        this.dispatchEvent.bind(this, 'use-power', 'healing-surge', {}));
-    $('active-character-powers').appendChild(block);
-
+    var powerNames = ['Second Wind'];
     for (var i = 0; i < powers.length; i++) {
-
-      // TODO(kellis): Use resolved power to pick up description.  Current
-      // descriptions heavily biased toward attack powers.
-
-      var power = powers[i];
+      powerNames.push(powers[i].name);
+    }
+    
+    var repository = dungeon.Powers.getInstance();
+    for (var i = 0; i < powerNames.length; i++) {
+      var power = repository.get(powerNames[i]);
+      power.useBy(character);
       block = $('power-summary-template').cloneNode(true);
       block.id = '';
-      var usage = '';
-      if (powers[i]['Power Usage']) {
-        usage = powers[i]['Power Usage'].split(' ')[0].toLowerCase();
-        block.classList.add(usage);
-      }
-      // Provide mechanism to easily extract combat information from the element
-      // when selected.
-      block.data = {
-        name: power.name,
-        usage: usage,
-        toHit: '?',
-        defense: '?',
-        damage: '?',
-        minDamage: '?',
-        maxDamage: '?'
-      };
-      
-    
-      // Make assumption that first weapon in list is best.  TODO(kellis): Check assumption.
-      var weapon = power.weapons && power.weapons.length > 0 ? power.weapons[0] : null;
-      if (weapon) {
-        block.data.toHit = weapon.toHit;
-        block.data.defense = weapon.defense;
-        if (weapon.damage.length > 0) {
-          block.data.damage = weapon.damage;
-          var damageRange = this.parseDamageRange(weapon.damage);
-          block.data.minDamage = damageRange[0];
-          block.data.maxDamage = damageRange[1];
-        }
-      }
+      var actionType = power.getActionType();
       // Suppress move power for now. Eventually show all powers.
-      if (powers[i]['Action Type'] != 'Move Action') {
-        setData(block, 'power-summary-name', power.name);
-        setData(block, 'power-summary-attack-bonus', block.data.toHit);
-        setData(block, 'power-summary-defense', block.data.defense);
-        setData(block, 'power-summary-damage', block.data.damage);
+      if (actionType != 'Move Action') {
+        var usage = power.getUsage();
+        if (usage) {
+          var usageClass = usage.split(' ')[0].toLowerCase();
+          block.classList.add(usageClass);
+        }
+        setData(block, 'power-summary-name', power.getName());
+        setData(block, 'power-summary-tooltip', power.getTooltip());
+        block.data = {name: power.getName()};
         block.addEventListener('click', this.selectPower.bind(this, block));
         $('active-character-powers').appendChild(block);
       }
+      power.cancel();
     }
+
     // force tab switch.
     this.client.onSelectView('sidebar-page', 'combat-tracker');
   },
