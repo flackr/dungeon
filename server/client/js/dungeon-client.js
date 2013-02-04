@@ -58,7 +58,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         this.onRemoveCharacter.bind(this));
 
     // Drag-n-drop of character files.
-    var dropZone = $('sidebar-character-list');
+    var dropZone = $('sidebar');
     dropZone.addEventListener('dragover', this.onFileDragOver.bind(this));
     dropZone.addEventListener('drop', this.onFileDrop.bind(this));
     // Character file chooser
@@ -67,11 +67,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     // Drag-n-drop of a character from the sidebar onto the map.
     this.canvas.addEventListener('dragover', this.onCharacterDragOver.bind(this));
     this.canvas.addEventListener('drop', this.onCharacterDrop.bind(this));
-
-    // Drag-n-drop of image files for map tiles.
-    dropZone = $('map-tiles');
-    dropZone.addEventListener('dragover', this.onFileDragOver.bind(this));
-    dropZone.addEventListener('drop', this.onMapTileDrop.bind(this));
 
     window.addEventListener('resize', this.resize.bind(this));
     this.addEventListener('tile-added', this.rebuildTiles.bind(this));
@@ -828,11 +823,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     e.dataTransfer.dropEffect = 'copy';
   },
 
-  onMapTileDrop: function(e) {
-    var files = e.dataTransfer.files;
-    this.loadFiles(files, this.loadMapTile.bind(this));
-  },
-
   loadMapTile: function(file) {
     var reader = new FileReader();
     var filename = file.name;
@@ -860,12 +850,27 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
   onFileDrop: function(e) {
     var files = e.dataTransfer.files;
-    this.loadFiles(files, dungeon.ParseFile.bind(undefined, this));
+    this.loadFiles(files, this.loadFile.bind(this));
   },
 
   onFileSelect: function(e) {
     var files = e.target.files;
-    this.loadFiles(files, dungeon.ParseFile.bind(undefined, this));
+    this.loadFiles(files, this.loadFile.bind(this));
+  },
+
+  loadFile: function(file) {
+    var filename = file.name;
+    var extension = filename.substr(filename.lastIndexOf('.') + 1);
+    if (extension == 'png' ||
+        extension == 'jpg' ||
+        extension == 'jpeg' ||
+        extension == 'svg' ||
+        extension == 'gif' ||
+        extension == 'bmp') {
+      this.loadMapTile(file);
+    } else if (extension == 'dnd4e' || extension == 'monster') {
+      dungeon.ParseFile(this, file);
+    }
   },
 
   /**
