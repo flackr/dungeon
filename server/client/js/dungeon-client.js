@@ -524,6 +524,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         mousemove: this.onPointerMove.bind(this)}
     };
     var selectedTile = dungeon.MapEditor.selectedTile();
+    var selectedSize = dungeon.MapEditor.selectedSize();
     if (selectedTile == -1) {
       this.onPointerDown(e);
     } else {
@@ -532,10 +533,15 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       var self = this;
       var paint = function(pos) {
         if (self.map.length > pos.y && self.map[pos.y].length > pos.x) {
-          pos.type = 'change';
-          pos.value = selectedTile;
-          pos.size = dungeon.MapEditor.selectedSize();
-          self.sendEvent(pos);
+          if (selectedSize == 0) {
+            var obj = {x: pos.x, y: pos.y, tile: selectedTile, w: 2, h: 2};
+            self.sendEvent({type: 'add-object', details: obj});
+          } else {
+            pos.type = 'change';
+            pos.value = selectedTile;
+            pos.size = selectedSize;
+            self.sendEvent(pos);
+          }
         }
       };
 
@@ -560,7 +566,28 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   onPointerDown: function(e) {
-    this.pointer.mode = 'select';
+    if (dungeon.MapEditor.selectedSize() == 0 &&
+        this.ui.selectedObject !== undefined) {
+      var objIndex = this.ui.selectedObject;
+      var evt = this.computeMapCoordinates(e);
+      var posx = evt.x - this.objects[objIndex].x;
+      var posy = evt.y - this.objects[objIndex].y;
+      if (posx < 0 || posy < 0 || posx >= this.objects[objIndex].w || posy >= this.objects[objIndex].h) {
+        this.pointer.mode == 'select';
+      } else {
+        this.pointer.startx = evt.x;
+        this.pointer.starty = evt.y;
+        this.pointer.offx = posx;
+        this.pointer.offy = posy;
+        if (posx == this.objects[objIndex].w - 1 &&
+            posy == this.objects[objIndex].h - 1)
+          this.pointer.mode = 'resize';
+        else
+          this.pointer.mode = 'move';
+      }
+    } else {
+      this.pointer.mode = 'select';
+    }
     this.pointer.x1 = e.clientX;
     this.pointer.y1 = e.clientY;
     this.pointer.mapX = this.viewport.x;
@@ -573,7 +600,27 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var deltaX = e.clientX - this.pointer.x1;
     var deltaY = e.clientY - this.pointer.y1;
     var dragThreshold = 10;
-    if (this.pointer.dragStarted || Math.abs(deltaX) + Math.abs(deltaY) > dragThreshold) {
+    if (this.pointer.mode == 'resize') {
+      var evt = this.computeMapCoordinates(e);
+      var object = this.objects[this.ui.selectedObject];
+      if (object.w == evt.x - object.x + 1 &&
+          object.h == evt.y - object.y + 1)
+        return;
+      this.sendEvent({type: 'update-object',
+                      index: this.ui.selectedObject,
+                      details: {w: evt.x - object.x + 1,
+                                h: evt.y - object.y + 1}});
+    } else if (this.pointer.mode == 'move') {
+      var evt = this.computeMapCoordinates(e);
+      var newx = evt.x - this.pointer.offx;
+      var newy = evt.y - this.pointer.offy;
+      var object = this.objects[this.ui.selectedObject];
+      if (object.x == newx && object.y == newy)
+        return;
+      this.sendEvent({type: 'update-object',
+                      index: this.ui.selectedObject,
+                      details: {x: newx, y: newy}});
+    } else if (this.pointer.dragStarted || Math.abs(deltaX) + Math.abs(deltaY) > dragThreshold) {
       this.pointer.dragStarted = true;
       this.viewport.x = (this.pointer.mapX - deltaX / this.viewport.tileSize);
       this.viewport.y = (this.pointer.mapY - deltaY / this.viewport.tileSize);
@@ -620,6 +667,19 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var evt = this.computeMapCoordinates(e);
     if (evt.x < 0 || evt.y < 0 || evt.x >= this.map[0].length || evt.y >= this.map.length)
       return;
+
+    if (dungeon.MapEditor.selectedSize() == 0) {
+      // Object selection mode.
+      for (var i = this.objects.length - 1; i >= 0; i--) {
+        if (this.objects[i].x <= evt.x && evt.x <= this.objects[i].x + this.objects[i].w &&
+            this.objects[i].y <= evt.y && evt.y <= this.objects[i].y + this.objects[i].h) {
+          this.ui.selectedObject = i;
+          return;
+        }
+      }
+      delete this.ui.selectedObject;
+      return;
+    }
 
     if (this.ui.activePower) {
       // Update target selection if power is selected.
@@ -1121,6 +1181,18 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
                       baseY + (i - view.y1) * this.viewport.tileSize, 
                       this.viewport.tileSize, this.viewport.tileSize);
       }
+    }
+
+    for (var i = 0; i < this.objects.length; i++) {
+      var object = this.objects[i];
+      if (object.x + object.w <= view.x1 || object.y + object.h <= view.y1 ||
+          object.x >= view.x2 || object.y >= view.y2)
+        continue;
+      ctx.drawImage(this.ui.mapImages[object.tile],
+                    baseX + (object.x - view.x1) * this.viewport.tileSize,
+                    baseY + (object.y - view.y1) * this.viewport.tileSize,
+                    this.viewport.tileSize * object.w,
+                    this.viewport.tileSize * object.h);
     }
 
     // Mark selected character and indicate movement range.

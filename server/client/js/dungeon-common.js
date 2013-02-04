@@ -86,6 +86,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
     var mapWidth = 60;
     var mapHeight = 60;
     this.map = [];
+    this.objects = [];
     for (var i = 0; i < mapHeight; i++) {
       this.map.push([]);
       for (var j = 0; j < mapWidth; j++) {
@@ -108,6 +109,23 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
           if (x >= 0 && y >= 0 && y < this.map.length && x < this.map[y].length)
             this.map[y][x] = eventData.value;
         }
+      }
+    } else if (eventData.type == 'add-object' || eventData.type == 'update-object') {
+      var index;
+      if (eventData.type == 'add-object') {
+        index = this.objects.length;
+        this.objects.push({
+            x: 0,
+            y: 0,
+            tile: 0,
+            w: 2,
+            h: 2,
+        });
+      } else {
+        index = eventData.index;
+      }
+      for (field in eventData.details) {
+        this.objects[index][field] = eventData.details[field];
       }
     } else if (eventData.type == 'move') {
       this.characterPlacement[eventData.index].x = eventData.x;
