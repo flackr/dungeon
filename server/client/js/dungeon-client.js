@@ -534,6 +534,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         if (self.map.length > pos.y && self.map[pos.y].length > pos.x) {
           pos.type = 'change';
           pos.value = selectedTile;
+          pos.size = dungeon.MapEditor.selectedSize();
           self.sendEvent(pos);
         }
       };

@@ -100,7 +100,15 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
     if (eventData.type == 'map') {
       this.map = eventData.map;
     } else if (eventData.type == 'change') {
-      this.map[eventData.y][eventData.x] = eventData.value;
+      var diff = (eventData.size - 1) / 2;
+      for (var i = 0; i < eventData.size; i++) {
+        for (var j = 0; j < eventData.size; j++) {
+          var x = eventData.x - diff + j;
+          var y = eventData.y - diff + i;
+          if (x >= 0 && y >= 0 && y < this.map.length && x < this.map[y].length)
+            this.map[y][x] = eventData.value;
+        }
+      }
     } else if (eventData.type == 'move') {
       this.characterPlacement[eventData.index].x = eventData.x;
       this.characterPlacement[eventData.index].y = eventData.y;

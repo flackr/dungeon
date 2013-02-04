@@ -7,6 +7,7 @@ dungeon.MapEditor = (function() {
     tools = toolsDiv;
     tiles = tilesDiv;
     tiles.addEventListener('click', selectTile);
+    tools.addEventListener('click', selectTool);
   }
 
   function loadTiles(mapTiles) {
@@ -18,6 +19,15 @@ dungeon.MapEditor = (function() {
       tileBtn.setAttribute('src', mapTiles[i].src);
       tiles.appendChild(tileBtn);
     }
+  }
+
+  function selectTool(e) {
+    var target = e.target;
+    while (target && target.parentNode != tools)
+      target = target.parentNode;
+    for (var i = 0; i < tools.children.length; i++)
+      tools.children[i].removeAttribute('selected');
+    target.setAttribute('selected', true);
   }
 
   function selectTile(e) {
@@ -42,10 +52,18 @@ dungeon.MapEditor = (function() {
     return -1;
   }
 
+  function selectedSize() {
+    for (var i = 0; i < tools.children.length; i++)
+      if (tools.children[i].hasAttribute('selected'))
+        return parseInt(tools.children[i].textContent);
+    return 1;
+  }
+
   return {
     initialize: initialize,
     loadTiles: loadTiles,
     selectedTile: selectedTile,
+    selectedSize: selectedSize,
   };
 
 })();
