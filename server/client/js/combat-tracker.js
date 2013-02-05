@@ -234,6 +234,10 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
   },
 
   onCharacterSelect: function(character) {
+    var active = $('active-character-name').textContent;
+    if (active == character.name)
+      return;
+
     // Only track character/monster instances.
     if (!('condition' in character))
       return;
@@ -309,7 +313,7 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
       if (powerElement) {
         powerElement.setAttribute('selected', true);
         powerName = powerElement.data.name;
-      } 
+      }
     }
     this.dispatchEvent('power-selected', characterName, powerName);
   },

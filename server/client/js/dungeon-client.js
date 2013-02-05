@@ -132,7 +132,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
   // TODO: rename since we're really using a power on targets, which may be allies.
   attackTargets: function() {
-    var power = this.combatTracker.selectedPower();
+    var power = this.ui.activePower;
     if (power && this.ui.targets && this.ui.selected !== undefined && this.ui.targets.length) {
       // Power respository handles resolution of power.
       this.dispatchEvent('power-used');
@@ -177,6 +177,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
     var success = false;
     if (this.selectCharacterByName(characterName)) {
+      success = true;
       var power = this.ui.activePower = this.powers.get(powerName);
       this.dispatchEvent('power-selected', characterName, powerName);
       this.ui.targets = [];
@@ -205,7 +206,10 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     if (index != this.ui.selected) {
       this.ui.selected = index;
       this.update();
-      this.dispatchEvent('character-selected', success ? characterName : null);
+      if (success) {
+        this.dispatchEvent('character-selected', success ? 
+            this.characterPlacement[index] : null);
+      }
     }
     return success;
   },
