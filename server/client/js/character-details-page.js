@@ -179,10 +179,12 @@ dungeon.CharacterDetailsPage = (function() {
       block.addEventListener('click', createToggleDetailsCallback(block));
       block.getElementsByClassName('power-name')[0].textContent = name;
       block.getElementsByClassName('power-type')[0].textContent = type;
+      var description = power['Hit Effects'];
       var effectBlock = block.getElementsByClassName('power-effect')[0];
       if (power.weapons && power.weapons.length > 0) {
         effectBlock.getElementsByClassName('power-to-hit-section')[0].hidden = false;
-        effectBlock.getElementsByClassName('power-damage-section')[0].hidden = false;
+        effectBlock.getElementsByClassName('power-damage-section')[0].hidden = !!description;
+
         // Assume preferred weapon is at the top of the list.
         var weapon = power.weapons[0];
         var weaponName = weapon.name;
@@ -220,11 +222,19 @@ dungeon.CharacterDetailsPage = (function() {
         var targetElement = targetSection.getElementsByClassName('power-value')[0];
         targetElement.textContent = targets;
       }
-      var description = power['Description'];
+
       if (description) {
-        var descriptionSection = block.getElementsByClassName('power-description')[0];
+        var descriptionSection = block.getElementsByClassName('power-hit-effects')[0];
         descriptionSection.hidden = false;
-        descriptionSection.textContent = description;
+        var value = descriptionSection.getElementsByClassName('power-value')[0];
+        value.textContent = description;
+      }
+      description = power['Miss Effects'];
+      if (description) {
+        var descriptionSection = block.getElementsByClassName('power-miss-effects')[0];
+        descriptionSection.hidden = false;
+        var value = descriptionSection.getElementsByClassName('power-value')[0];
+        value.textContent = description;
       }
       var url = power.url;
       if (url) {

@@ -344,13 +344,15 @@ html[ui=mobile] #sidebar {
 
 .power-type,
 .power-effect {
-  margin: 5px;
+  margin: 5px 5px 10px 5px;
 }
 
-.power-description,
-.power-conpendium-link,
-.power-weapon {
- margin-top: 5px;
+.power-effect > div {
+  margin-top: 3px;
+}
+
+div.power-conpendium-link {
+  margin-top: 10px;
 }
 
 #power-template,
@@ -425,10 +427,6 @@ html[ui=mobile] #sidebar {
   height: 0;
   margin-top: 4px;
   width: 0;
-}
-
-.power-effect {
-  margin-bottom: 5px;
 }
 
 #map-banner-message,

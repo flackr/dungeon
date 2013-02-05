@@ -189,16 +189,48 @@ dungeon.ParseMonster = (function() {
       var attackBonuses = power.getElementsByTagName('AttackBonuses')[0];
       attack.toHit = extractor(attackBonuses, 'MonsterPowerAttackNumber');
       attack.defense = extractor(attackBonuses, 'DefenseName');
-      attack.damage = extractor(power, 'Expression');
       attack.name = '';
-      // TODO(kellis): Fix hacky escape clause.
-      if (!attack.damage)
-        attack.damage = 'special';
+
+      // TODO(kellis): This is a bit of a hack.
       if (attack.toHit)
         data.weapons = [attack];
-      var description = extractDescription_(power, 'Description');
-      if (description)
-        data['Description'] = description;
+
+      var hit = power.getElementsByTagName('Hit')[0];
+      if (hit) {
+        var damage = extractor(hit, 'Expression');
+        var onHit = [];
+        var description = extractor(hit, 'Description');
+        if (description && description.length > 0) {
+          // Damage apears to be bogus unless accompanied by a description.
+          if (damage) {
+            attack.damage = damage;
+            onHit.push(damage);
+          }
+          onHit.push(description);
+        }     
+        var effects =  power.getElementsByTagName('Effect');
+        for (var j = 0; j < effects.length; j++) {
+          description = extractor(effects[j], 'Description');
+          if (description && description.length > 0)
+            onHit.push(description);
+        }
+        if (onHit.length > 0)
+          data['Hit Effects'] = onHit.join(' ');
+      }
+
+      var miss = power.getElementsByTagName('Miss')[0];
+      if (miss) {
+        var missDamage = extractor(miss, 'Expression');
+        var onMiss = [];
+        if (missDamage)
+          onMiss.push(missDamage);
+        var description = extractor(miss, 'Description');
+        if (description && description.length > 0)
+          onMiss.push(description);
+        if (onMiss.length > 0)
+          data['Miss Effects'] = onMiss.join(' ');       
+      }
+     
       powers.push(data);
     }
     return powers;
