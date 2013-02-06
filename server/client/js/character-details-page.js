@@ -178,7 +178,16 @@ dungeon.CharacterDetailsPage = (function() {
         }
       };
       var SetValue = function(key, section) {
-        var value = power[key];
+        var value;
+        if (typeof key == 'string') {
+          value = power[key];
+        } else {
+          value = [];
+          for (j = 0; j < key.length; j++) {
+            value.push(power[key[j]]);
+          }
+          value = value.join('\n');
+        }
         if (value) {
            var sectionElement = block.getElementsByClassName(section)[0];
            sectionElement.hidden = false;
@@ -227,10 +236,7 @@ dungeon.CharacterDetailsPage = (function() {
       SetValue('Trigger', 'power-trigger-section');
       SetValue('Attack Type', 'power-attack-type-section');
       SetValue('Target', 'power-targets-section');
-      if (power['Hit'])
-        SetValue('Hit', 'power-hit-effects');
-      else if (power['Effect'])
-        SetValue('Effect', 'power-hit-effects');
+      SetValue(['Hit', 'Effect'], 'power-hit-effects');
       SetValue('Miss', 'power-miss-effects');
 
       var url = power.url;
