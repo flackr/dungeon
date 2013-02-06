@@ -7,8 +7,7 @@ var app;
 try {
   app = require('http').createServer(handler),
   io = require(socketio).listen(app),
-  fs = require('fs'),
-  path = require('path');
+  fs = require('fs');
 
 } catch (e) {
   console.log('Error loading pre-requisite libraries.  Try npm install socket.io?');
@@ -18,7 +17,7 @@ io.set('log level', 1); // reduce logging.
 
 var dungeon = require('./client/js/dungeon-common.js');
 
-var port = 1337;
+var port = process.env.PORT;
 if (process.argv.length > 2) {
     port = parseInt(process.argv[2]);
 }
@@ -56,7 +55,7 @@ function guessMimeType(filePath) {
  */
 function handler(req, res) {
   var filePath = 'client' + (req.url == '/' ? '/index.html' : req.url);
-  path.exists(filePath, function(exists) {
+  fs.exists(filePath, function(exists) {
     if (exists) {
       fs.readFile(filePath, function(error, content) {
         if (error) {
