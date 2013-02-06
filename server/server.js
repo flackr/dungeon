@@ -7,7 +7,8 @@ var app;
 try {
   app = require('http').createServer(handler),
   io = require(socketio).listen(app),
-  fs = require('fs');
+  fs = require('fs'),
+  path = require('path');
 
 } catch (e) {
   console.log('Error loading pre-requisite libraries.  Try npm install socket.io?');
@@ -55,7 +56,8 @@ function guessMimeType(filePath) {
  */
 function handler(req, res) {
   var filePath = 'client' + (req.url == '/' ? '/index.html' : req.url);
-  fs.exists(filePath, function(exists) {
+  var existsFunc = fs.exists || path.exists;
+  existsFunc(filePath, function(exists) {
     if (exists) {
       fs.readFile(filePath, function(error, content) {
         if (error) {
