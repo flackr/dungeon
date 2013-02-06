@@ -343,12 +343,13 @@ html[ui=mobile] #sidebar {
 }
 
 .power-type,
+.power-description,
 .power-effect {
   margin: 5px 5px 10px 5px;
 }
 
 .power-effect > div {
-  margin-top: 3px;
+  margin-top: 5px;
 }
 
 div.power-conpendium-link {
@@ -404,6 +405,7 @@ div.power-conpendium-link {
 .power-attack-bonus,
 .power-defense,
 .power-damage,
+.power-crit,
 .power-value {
   display: inline;
 }

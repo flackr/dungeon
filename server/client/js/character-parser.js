@@ -130,33 +130,6 @@ dungeon.ParseCharacter = (function() {
   function extractPowers_(node, rules) {
     var powers = [];
 
-    // TODO(kellis): Cross-check powers in rules list with powers in PowerStats
-    // to see if any are missing.
-    // var names = extractRulesByType_(rules, 'Power');
-
-    // Cannot currently load sample characters as naturally they are stored differently.
-    // Instead traverse RulesElementField. e.g. for the "Sure Strike" power:
-
-    // <RulesElementField field="Power Usage" name = "Reaping Strike" type="Power" ...>
-    //   At-Will
-    // </RulesElementField>
-    // <RulesElementField field="Level" name="Reaping Strike" type="Power" ... >
-    //  1
-    // </RulesElementField>
-    // <RulesElementField field="Keywords" name="Reaping Strike" type="Power" ... >
-    //  Martial, Weapon
-    // </RulesElementField>
-    // <RulesElementField field="Attack Type" name="Reaping Strike" type="Power" ... >
-    //  Melee weapon
-    // </RulesElementField>
-    // <RulesElementField field="Attack" name="Reaping Strike" type="Power" ... >
-    //  Strength vs. AC
-    // </RulesElementField>
-    // <RulesElementField field="Hit" name="Reaping Strike" type="Power" ... >
-    //  1[W] + Strength modifier damage.
-    //  Increase damage to 2[W] + Strength modifier at 21st level.
-    // </RulesElementField>
-
     var powerStats = node.getElementsByTagName('PowerStats')[0];
     // If group is missing, assume powers are lumped in main block.
     if (!powerStats)
@@ -189,6 +162,7 @@ dungeon.ParseCharacter = (function() {
             toHit: extractWeaponStat(weapon, 'AttackBonus'),
             defense: extractWeaponStat(weapon, 'Defense'),
             damage: extractWeaponStat(weapon, 'Damage'),
+            crit: extractWeaponStat(weapon, 'CritDamage'),
             toHitDetails: extractWeaponStat(weapon, 'HitComponents'),
             damageDetails: extractWeaponStat(weapon, 'DamageComponents')
           });

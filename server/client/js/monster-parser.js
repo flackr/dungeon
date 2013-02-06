@@ -176,11 +176,11 @@ dungeon.ParseMonster = (function() {
       data['Action Type'] = type;
       data['Power Usage'] = usage;
       if (range)
-        data['Range'] = range;
+        data['Attack Type'] = range;
       if (trigger)
         data['Trigger'] = trigger;
       if (targets)
-        data['Targets'] = targets;
+        data['Target'] = targets;
       if (usage == 'Recharge' && usageDetails)
         data['Recharge'] = usageDetails;
       data.name = extractValueFromChild_(power, 'Name');
@@ -215,7 +215,7 @@ dungeon.ParseMonster = (function() {
             onHit.push(description);
         }
         if (onHit.length > 0)
-          data['Hit Effects'] = onHit.join(' ');
+          data['Hit'] = onHit.join(' ');
       }
 
       var miss = power.getElementsByTagName('Miss')[0];
@@ -228,7 +228,7 @@ dungeon.ParseMonster = (function() {
         if (description && description.length > 0)
           onMiss.push(description);
         if (onMiss.length > 0)
-          data['Miss Effects'] = onMiss.join(' ');       
+          data['Miss'] = onMiss.join(' ');
       }
      
       powers.push(data);

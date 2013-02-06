@@ -157,6 +157,7 @@ dungeon.CharacterDetailsPage = (function() {
     $('encounter-list').textContent = '';
     $('daily-list').textContent = '';
 
+    var isMonster = characterData.stats['Class'] == 'Monster';
     var list = sortPowers_(characterData);
     for (var i = 0; i < list.length; i++) {
       var power = list[i];
@@ -176,66 +177,62 @@ dungeon.CharacterDetailsPage = (function() {
           element.getElementsByClassName('power-details-hide')[0].hidden = details.hidden;
         }
       };
+      var SetValue = function(key, section) {
+        var value = power[key];
+        if (value) {
+           var sectionElement = block.getElementsByClassName(section)[0];
+           sectionElement.hidden = false;
+           var valueElement = sectionElement.getElementsByClassName('power-value')[0];
+           valueElement.textContent = value;
+        }
+      };
       block.addEventListener('click', createToggleDetailsCallback(block));
       block.getElementsByClassName('power-name')[0].textContent = name;
       block.getElementsByClassName('power-type')[0].textContent = type;
-      var description = power['Hit Effects'];
+      if (power['Flavor'])
+        block.getElementsByClassName('power-description')[0].textContent = power['Flavor'];
+
       var effectBlock = block.getElementsByClassName('power-effect')[0];
       if (power.weapons && power.weapons.length > 0) {
         effectBlock.getElementsByClassName('power-to-hit-section')[0].hidden = false;
-        effectBlock.getElementsByClassName('power-damage-section')[0].hidden = !!description;
+        effectBlock.getElementsByClassName('power-damage-section')[0].hidden = isMonster;
+        effectBlock.getElementsByClassName('power-crit-section')[0].hidden = isMonster;
 
         // Assume preferred weapon is at the top of the list.
         var weapon = power.weapons[0];
-        var weaponName = weapon.name;
-        var defense = weapon.defense;
+
+        if (weapon.defense == 'unknown') {
+          // False alarm. See this weird pattern on several healing powers.
+          effectBlock.getElementsByClassName('power-to-hit-section')[0].hidden = true;
+          effectBlock.getElementsByClassName('power-damage-section')[0].hidden = true;
+          effectBlock.getElementsByClassName('power-crit-section')[0].hidden = true;
+        }
+
+        if (weapon.crit == 0) {
+          // A non-damaging attack against one or more targets.
+          effectBlock.getElementsByClassName('power-damage-section')[0].hidden = true;
+          effectBlock.getElementsByClassName('power-crit-section')[0].hidden = true;
+        }
+ 
+        var damage = weapon.damage;
+        if (weapon.name != '')
+          damage += ' (' + weapon.name + ')';
+
         populateField(effectBlock, 'power-attack-bonus', weapon.toHit);
         populateField(effectBlock, 'power-defense', weapon.defense);
-        populateField(effectBlock, 'power-damage', weapon.damage);
-        populateField(effectBlock, 'power-weapon', weapon.name);
+        populateField(effectBlock, 'power-damage', damage);
+        populateField(effectBlock, 'power-crit', weapon.crit);
       }
-      var recharge = power['Recharge'];
-      if (recharge) {
-        var rechargeSection = block.getElementsByClassName('power-recharge-section')[0];
-        rechargeSection.hidden = false;
-        var rechargeElement = rechargeSection.getElementsByClassName('power-value')[0];
-        rechargeElement.textContent = recharge;
-      }
-      var trigger = power['Trigger'];
-      if (trigger) {
-        var triggerSection = block.getElementsByClassName('power-trigger-section')[0];
-        triggerSection.hidden = false;
-        var triggerElement = triggerSection.getElementsByClassName('power-value')[0];
-        triggerElement.textContent = trigger;
-      }
-      var range = power['Range'];
-      if (range) {
-        var rangeSection = block.getElementsByClassName('power-range-section')[0];
-        rangeSection.hidden = false;
-        var rangeElement = rangeSection.getElementsByClassName('power-value')[0];
-        rangeElement.textContent = range;
-      }
-      var targets = power['Targets'];
-      if (targets) {
-        var targetSection = block.getElementsByClassName('power-targets-section')[0];
-        targetSection.hidden = false;
-        var targetElement = targetSection.getElementsByClassName('power-value')[0];
-        targetElement.textContent = targets;
-      }
+      SetValue('Recharge', 'power-recharge-section');
+      SetValue('Trigger', 'power-trigger-section');
+      SetValue('Attack Type', 'power-attack-type-section');
+      SetValue('Target', 'power-targets-section');
+      if (power['Hit'])
+        SetValue('Hit', 'power-hit-effects');
+      else if (power['Effect'])
+        SetValue('Effect', 'power-hit-effects');
+      SetValue('Miss', 'power-miss-effects');
 
-      if (description) {
-        var descriptionSection = block.getElementsByClassName('power-hit-effects')[0];
-        descriptionSection.hidden = false;
-        var value = descriptionSection.getElementsByClassName('power-value')[0];
-        value.textContent = description;
-      }
-      description = power['Miss Effects'];
-      if (description) {
-        var descriptionSection = block.getElementsByClassName('power-miss-effects')[0];
-        descriptionSection.hidden = false;
-        var value = descriptionSection.getElementsByClassName('power-value')[0];
-        value.textContent = description;
-      }
       var url = power.url;
       if (url) {
         var linkBlock = block.getElementsByClassName('power-conpendium-link')[0];
