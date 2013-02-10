@@ -1198,6 +1198,22 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
                     this.viewport.tileSize * object.w,
                     this.viewport.tileSize * object.h);
     }
+    
+    // Draw grid.
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+    for (var i = view.y1; i < view.y2; i++) {
+    	var y = baseY + (i - view.y1) * this.viewport.tileSize;
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+    }
+    
+    for (var i = view.x1; i < view.x2; i++) {
+      var x = baseX + (i - view.x1) * this.viewport.tileSize;
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+    }
+    ctx.stroke();
 
     // Mark selected character and indicate movement range.
     if (this.ui.selected != undefined) {
