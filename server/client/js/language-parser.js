@@ -741,11 +741,13 @@ dungeon.LanguageParser = (function() {
    */
   function getWeaponDamage() {
     if (power_) {
-      if (power_.weapons.length > 0) {
+      if (power_.weapons && power_.weapons.length > 0) {
         // TODO: Use weapon name and extract from inventory once parsed.
         //       For now, cheating by looking up resolved damage and extracting
         //       the relavent section.
         var dmgStr = power_.weapons[0].damage;
+        if (!dmgStr)
+          return '';
         var matches = dmgStr.match(/d[0-9]+/);
         if (matches && matches.length > 0)
           return matches[0];
@@ -823,9 +825,6 @@ dungeon.LanguageParser = (function() {
       for (var j = 0; j < tokens.length; j++) {
         var token = tokens[j] = 
             tokens[j].toLowerCase().replace(/^\s+|\s+$/g,'');
-        if (token.length == 2 && token.charAt(1) == '2') {
-          console.log(token.charCodeAt(0));
-        }
         if (token in variants)
           token = tokens[j] = variants[token];
         if (token in primitives) {
@@ -913,18 +912,23 @@ dungeon.LanguageParser = (function() {
           };
           var subs = function(m) {
             var value = T[m[2]].value;
-            if (value instanceof Object) {
-              var parts = [];
-              for (var key in value) {
-                parts.push(key + ': \'' + value[key] + '\'');
+            var toString = function(v) {
+              if (v instanceof Array) {
+                var parts = [];
+                for (var i = 0; i < v.length; i++) {
+                  parts.push(toString(v[i]));
+                }
+                return '[' + parts.join(', ') + ']';
+              } else if (v instanceof Object) {
+                var parts = [];
+                for (var key in v) {
+                  parts.push(key + ': \'' + toString(v[key]) + '\'');
+                }
+                return '{' + parts.join(', ') + '}';
               }
-              var replacement = parts.join(', ');
-              if (value instanceof Array)
-                value = '[' + replacement + ']';
-              else 
-                value = '{' + replacement + '}';
+              return v;
             }
-            return value;
+            return toString(value);
           };
           // Substitute tokens.
           var v = replacement.value.replace(/T\[([0-9])\]/g, subs);
@@ -995,15 +999,13 @@ dungeon.LanguageParser = (function() {
           extractConditionEffect(token, effects);
           break;
         case '_HEALING_SURGE_':
-          effects.push('HealingSurge(target)');
+          effects.push('HealingSurge("friendly")');
           break;
         case '_HEAL_':
-          effects.push('Heal(target, "' + token.value + '")');
+          effects.push('Heal("friendly", "' + token.value + '")');
           break;
         case '_HIT_POINT_CHANGE_':
-          // TODO: Though more likely to be a heal, it is possible that
-          // This is actually a modification to damage.
-          effects.push('Heal(target, "' + token.value + '")');
+          effects.push('Heal("friendly", "' + token.value + '")');
           break;
       }
     }
