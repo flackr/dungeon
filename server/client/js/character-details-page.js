@@ -192,7 +192,12 @@ dungeon.CharacterDetailsPage = (function() {
            var sectionElement = block.getElementsByClassName(section)[0];
            sectionElement.hidden = false;
            var valueElement = sectionElement.getElementsByClassName('power-value')[0];
-           valueElement.textContent = value;
+           // Setting as text content does not preserve newlines or multiple whitespace
+           // indent.
+           value = value.replace(/^\s+|\s+$/g,'');
+           value = value.replace(/\n/g, '<br>');
+           value = value.replace(/(\t)+/g, '&nbsp; &nbsp; &nbsp;');
+           valueElement.innerHTML = value;
         }
       };
       block.addEventListener('click', createToggleDetailsCallback(block));
@@ -247,21 +252,18 @@ dungeon.CharacterDetailsPage = (function() {
         linkElement.href = url;
         var index = url.indexOf('?');
         linkElement.textContent = (index > 0) ? url.substring(index + 1) : url;          
-      } 
-      /*
-       * Disabling for time being until editor is functional
+      }
       var editButton = block.getElementsByClassName('edit-power-button')[0];
       var editPowerCallback = function(element) {
         var selectedPower = power;
         return function(e) {
           e.stopPropagation();
           var dialog = dungeon.Dialog.getInstance('power-editor');
-          dialog.update(selectedPower);
+          dialog.update(characterData, selectedPower);
           dialog.show();
         }
       };
       editButton.addEventListener('click', editPowerCallback());
-      */
       var category = usage.toLowerCase().trim();
       var index = category.indexOf(' ');
       if (index > 0)
