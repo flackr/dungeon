@@ -415,8 +415,12 @@ div.power-conpendium-link {
 }
 
 #compendium-url {
-  -webkit-box-flex: 0;
-  -webkit-margin-start: 10px;
+  background: #eee;
+  bottom: 0;
+  left: 0;
+  padding: 10px;
+  position: absolute;
+  right: 0;
 }
 
 .arrow-right {

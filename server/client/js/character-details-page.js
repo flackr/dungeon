@@ -210,7 +210,8 @@ dungeon.CharacterDetailsPage = (function() {
            valueElement.innerHTML = value;
         }
       };
-      block.addEventListener('click', createToggleDetailsCallback(block));
+      var toggleDetails = createToggleDetailsCallback(block);
+      block.addEventListener('click', toggleDetails);
       block.getElementsByClassName('power-name')[0].textContent = name;
       block.getElementsByClassName('power-type')[0].textContent = type;
       if (power['Flavor'])
@@ -279,6 +280,9 @@ dungeon.CharacterDetailsPage = (function() {
       if (index > 0)
         category = category.substring(0, index);
       $(category + '-list').appendChild(block);
+
+      if(isMonster)
+        toggleDetails();
     }
 
     var setListVisibility = function(name) {
