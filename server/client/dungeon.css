@@ -3,6 +3,7 @@ body {
   bottom: 0;
   left: 0;
   margin: 0;
+  overflow: hidden;
   padding: 0;
   position: absolute;
   right: 0;
@@ -415,12 +416,8 @@ div.power-conpendium-link {
 }
 
 #compendium-url {
-  background: #eee;
-  bottom: 0;
-  left: 0;
-  padding: 10px;
-  position: absolute;
-  right: 0;
+  -webkit-margin-start: 10px;
+  line-height: 32px;
 }
 
 .arrow-right {
