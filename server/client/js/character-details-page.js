@@ -152,6 +152,16 @@ dungeon.CharacterDetailsPage = (function() {
     populateStatEntries('skills');
     populateStatEntries('other');
 
+    if (characterData.stats['URL']) {
+      var value = characterData.stats['URL'];
+      var urlElement = $('compendium-url');
+      urlElement.hidden = false;
+      urlElement.innerHTML = '<a href="' + value + '" target="_conpendium">'
+          + value + '</a>';
+    } else {
+      $('compendium-url').hidden = true;
+    }
+
     $('at-will-list').textContent = '';
     $('recharge-list').textContent = '';
     $('encounter-list').textContent = '';

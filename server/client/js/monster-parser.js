@@ -73,7 +73,14 @@ dungeon.ParseMonster = (function() {
     stats['Passive Perception'] = Number(stats['Perception']) + 10;
     stats['Healing Surges'] = 0;
 
+    var main = xmlDoc.getElementsByTagName('Monster')[0];
+    stats['Name'] = extractValueFromChild_(main, 'Name');
+
+    var role = xmlDoc.getElementsByTagName('Role')[0];
+    stats['Role'] = extractBasicAttribute_(role, 'Name');
+    stats['URL'] = extractBasicAttribute_(xmlDoc, 'CompendiumUrl');
     var json = {
+       name: stats['Name'],
        level: stats['Level'],
        charClass: 'Monster',
        stats: stats, // (name,value) set of all character stats (includes aliases).
@@ -81,7 +88,7 @@ dungeon.ParseMonster = (function() {
        skills: skills,
        defenses: ['AC', 'Fortitude', 'Reflex', 'Will'],
        health: ['Hit Points', 'Bloodied', 'Surge Amount', 'Healing Surges'],
-       other: ['Name', 'Class', 'Level', 'Power Source', 'Initiative', 'Speed', 
+       other: ['Name', 'Role', 'Class', 'Level', 'Power Source', 'Initiative', 'Speed', 
                'Passive Perception', 'Passive Insight', 'Size'],
        powers: extractPowers_(xmlDoc)
     };

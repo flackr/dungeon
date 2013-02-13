@@ -414,6 +414,11 @@ div.power-conpendium-link {
   float: right;
 }
 
+#compendium-url {
+  -webkit-box-flex: 0;
+  -webkit-margin-start: 10px;
+}
+
 .arrow-right {
   border-bottom: 6px solid transparent;
   border-left: 6px solid #555;
