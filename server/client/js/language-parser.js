@@ -66,6 +66,24 @@ dungeon.LanguageParser = (function() {
     'intelligence': '_ATTRIBUTE_',
     'speed': '_STAT_',
 
+    // Skills.
+    'acrobatics': '_SKILL_',
+    'arcana': '_SKILL_',
+    'athletics': '_SKILL_',
+    'bluff': '_SKILL_',
+    'diplomacy': '_SKILL_',
+    'dungeoneeering': '_SKILL_',
+    'endurance': '_SKILL_',
+    'heal': '_SKILL_',
+    'insight': '_SKILL_',
+    'intimidate': '_SKILL_',
+    'nature': '_SKILL_',
+    'perception': '_SKILL_',
+    'religion': '_SKILL_',
+    'stealth': '_SKILL_',
+    'streetwise': '_SKILL_',
+    'thievery': '_SKILL_',
+
     '+': '_OPERATOR_',
     '-': '_OPERATOR_',
 
@@ -93,7 +111,6 @@ dungeon.LanguageParser = (function() {
     'move': '_MOVE_',
     'run': '_MOVE_',
     'shift': '_MOVE_',
-    'square': '_DISTANCE_',
 
     // Non-damage conditions.
     'blinded': '_CONDITION_',
@@ -112,6 +129,8 @@ dungeon.LanguageParser = (function() {
      // Attack-defense modifiers.
     'penalty': '_ADJUSTMENT_',
     'bonus': '_ADJUSTMENT_',
+    'additional': '_ADJUSTMENT_',
+    'extra': '_ADJUSTMENT_',
     'ac': '_DEFENSE_',
     'fortitude': '_DEFENSE_',
     'reflex': '_DEFENSE_',
@@ -123,8 +142,6 @@ dungeon.LanguageParser = (function() {
     ' ': '_FILLER_',
     'the': '_FILLER_',
     'a': '_FILLER_',
-    'additional': '_FILLER_',
-    'extra': '_FILLER_',
     'is': '_FILLER_',
     'becomes': '_FILLER_',
 
@@ -147,6 +164,47 @@ dungeon.LanguageParser = (function() {
     '_ROLL_': /[0-9]+d[0-9]+/
   };
 
+  /**
+   * Rule repository
+   */
+  var rulesets = [];
+
+  /**
+   * Adds a single rule to the ruleset.
+   * @param {number} priority  The relative priority of the rule.
+   *    Rules with a lower numeric value are applied first.
+   * @param {string} sequence of words or token keys.
+   * @param {string} key The key to assign to the resolved token.
+   * @param {string] value Optional value to assign to the token.
+   *     If omitted, the value is set to the sequence.
+   * @param {boolean} evaluate Optional flag indicating if the 
+   *     value is to be evaluated.
+   */
+  function insertRule(priority, sequence, key, value, evaluate) {
+    var parts = sequence.split(' ');
+    var r = rulesets[priority];
+    if (!r)
+      r = rulesets[priority] = {};
+    for (var i = 0;  i < parts.length; i++) {
+      var part = parts[i];
+      if (part in r) {
+        r = r[part];
+        continue;
+      }
+      r = r[part] = {};
+    }
+    if (!value)
+      value = sequence;
+    if (r['_terminal_']) {
+      console.log('WARNING: duplicate rule definition for ' + sequence + '.');
+    }
+
+    r = r['_terminal_'] = {type: key, value: value};
+    if (evaluate)
+      r.evaluate = true;
+  }
+
+
   // --------------------------------------------------
   // Rules grouped by precedence.
 
@@ -155,519 +213,139 @@ dungeon.LanguageParser = (function() {
   // in order to take precedence over '+' when computing damage
   // based on a choice of multiple modifiers.  The 'or' logic
   // uses the highest modifier in this case.
-  var rulesTopPriority = {
-  
-    // Many player powers have improved mechanics at higher levels.
-    // Accept or reject replacement rules based on level.
-    'level': {
-      '_NUMERIC_': {
-        '_terminal_': {
-          type: '_LEVEL_POWER_UP_',
-          value: 'isReplacement(T[1])',
-          evaluate: true
-        }
-      }
-    },
-     
-    // Treat die rolls as numeric expressions.
-    '_ROLL_': {
-      '_terminal_': {
-        type: '_NUMERIC_',
-        value: 'T[0]'
-      }
-    },
-    // Relax categorization of numeric type to simplify rules for
-    // combining expressions.
-    '_NUMBER_': {
-      '_terminal_': {
-        type: '_NUMERIC_',
-        value: 'T[0]'
-      }
-    },
-    // Resolve "# or #" before "# + #" to deal with the pattern:
-    // "roll + A modifier or B modifier damage".  In theory the
-    // choice of which modifier to apply should be made at character
-    // creation time.  In reality, it'll be whichever attribute is
-    // higher.
-    '_NUMERIC_': {
-      'or': {
-        '_NUMERIC_': {
-          '_terminal_': {
-            type: '_NUMERIC_',
-            value: 'Math.max(T[0],T[2])',
-            evaluate: true
-          }
-        }
-      }
-    },
-    // Resolve attribute modifications immediately based on player stats.
-    '_ATTRIBUTE_': {
-      'modifier': {
-        '_terminal_': {
-          type: '_MODIFIER_',
-          value: 'T[0]'
-        }
-      }
-    },
-    // Extracts numeric value for stat or modifier based on character info.
-    '_STAT_': {
-      '_terminal_': {
-        type: '_NUMERIC_',
-        value: 'getStat("T[0]")',
-        evaluate: true
-      }
-    },
-    '_MODIFIER_': {
-      '_terminal_': {
-        type: '_NUMERIC_',
-        value: 'getModifier("T[0]")',
-        evaluate: true
-      }
-    },
-    'your': {
-      '_MODIFIER_': {
-        '_terminal_': {
-          type: '_MODIFIER_',
-          value: 'T[1]'
-        }
-      },
-      '_STAT_': {
-        '_terminal_': {
-          type: '_STAT_',
-          value: 'T[1]'
-        }
-      }
-    }
-  };
+
+  // Many player powers have improved mechanics at higher levels.
+  // Accept or reject replacement rules based on level.
+  insertRule(0, 'level _NUMERIC_ :', '_LEVEL_POWER_UP_', 'isReplacement(T[1])', true);
+
+  // Treat die rolls as numeric expressions.
+  insertRule(0, '_ROLL_', '_NUMERIC_', 'T[0]');
+
+  // Relax categorization of numeric type to simplify rules for
+  // combining expressions.
+  insertRule(0, '_NUMBER_', '_NUMERIC_', 'T[0]');
+
+  // Resolve "# or #" before "# + #" to deal with the pattern:
+  // "roll + A modifier or B modifier damage".  In theory the
+  // choice of which modifier to apply should be made at character
+  // creation time.  In reality, it'll be whichever attribute is
+  // higher.
+  insertRule(0, '_NUMERIC_ or _NUMERIC_', '_NUMERIC_',  'Math.max(T[0],T[2])', true);
+
+  // Resolve attribute modifications immediately based on player stats.
+  insertRule(0, '_ATTRIBUTE_ modifier', '_MODIFIER_', 'T[0]');
+  insertRule(0, 'your _MODIFIER_', '_MODIFIER_', 'T[1]');
+  insertRule(0, '_MODIFIER_', '_NUMERIC_', 'getModifier("T[0]")', true);
+
+  // Extracts numeric value for stat or modifier based on character info.
+  insertRule(0, '_STAT_', '_NUMERIC_', 'getStat("T[0]")', true);
+  insertRule(0, 'your _STAT_', '_STAT_', 'T[1]');
 
   // Apply rules which combine numeric expressions before resolving
-  // factors like damage type.  Apply rules that construct compound
-  // nouns.
-  var rulesHighPriority = {
-    '_NUMERIC_': {  
-      '_OPERATOR_': {
-        '_NUMERIC_': {
-          '_terminal_': {
-            type: '_NUMERIC_',
-            value: 'simplifyNumerics("T[0]T[1]T[2]")',
-            evaluate: true
-          }
-        }
-      }
-    },
-    'all': {
-      'defenses': {
-        '_terminal_': {
-          type: '_DEFENSE_',
-          value: 'defense'
-        }
-      }
-    },
-    'hit': {
-      'points': {
-        '_terminal_': {
-          type: '_HIT_POINTS_',
-          value: 'hit points'
-        }
-      }
-    },
-    'attack': {
-      'rolls': {
-        '_terminal_': {
-          type: '_ATTACK_ROLLS_',
-          value: 'attack rolls'
-        }
-      }
-    },
-    'each': {
-      'target': {
-        '_terminal_': 'target'
-      }
-    },
-    'end': {
-      'of': {
-        '_terminal_': {
-          type: '_WHEN_',
-          value: 'end'
-        }
-      }
-    },
-    '_EQUATE_': {
-      'to': {
-        '_terminal_': {
-          type: '_EQUATE_',
-          value: 'equal'
-        }
-      }
-    },
-    'gains': {
-      'combat': {
-        'advantage': {
-          '_terminal_': {
-            type: '_CONDITION_',
-            value: 'CombatAdvantage'
-          }
-        }
-      }
-    },
-    'grants': {
-      'combat': {
-        'advantage': {
-          '_terminal_': {
-            type: '_CONDITION_',
-            value: 'GrantsCombatAdvantage'
-          }
-        }
-      }
-    },
-    'half': {
-      'damage': {
-        '_terminal_': {
-          type: '_HALF_DAMAGE_',
-          value: 'half damage'
-        }
-      }
-    },
-    'healing': {
-      'surge': {
-        '_terminal_': {
-          type: '_HEALING_SURGE_',
-          value: 'healing surge'
-        }
-      }
-    },
-    'may': {
-      'not': {
-        '_terminal_': {
-          type: '_PROHIBIT_',
-          value: 'may not'
-        }
-      }
-    },
-    'melee': {
-      'basic': {
-        'attack': {
-          '_terminal_': {
-            type: '_BASIC_ATTACK_',
-            value: 'melee'
-          }
-        }
-      }
-    },
-    'next': {
-      'turn': {
-        '_terminal_': {
-          type: '_NEXT_TURN_',
-          value: 'next turn'
-        }
-      }
-    },
-    'power': {
-      '_ADJUSTMENT_': {
-        '_terminal_': {
-          type: '_ADJUSTMENT_',
-          value: 'T[1]'
-        }
-      }
-    },
-    'range': {
-      'basic': {
-        'attack': {
-          '_terminal_': {
-            type: '_BASIC_ATTACK_',
-            value: 'range'
-          }
-        }
-      }
-    },
-    'resistance': {
-      'to': {
-        '_terminal_': 'resist'
-      }
-    },
-    'save': {
-      'ends': {
-        '_terminal_': {
-          type: '_DURATION_',
-          value: 'save'
-        }
-      }
-    },
-    'saving': {
-      'throws': {
-        '_terminal_': {
-          type: '_SAVING_THROW_',
-          value: 'saving throw'
-        },
-      }
-    },
-    'start': {
-      'of': {
-        '_terminal_': {
-          type: '_WHEN_',
-          value: 'start'
-        }
-      }
-    },
-  };
+  // factors like damage type.  
+  insertRule(1, '_NUMERIC_ _OPERATOR_ _NUMERIC_', '_NUMERIC_',
+      'simplifyNumerics("T[0]T[1]T[2]")', true);
+
+  // Apply rules that construct compound nouns.
+  insertRule(1, 'all defenses', '_DEFENSE_', 'defense');
+  insertRule(1, 'hit points', '_HIT_POINTS_');
+  insertRule(1, 'attack rolls', '_ATTACK_ROLLS_');
+  insertRule(1, 'each target', 'target');
+  insertRule(1, 'end of', '_WHEN_', 'end');
+  insertRule(1, '_EQUATE_ to', '_EQUATE_', 'equal');
+  insertRule(1, 'gains combat advantage', '_CONDITION_', 'CombatAdvantage');
+  insertRule(1, 'grants combat advantage', '_CONDITION_', 'GrantsCombatAdvantage');
+  insertRule(1, 'half damage', '_HALF_DAMAGE_');
+  insertRule(1, 'healing surge', '_HEALING_SURGE_');
+  insertRule(1, 'may not', '_PROHIBIT_');
+  insertRule(1, 'melee basic attack', '_BASIC_ATTACK_', 'melee');
+  insertRule(1, 'next turn', '_NEXT_TURN_');
+  insertRule(1, 'power _ADJUSTMENT_', '_ADJUSTMENT_', 'T[1]');
+  insertRule(1, 'range basic attack', '_BASIC_ATTACK_', 'range');
+  insertRule(1, 'resistance to', 'resist');
+  insertRule(1, 'save ends', '_DURATION_', 'save');
+  insertRule(1, 'saving throw', '_SAVING_THROW_');
+  insertRule(1, 'saving throws', '_SAVING_THROW_');
+  insertRule(1, 'start of', '_WHEN_', 'start');
 
   // At this stage, all rules for combining numeric expressions
   // have been applied.  Now the numeric expressions can be combined
   // with surrounding words that determine the context such as applying
   // damage, expressing a distance, or applying a condition. 
-  var rulesMidPriority = {
-    '_NUMERIC_': {
-      // Damage calculation.
-      'damage': {
-        '_terminal_': {
-          type: '_DAMAGE_',
-          value: '{amount: "T[0]", type: "untyped"}',
-          evaluate: true
-        }
-      },
-      '_DAMAGE_TYPE_': {
-        'damage': {
-          '_terminal_': {
-            type: '_DAMAGE_',
-            value: '{amount: "T[0]", type: "T[1]"}',
-            evaluate: true
-          }
-        },
-        '_COMBINE_': {
-          '_DAMAGE_TYPE_': {
-            'damage': {
-               '_terminal_': {
-                 type: '_DAMAGE_',
-                 value: '[{amount: "T[0]", type: "T[1]"},' + 
-                        '{amount: "T[0]", type: "T[3]"}]',
-                 evaluate: true
-               }
-            }
-          }
-        }
-      },
-      // Resolution of range.
-      '_DISTANCE_': {
-        '_terminal_': {
-          type: '_DISTANCE_',
-          value: 'T[0]',
-        }
-      }
-    },
 
-    // Conditions.
-    'ongoing': {
-      '_DAMAGE_': {
-        '_terminal_': {
-          type: '_ONGOING_DAMAGE_',
-          value: 'T[1]',
-          evaluate: true
-        }
-      }
-    },
-    'falls': {
-      'prone': {
-        '_terminal_': {
-          type: '_CONDITION_',
-          value: 'prone'
-        }
-      }
-    },
-    'knocked': {
-      'prone': {
-        '_terminal_': {
-          type: '_CONDITION_',
-          value: 'prone'
-        }
-      }
-    },
-    'knock': {
-      'target': {
-        'prone': {
-          '_terminal_': {
-            type: '_CONDITION_',
-            value: 'prone'
-          }
-        }
-      }
-    },
-    '_PROHIBIT_': {
-      '_MOVE_': {
-        '_terminal_': {
-          type: '_CONDITION_',
-          value: 'cannot-T[1]'
-        }
-      }
-    },
+  // Damage calculations.
+  insertRule(2, '_NUMERIC_ damage', '_DAMAGE_', 
+      '{amount: "T[0]", type: "untyped"}', true);
+  insertRule(2, '_NUMERIC_ _DAMAGE_TYPE_ damage', '_DAMAGE_',
+      '{amount: "T[0]", type: "T[1]"}', true);
+  insertRule(2, '_NUMERIC_ _COMBINE_ _DAMAGE_TYPE_ damage', '_DAMAGE_',
+      '[{amount: "T[0]", type: "T[1]"},' + 
+      '{amount: "T[0]", type: "T[3]"}]', true);
+  insertRule(2, 'ongoing _DAMAGE_', '_ONGOING_DAMAGE_', 'T[1]', true);
 
-    // Attack/defense modifiers.
-    '_OPERATOR_': {
-      '_NUMERIC_': {
-        '_ADJUSTMENT_': {
-          'to': {
-            '_terminal_': {
-              type: '_ADJUSTMENT_',
-              value: 'T[0]T[1]'
-            }
-          }
-        }
-      }
-    },
-    '_ADJUSTMENT_': {
-      '_ATTACK_ROLLS_': {
-        '_terminal_': {
-          type: '_CONDITION_',
-          value: 'attackT[0]'
-        }
-      },
-      '_DEFENSE_': {
-        '_terminal_': {
-          type: '_CONDITION_',
-          value: 'T[1]T[0]'
-        }
-      }
-    },
+  // Conditions.
+  insertRule(2, 'falls prone', '_CONDITION_', 'prone');
+  insertRule(2, 'knocked prone', '_CONDITION_', 'prone');
+  insertRule(2, 'knock target prone', '_CONDITION_', 'prone');
+  insertRule(2, '_PROHIBIT_ _MOVE_', '_CONDITION_', 'cannot-T[1]');
 
-    // Moves.
-    '_MOVE_': {
-      '_DISTANCE_': {
-        '_terminal_': {
-          type: '_MOVE_',
-          value: '{type: "T[0]", distance: "T[1]"}',
-          evaluate: true
-        }
-      },
-      'target': {
-        '_terminal_': {
-          type: '_MOVE_',
-          value: 'T[0]'
-        }
-      }
-    },
-    'up': {
-      'to': {
-        '_DISTANCE_': {
-          '_terminal_': {
-            type: '_DISTANCE_',
-            value: 'T[2]'
-          }
-        }
-      }
-    },
+  // Attack/defense/skill/... modifiers.
+  insertRule(2, '_OPERATOR_ _NUMERIC_ _ADJUSTMENT_ to', '_NUMERIC_',
+      'T[0]T[1]');
+  insertRule(2, '_NUMERIC_ _ATTACK_ROLLS_', '_CONDITION_', 'attackT[0]');
+  insertRule(2, '_NUMERIC_ _DEFENSE_', '_CONDITION_', 'T[1]T[0]');
+  insertRule(2, '_ADJUSTMENT_ _EQUATE_ _NUMERIC_', '_NUMERIC_', 'T[2]');
+  insertRule(2, '_NUMERIC_ as _ADJUSTMENT_ damage', '_CONDITION_', 'damageT[0]');
+  insertRule(2, '_ADJUSTMENT_ to', '_ADJUSTMENT_', 'T[0]');
+  insertRule(2, '_ADJUSTMENT_ _DEFENSE_ _EQUATE_ _NUMERIC_', '_CONDITION_',
+      'T[1]T[3]');
+  insertRule(2, '_ADJUSTMENT_ _ATTACK_ROLLS_ _EQUATE_ _NUMERIC_', '_CONDITION_',
+      'attackT[3]');
+  insertRule(2, '_NUMERIC_ _SKILL_ checks', '_CONDITION_', 'T[1]T[0]');
 
-    // Healing.
-    'regain': {
-      '_NUMERIC_': {
-        '_HIT_POINTS_': {
-          '_terminal_': {
-            type: '_HEAL_',
-            value: 'T[1]'
-          }
-        }
-      },
-      '_HIT_POINTS_': {
-        '_EQUATE_': {
-          '_NUMERIC_': {
-            '_terminal_': {
-              type: '_HEAL_',
-              value: 'T[3]'
-            }
-          }
-        }
-      }
-    }
-  };
+  // Moves.
+  insertRule(2, '_NUMERIC_ square', '_DISTANCE_', 'T[0]');
+  insertRule(2, '_MOVE_ _DISTANCE_', '_MOVE_', '{type: "T[0]", distance: "T[1]"}', true);
+  insertRule(2, '_MOVE_ target', '_MOVE_', 'T[0]');
+  insertRule(2, 'up to _DISTANCE_', '_DISTANCE_', 'T[2]');
+  insertRule(2, 'square _EQUATE_ _NUMERIC_', '_DISTANCE_', 'T[2]');
+  insertRule(2, 'number of square _EQUATE_ _NUMERIC_', '_DISTANCE_', 'T[4]');
+
+  // Healing.
+  insertRule(2, 'regain _NUMERIC_ _HIT_POINTS_', '_HEAL_', 'T[1]');
+  insertRule(2, 'regain _HIT_POINTS_ _EQUATE_ _NUMERIC_', '_HEAL_', 'T[3]');
 
   // Rules that are more vague are encoded here.  For example, the word
   // "distance" may be ommitted after the numeric value for the move.
   // Rules with a non-ambiguous stop token are expressed with higher
   // priority.
 
-  var rulesLowPriority = {
-    '_MOVE_': {
-      '_NUMERIC_': {
-         '_terminal_': {
-            type: '_MOVE_',
-            value: '{type: "T[0]", distance: "T[1]"}',
-            evaluate: true
-         }
-       }
-    },
-    'damage': {
-      '_EQUATE_': {
-        '_NUMERIC_': {
-          '_terminal_': {
-            type: '_DAMAGE_',
-            value: '{amount: "T[2]", type: "untyped"}',
-            evaluate: true
-          }
-        }
-      }
-    },
-    'resist': {
-      'all': {
-        '_DAMAGE_': {
-          '_terminal_': {
-            type: '_CONDITION_',
-            value: '"ResistDamage"+extractValue(T[2],"amount")',
-            evaluate: true
-          }
-        }
-      }
-    },
+  insertRule(3, '_MOVE_ _NUMERIC_', '_MOVE_',
+      '{type: "T[0]", distance: "T[1]"}', true);
+  insertRule(3, 'damage _EQUATE_ _NUMERIC_', '_DAMAGE_', 
+      '{amount: "T[2]", type: "untyped"}', true);
+  insertRule(3, '_DAMAGE_TYPE_ _DAMAGE_', '_DAMAGE_',
+      '{amount: extractValue(T[1],"amount"), type: "T[0]"}', true);
+  insertRule(3, 'resist all _DAMAGE_', '_CONDITION_',
+      '"ResistDamage"+extractValue(T[2],"amount")', true);
+  insertRule(3, 'half _NUMERIC_', '_NUMERIC_', 'Math.floor(T[1]/2)', true);
+  insertRule(3, 'twice _NUMERIC_', '_NUMERIC_', '2*T[1]', true);
+  insertRule(3, '_OPERATOR_ _NUMERIC_ _ADJUSTMENT_', '_NUMERIC_', 'T[0]T[1]');
+  insertRule(3, '_SKILL_ check to _MOVE_ with _NUMERIC_', '_MOVE_',
+      '{type: "T[3]", skillcheck: "T[0]T[5]"}', true);
 
-    // Power-up fragments that need to be aligned with previous statement.
-    '_NUMERIC_': {
-      '_HIT_POINTS_': {
-        '_terminal_': {
-          type: '_HIT_POINT_CHANGE_',
-          value: 'T[0]'
-        }
-      }
-    },
-    // Some monsters indicate special damage on a critical.
-    '(': {
-      'crit': {
-        '_NUMERIC_': {
-          ')': {
-            '_terminal_': {
-              type: '_CRIT_DAMAGE_',
-              value: 'T[2]'
-            }
-          }
-        }
-      }
-    },
-    'crit': {
-      '_DAMAGE_': {
-        '_terminal_': {
-          type: '_CRIT_DAMAGE_',
-          value: 'T[1]'        
-        }
-      }
-    },
+  // Power-up fragments that need to be aligned with previous statement.
+  insertRule(3, '_NUMERIC_ _HIT_POINTS_', '_HIT_POINT_CHANGE_', 'T[0]');
 
-  };
+  // Some monsters indicate special damage on a critical.
+  insertRule(3, '( crit _NUMERIC_ )', '_CRIT_DAMAGE_', 'T[2]');
+  insertRule(3, 'crit _DAMAGE_', '_CRIT_DAMAGE_', 'T[1]');
 
-  var rulesMinimumPriority  = {
-    // Joiners.
-    '_COMBINE_': {
-      '_COMBINE_': {
-        '_terminal_': {
-          type: '_COMBINE_',
-          value: 'T[1]'
-        }
-      },
-    },
-  };
+  // Save bonus.
+  insertRule(3, '_SAVING_THROW_ with _ADJUSTMENT_', '_CONDITION_', 'saveT[2]');
 
-  var rulesets = [
-    rulesTopPriority,
-    rulesHighPriority,
-    rulesMidPriority,
-    rulesLowPriority,
-    rulesMinimumPriority
-  ]; 
+  // Joiners.
+  insertRule(4, '_COMBINE_ _COMBINE_', '_COMBINE_', 'T[1]');
 
   /**
    * Attempts to simplify a numeric expression. For example,
@@ -1048,7 +726,8 @@ dungeon.LanguageParser = (function() {
    */
   function extractMoveEffect(move, effects) {
     var value = move.value;
-    if (!value.distance)
+
+    if (!value.distance && value.type != 'jump' && value.type != 'shift')
       return;
     var target = 'target';
     switch(value.type) {
@@ -1060,7 +739,11 @@ dungeon.LanguageParser = (function() {
       case 'jump':
         target = '"' + characterInfo_.name + '"'
     }
-    var effect = 'Move(' + target + ', "' + value.type + '", ' + value.distance + ')';
+    var effect = 'Move(' + target + ', "' + value.type;
+    if (value.distance)
+      effect +=  '", ' + value.distance + ')';
+    if (value.skillcheck)
+      effect += '", "' + value.skillcheck + '")';
     effects.push(effect);
   }
 

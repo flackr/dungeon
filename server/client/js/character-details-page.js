@@ -251,7 +251,10 @@ dungeon.CharacterDetailsPage = (function() {
       SetValue('Recharge', 'power-recharge-section');
       SetValue('Trigger', 'power-trigger-section');
       SetValue('Attack Type', 'power-attack-type-section');
-      SetValue('Target', 'power-targets-section');
+      if (power['Target'])
+        SetValue('Target', 'power-targets-section');
+      else if (power['Targets'])
+        SetValue('Targets', 'power-targets-section');
       SetValue(['Hit', 'Effect'], 'power-hit-effects');
       SetValue('Miss', 'power-miss-effects');
 

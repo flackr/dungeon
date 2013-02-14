@@ -8,7 +8,7 @@ dungeon.ParseCharacter = (function() {
     'Reflex Defense': 'Reflex',
     'Will Defense': 'Will',
     'Intelligence Modifier': 'Intelligence modifier',
-    'initiative': 'Initiative' 
+    'initiative': 'Initiative',
   };
   
   function parseCharacter_(xmlDoc) {
@@ -85,6 +85,7 @@ dungeon.ParseCharacter = (function() {
       var name = node.tagName;
       attributes.push(name);
     }
+    attributes.sort();
     return attributes;
   }
 
@@ -147,6 +148,7 @@ dungeon.ParseCharacter = (function() {
          var value = detail.textContent.trim();
          data[attribute] = value;
       }
+// >>>>
       var weapons = power.getElementsByTagName('Weapon');
       if (weapons) {
         var utencils = [];
