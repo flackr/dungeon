@@ -255,8 +255,11 @@ dungeon.CharacterDetailsPage = (function() {
         SetValue('Target', 'power-targets-section');
       else if (power['Targets'])
         SetValue('Targets', 'power-targets-section');
-      SetValue(['Hit', 'Effect'], 'power-hit-effects');
+      SetValue('Special', 'power-special-effects');
+      SetValue('Hit', 'power-hit-effects');
+      SetValue('Effect', 'power-general-effects');
       SetValue('Miss', 'power-miss-effects');
+      SetValue('Conditions', 'power-conditions');
 
       var url = power.url;
       if (url) {

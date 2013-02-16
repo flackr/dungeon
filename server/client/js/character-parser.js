@@ -71,6 +71,7 @@ dungeon.ParseCharacter = (function() {
          results.push(r.getAttribute('name'));
        }
     }
+    results.sort();
     return results;
   }
 
@@ -142,13 +143,22 @@ dungeon.ParseCharacter = (function() {
       var name = power.getAttribute('name');
       data.name = name;
       var specifics = power.getElementsByTagName('specific');
+      var last = null;
       for (var j = 0; j < specifics.length; j++) {
          var detail = specifics[j];
          var attribute = detail.getAttribute('name');
          var value = detail.textContent.trim();
-         data[attribute] = value;
+         var firstChar = attribute.charAt(0);
+         if (last && (firstChar == ' ' || firstChar == '\t')) {
+           // Combine with previous attribute.  An attribute starting with a
+           // space is used to denote a subheading.  By combining, we preserve
+           // proper ordering
+           data[last] = data[last] + '\n' + attribute.trim() + ': ' + value;
+         } else {
+           data[attribute] = value;
+           last = attribute;
+         }
       }
-// >>>>
       var weapons = power.getElementsByTagName('Weapon');
       if (weapons) {
         var utencils = [];
@@ -159,16 +169,22 @@ dungeon.ParseCharacter = (function() {
         for (var j = 0; j < weapons.length; j++) {
           var weapon = weapons[j];
           var name = weapon.getAttribute('name');
-          utencils.push({
+          var weaponStats = {
             name: name,
             toHit: extractWeaponStat(weapon, 'AttackBonus'),
             defense: extractWeaponStat(weapon, 'Defense'),
             damage: extractWeaponStat(weapon, 'Damage'),
             crit: extractWeaponStat(weapon, 'CritDamage'),
             toHitDetails: extractWeaponStat(weapon, 'HitComponents'),
-            damageDetails: extractWeaponStat(weapon, 'DamageComponents')
-          });
+            damageDetails: extractWeaponStat(weapon, 'DamageComponents'),
+          };
+          var conditions = extractWeaponStat(weapon, 'Conditions');
+          if (conditions)
+            weaponStats.conditions = conditions;
+          utencils.push(weaponStats);
         }
+        if (weapons.length > 0)
+          data['Conditions'] = utencils[0].conditions;
         data.weapons = utencils;
       }
       powers.push(data);

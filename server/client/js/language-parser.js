@@ -46,6 +46,7 @@ dungeon.LanguageParser = (function() {
      // Cononical form for conditions.
     'grab': 'grabbed',
     'grabs': 'grabbed',
+    'concealment': 'concealed',
     'invisibility': 'invisible',
     // Miscellanous
     'regains': 'regain',
@@ -56,112 +57,64 @@ dungeon.LanguageParser = (function() {
 
   // Grouping of keywords by type.  Most rule apply to types to
   // cut down on repetitiveness.
-  var primitives = {
-    // Character properties.
-    'strength': '_ATTRIBUTE_',
-    'constitution': '_ATTRIBUTE_',
-    'wisdom': '_ATTRIBUTE_',
-    'charisma': '_ATTRIBUTE_',
-    'dexterity': '_ATTRIBUTE_',
-    'intelligence': '_ATTRIBUTE_',
-    'speed': '_STAT_',
+  var primitives = {};
 
-    // Skills.
-    'acrobatics': '_SKILL_',
-    'arcana': '_SKILL_',
-    'athletics': '_SKILL_',
-    'bluff': '_SKILL_',
-    'diplomacy': '_SKILL_',
-    'dungeoneeering': '_SKILL_',
-    'endurance': '_SKILL_',
-    'heal': '_SKILL_',
-    'insight': '_SKILL_',
-    'intimidate': '_SKILL_',
-    'nature': '_SKILL_',
-    'perception': '_SKILL_',
-    'religion': '_SKILL_',
-    'stealth': '_SKILL_',
-    'streetwise': '_SKILL_',
-    'thievery': '_SKILL_',
+  function addPrimitives(category, words) {
+    var parts = words.split(' ');
+    for(var i = 0; i < parts.length; i++) {
+      primitives[parts[i]] = category;
+    }
+  }
 
-    '+': '_OPERATOR_',
-    '-': '_OPERATOR_',
+  addPrimitives('_ATTRIBUTE_', 
+                'charisma constitution dexterity intelligence strength wisdom');
+  addPrimitives('_STAT_', 'speed');
+  addPrimitives('_SKILL_',
+                'acrobatics arcana athletics bluff diplomacy dungeoneeering ' +
+                'endurance heal insight intimidate nature perception ' +
+                'religion stealth streetwise thievery');
+  addPrimitives('_OPERATOR_', '+ -');
+  addPrimitives('_DAMAGE_TYPE_', 
+                'acid cold divine fire force lightning necrotic thunder ' +
+                'poison psychic radiant');
+  addPrimitives('_MOVE_TYPE_',
+                'charge fly jump move push pull run shift slide teleport');
+  addPrimitives('_CONDITION_',
+               'blinded bloodied concealed cursed dazed dominated grabbed ' +
+               'immobilized invisible marked slowed weakened');
+  addPrimitives('_ADJUSTMENT_', 'additional bonus extra penalty');
+  addPrimitives('_DEFENSE_', 'ac defense fortitude reflex will');
+  addPrimitives('_PROHIBIT_', 'can\'t cannot');
+  
+  // Joiners.  Cadidates for dumping.
+  addPrimitives('_COMBINE_', ', and plus');
 
-    // Damage types.
-    'necrotic': '_DAMAGE_TYPE_',
-    'fire': '_DAMAGE_TYPE_',
-    'cold': '_DAMAGE_TYPE_',
-    'lightning': '_DAMAGE_TYPE_',
-    'thunder': '_DAMAGE_TYPE_',
-    'poison': '_DAMAGE_TYPE_',
-    'acid': '_DAMAGE_TYPE_',
-    'psychic': '_DAMAGE_TYPE_',
-    'force': '_DAMAGE_TYPE_',
-    'divine': '_DAMAGE_TYPE_',
-    'radiant': '_DAMAGE_TYPE_',
+  addPrimitives('_EQUATE_', 'equal');
+ 
+  // Empty tokens.
+  primitives[''] = '_FILLER_';
+  primitives[' '] = '_FILLER_';
 
-    // Forced moves.
-    'charge': '_MOVE_', // Odd one as it involves attack as well as move.
-    'jump': '_MOVE_',
-    'push': '_MOVE_',
-    'pull': '_MOVE_',
-    'slide': '_MOVE_',
-    'teleport': '_MOVE_',
-    'fly': '_MOVE_',
-    'move': '_MOVE_',
-    'run': '_MOVE_',
-    'shift': '_MOVE_',
-
-    // Non-damage conditions.
-    'blinded': '_CONDITION_',
-    'bloodied': '_CONDITION_',
-    'concealed': '_CONDITION_',
-    'cursed': '_CONDITION_',
-    'dazed': '_CONDITION_',
-    'dominated': '_CONDITION_',
-    'grabbed': '_CONDITION_',
-    'immobilized': '_CONDITION_',
-    'invisible': '_CONDITION_',
-    'marked': '_CONDITION_',
-    'slowed': '_CONDITION_',
-    'weakened': '_CONDITION_',
-
-     // Attack-defense modifiers.
-    'penalty': '_ADJUSTMENT_',
-    'bonus': '_ADJUSTMENT_',
-    'additional': '_ADJUSTMENT_',
-    'extra': '_ADJUSTMENT_',
-    'ac': '_DEFENSE_',
-    'fortitude': '_DEFENSE_',
-    'reflex': '_DEFENSE_',
-    'will': '_DEFENSE_',
-    'defense': '_DEFENSE_',
-
-    // Low information stuff we don't really care about.
+/*
+  addPrimitives('_FILLER_',
     '': '_FILLER_',
     ' ': '_FILLER_',
     'the': '_FILLER_',
     'a': '_FILLER_',
     'is': '_FILLER_',
     'becomes': '_FILLER_',
-
-
-    'can\'t': '_PROHIBIT_',
-    'cannot': '_PROHIBIT_',
-
-    // Joiners.  Candidates for dumping.
-    ',': '_COMBINE_',
-    'and': '_COMBINE_',
-    'plus': '_COMBINE_',
-    'equal': '_EQUATE_',
-
-    // TODO: zone effects
-  };
+*/
     
   // Regular expressions for extracting numeric content.
   var patterns = {
     '_NUMBER_': /[0-9]+/,
     '_ROLL_': /[0-9]+d[0-9]+/
+  };
+
+  // Monster or class names that has one or more synonyms.
+  var nameSynonyms = {
+    'mage': ['magus'],
+    'magus': ['mage']
   };
 
   /**
@@ -231,6 +184,7 @@ dungeon.LanguageParser = (function() {
   // creation time.  In reality, it'll be whichever attribute is
   // higher.
   insertRule(0, '_NUMERIC_ or _NUMERIC_', '_NUMERIC_',  'Math.max(T[0],T[2])', true);
+  insertRule(0, '_CONDITION_ or _CONDITION_', '_CONDITION_', '[T[0], T[2]]');
 
   // Resolve attribute modifications immediately based on player stats.
   insertRule(0, '_ATTRIBUTE_ modifier', '_MODIFIER_', 'T[0]');
@@ -248,19 +202,25 @@ dungeon.LanguageParser = (function() {
 
   // Apply rules that construct compound nouns.
   insertRule(1, 'all defenses', '_DEFENSE_', 'defense');
-  insertRule(1, 'hit points', '_HIT_POINTS_');
+  insertRule(1, 'attacks against _ACTOR_ have combat advantage', '_CONDITION_',
+      'GrantsCombatAdvantage');
   insertRule(1, 'attack rolls', '_ATTACK_ROLLS_');
-  insertRule(1, 'each target', 'target');
+  insertRule(1, 'can spend a healing surge', '_HEALING_SURGE_');
+  // TODO: verify that _NUMERIC_ == 0 when applying following rule.
+  insertRule(1, 'drops to _NUMERIC_ _HIT_POINTS_', '_WHEN_', 'unconscious');
   insertRule(1, 'end of', '_WHEN_', 'end');
   insertRule(1, '_EQUATE_ to', '_EQUATE_', 'equal');
+  insertRule(1, 'is _EQUATE_', '_EQUATE_', 'equal');
   insertRule(1, 'gains combat advantage', '_CONDITION_', 'CombatAdvantage');
   insertRule(1, 'grants combat advantage', '_CONDITION_', 'GrantsCombatAdvantage');
   insertRule(1, 'half damage', '_HALF_DAMAGE_');
   insertRule(1, 'healing surge', '_HEALING_SURGE_');
+  insertRule(1, 'hit points', '_HIT_POINTS_');
   insertRule(1, 'may not', '_PROHIBIT_');
   insertRule(1, 'melee basic attack', '_BASIC_ATTACK_', 'melee');
   insertRule(1, 'next turn', '_NEXT_TURN_');
   insertRule(1, 'power _ADJUSTMENT_', '_ADJUSTMENT_', 'T[1]');
+  insertRule(1, '_PROHIBIT_ benefit from', '_NEGATE_');
   insertRule(1, 'range basic attack', '_BASIC_ATTACK_', 'range');
   insertRule(1, 'resistance to', 'resist');
   insertRule(1, 'save ends', '_DURATION_', 'save');
@@ -279,73 +239,101 @@ dungeon.LanguageParser = (function() {
   insertRule(2, '_NUMERIC_ _DAMAGE_TYPE_ damage', '_DAMAGE_',
       '{amount: "T[0]", type: "T[1]"}', true);
   insertRule(2, '_NUMERIC_ _COMBINE_ _DAMAGE_TYPE_ damage', '_DAMAGE_',
+      '[{amount: "T[0]", type: "untyped"},' + 
+      '{amount: "T[0]", type: "T[3]"}]', true);
+  insertRule(2, '_NUMERIC_ _DAMAGE_TYPE_ _COMBINE_ _DAMAGE_TYPE_ damage',
+      '_DAMAGE_',
       '[{amount: "T[0]", type: "T[1]"},' + 
       '{amount: "T[0]", type: "T[3]"}]', true);
+
   insertRule(2, 'ongoing _DAMAGE_', '_ONGOING_DAMAGE_', 'T[1]', true);
 
   // Conditions.
   insertRule(2, 'falls prone', '_CONDITION_', 'prone');
   insertRule(2, 'knocked prone', '_CONDITION_', 'prone');
-  insertRule(2, 'knock target prone', '_CONDITION_', 'prone');
-  insertRule(2, '_PROHIBIT_ _MOVE_', '_CONDITION_', 'cannot-T[1]');
+  insertRule(2, 'knocks it prone', '_CONDITION_', 'prone');
+  insertRule(2, 'knock _ACTOR_ prone', '_CONDITION_', 'prone');
+  insertRule(2, '_PROHIBIT_ _MOVE_TYPE_', '_CONDITION_', 'cannot-T[1]');
+  insertRule(2, '_NEGATE_ _CONDITION_', '_CONDITION_', 'negate-T[1]');
+  insertRule(2, 'no longer _CONDITION_', '_REMOVE_CONDITION_', 'T[2]');
+  // Add who
 
   // Attack/defense/skill/... modifiers.
+  insertRule(2, '_ADJUSTMENT_ _ATTACK_ROLLS_ _EQUATE_ _NUMERIC_', '_CONDITION_',
+      'sanitizeAdjustment("attack", "T[0]", T[3])', true);
+  insertRule(2, '_ADJUSTMENT_ _DEFENSE_ _EQUATE_ _NUMERIC_', '_CONDITION_',
+      'sanitizeAdjustment("T[1]", "T[0]", T[3])', true);
+  insertRule(2, '_ADJUSTMENT_ _EQUATE_ _NUMERIC_', '_NUMERIC_', 'T[2]');
+  insertRule(2, '_ADJUSTMENT_ to', '_ADJUSTMENT_', 'T[0]');
   insertRule(2, '_OPERATOR_ _NUMERIC_ _ADJUSTMENT_ to', '_NUMERIC_',
       'T[0]T[1]');
   insertRule(2, '_NUMERIC_ _ATTACK_ROLLS_', '_CONDITION_', 'attackT[0]');
   insertRule(2, '_NUMERIC_ _DEFENSE_', '_CONDITION_', 'T[1]T[0]');
-  insertRule(2, '_ADJUSTMENT_ _EQUATE_ _NUMERIC_', '_NUMERIC_', 'T[2]');
   insertRule(2, '_NUMERIC_ as _ADJUSTMENT_ damage', '_CONDITION_', 'damageT[0]');
-  insertRule(2, '_ADJUSTMENT_ to', '_ADJUSTMENT_', 'T[0]');
-  insertRule(2, '_ADJUSTMENT_ _DEFENSE_ _EQUATE_ _NUMERIC_', '_CONDITION_',
-      'T[1]T[3]');
-  insertRule(2, '_ADJUSTMENT_ _ATTACK_ROLLS_ _EQUATE_ _NUMERIC_', '_CONDITION_',
-      'attackT[3]');
   insertRule(2, '_NUMERIC_ _SKILL_ checks', '_CONDITION_', 'T[1]T[0]');
 
   // Moves.
-  insertRule(2, '_NUMERIC_ square', '_DISTANCE_', 'T[0]');
-  insertRule(2, '_MOVE_ _DISTANCE_', '_MOVE_', '{type: "T[0]", distance: "T[1]"}', true);
-  insertRule(2, '_MOVE_ target', '_MOVE_', 'T[0]');
-  insertRule(2, 'up to _DISTANCE_', '_DISTANCE_', 'T[2]');
-  insertRule(2, 'square _EQUATE_ _NUMERIC_', '_DISTANCE_', 'T[2]');
+  // insertRule(2, 'a _DISTANCE_', '_DISTANCE_', 'T[1]');
+  insertRule(2, '_MOVE_ _DISTANCE_', '_MOVE_',
+      'augment(T[0], "distance", T[1])', true);
+  insertRule(2, '_MOVE_TYPE_', '_MOVE_', '{type: "T[0]"}', true);
   insertRule(2, 'number of square _EQUATE_ _NUMERIC_', '_DISTANCE_', 'T[4]');
+  insertRule(2, 'number of square up to _NUMERIC_', '_DISTANCE_', 'T[5]');
+  insertRule(2, '_NUMERIC_ square', '_DISTANCE_', 'T[0]');
+  insertRule(2, 'square _EQUATE_ _NUMERIC_', '_DISTANCE_', 'T[2]');
+  insertRule(2, 'up to _DISTANCE_', '_DISTANCE_', 'T[2]');
 
   // Healing.
-  insertRule(2, 'regain _NUMERIC_ _HIT_POINTS_', '_HEAL_', 'T[1]');
-  insertRule(2, 'regain _HIT_POINTS_ _EQUATE_ _NUMERIC_', '_HEAL_', 'T[3]');
+  insertRule(2, 'regain _ADJUSTMENT_ _HIT_POINTS_ _EQUATE_ _NUMERIC_', '_HEAL_',
+      '{amount: "T[4]"}', true);
+  insertRule(2, 'regain _NUMERIC_ _ADJUSTMENT_ _HIT_POINTS_', '_HEAL_',
+      '{amount: "T[1]"}', true);
+  insertRule(2, 'regain _NUMERIC_ _HIT_POINTS_', '_HEAL_', 
+      '{amount: "T[1]"}', true);
+  insertRule(2, 'regain _HIT_POINTS_ _EQUATE_ _NUMERIC_', '_HEAL_',
+      '{amount: "T[3]"}', true);
+
+  // Rules that attach actors to actions.
+  insertRule(3, '_MOVE_ _ACTOR_', '_MOVE_', 'augment(T[0],"who", "T[1]")', true);
+  insertRule(3, '_ACTOR_ _MOVE_', '_MOVE_', 'augment(T[1], "who", "T[0]")', true);
+  insertRule(3, '_ACTOR_ _HEAL_', '_HEAL_', 'augment(T[1], "who", "T[0]")', true);
+  insertRule(3, '_ACTOR_ _HEALING_SURGE_', '_HEALING_SURGE_', '{who: "T[0]"}', true);
+  // TODO: Add actor to all effects to ensure the correct target.
+ 
 
   // Rules that are more vague are encoded here.  For example, the word
   // "distance" may be ommitted after the numeric value for the move.
   // Rules with a non-ambiguous stop token are expressed with higher
   // priority.
-
-  insertRule(3, '_MOVE_ _NUMERIC_', '_MOVE_',
-      '{type: "T[0]", distance: "T[1]"}', true);
-  insertRule(3, 'damage _EQUATE_ _NUMERIC_', '_DAMAGE_', 
+  insertRule(4, '_MOVE_ _NUMERIC_', '_MOVE_',
+      'augment(T[0], "distance", "T[1]")', true);
+  insertRule(4, 'damage _EQUATE_ _NUMERIC_', '_DAMAGE_', 
       '{amount: "T[2]", type: "untyped"}', true);
-  insertRule(3, '_DAMAGE_TYPE_ _DAMAGE_', '_DAMAGE_',
+  insertRule(4, '_DAMAGE_TYPE_ _DAMAGE_', '_DAMAGE_',
       '{amount: extractValue(T[1],"amount"), type: "T[0]"}', true);
-  insertRule(3, 'resist all _DAMAGE_', '_CONDITION_',
+  insertRule(4, 'resist all _DAMAGE_', '_CONDITION_',
       '"ResistDamage"+extractValue(T[2],"amount")', true);
-  insertRule(3, 'half _NUMERIC_', '_NUMERIC_', 'Math.floor(T[1]/2)', true);
-  insertRule(3, 'twice _NUMERIC_', '_NUMERIC_', '2*T[1]', true);
-  insertRule(3, '_OPERATOR_ _NUMERIC_ _ADJUSTMENT_', '_NUMERIC_', 'T[0]T[1]');
-  insertRule(3, '_SKILL_ check to _MOVE_ with _NUMERIC_', '_MOVE_',
+  insertRule(4, 'half _NUMERIC_', '_NUMERIC_', 'Math.floor(T[1]/2)', true);
+  insertRule(4, 'twice _NUMERIC_', '_NUMERIC_', '2*T[1]', true);
+  insertRule(4, '_OPERATOR_ _NUMERIC_ _ADJUSTMENT_', '_NUMERIC_', 'T[0]T[1]');
+  insertRule(4, '_SKILL_ check to _MOVE_ with _NUMERIC_', '_MOVE_',
       '{type: "T[3]", skillcheck: "T[0]T[5]"}', true);
 
   // Power-up fragments that need to be aligned with previous statement.
-  insertRule(3, '_NUMERIC_ _HIT_POINTS_', '_HIT_POINT_CHANGE_', 'T[0]');
+  insertRule(4, '_NUMERIC_ _HIT_POINTS_', '_HIT_POINT_CHANGE_', 
+      '{amount: "T[0]"}', true);
+  insertRule(4, '_NUMERIC_ _ADJUSTMENT_ _HIT_POINTS_', '_HIT_POINT_CHANGE_', 
+      '{amount: "T[0]"}', true);
 
   // Some monsters indicate special damage on a critical.
-  insertRule(3, '( crit _NUMERIC_ )', '_CRIT_DAMAGE_', 'T[2]');
-  insertRule(3, 'crit _DAMAGE_', '_CRIT_DAMAGE_', 'T[1]');
+  insertRule(4, '( crit _NUMERIC_ )', '_CRIT_DAMAGE_', 'T[2]');
+  insertRule(4, 'crit _DAMAGE_', '_CRIT_DAMAGE_', 'T[1]');
 
   // Save bonus.
-  insertRule(3, '_SAVING_THROW_ with _ADJUSTMENT_', '_CONDITION_', 'saveT[2]');
+  insertRule(4, '_SAVING_THROW_ with _ADJUSTMENT_', '_CONDITION_', 'saveT[2]');
 
   // Joiners.
-  insertRule(4, '_COMBINE_ _COMBINE_', '_COMBINE_', 'T[1]');
+  insertRule(5, '_COMBINE_ _COMBINE_', '_COMBINE_', 'T[1]');
 
   /**
    * Attempts to simplify a numeric expression. For example,
@@ -412,7 +400,6 @@ dungeon.LanguageParser = (function() {
     return 0;
   }
 
-
   /**
    * Extracts the base damage of the weapon.
    * @return {string} Weapon damage expresses as a die roll.
@@ -439,6 +426,145 @@ dungeon.LanguageParser = (function() {
   }
 
   /**
+   * Adds or replaces an attribute within an object valued token.
+   */
+  function augment(object, key, value) {
+     object[key] = value;
+     return object;
+  }
+
+  /**
+   * Ensure that attribute adjustments are in the the correct direction. The
+   * phrases "takes a -X penalty to Y" and "penalty to Y is X" both imply a
+   * negative effect even though the sign on the numeric value changes.
+   */
+  function sanitizeAdjustment(attribute, adjustment, value) {
+    switch(adjustment) {
+    case 'penalty':
+      value = -Math.abs(value);
+      break;
+    case 'bonus':
+      value = Math.abs(value);
+    }
+    return  attribute + value;
+  }
+
+  /**
+   * Determines subject and object(s) of the sentence replacing tokens to
+   * mark the "actors" participating in the execution of the power.
+   */
+  function extractActors(tokens) {
+    var nameParts = {};
+    var name = '';
+    if (characterInfo_) {
+      // Monster names typically consist of more than one word.
+      // The power can refer to a subset of the full name when indicating
+      // that the monster playing the role of subject or object in the
+      // sentence.
+      name = characterInfo_.name;
+      var parts = name.toLowerCase().split(' ');
+      for (var i = 0; i < parts.length; i++) {
+        nameParts[parts[i]] = (i < parts.length - 1) ? parts[i + 1] : '';
+      }
+      if (name.indexOf('-') > 0) {
+        parts = name.toLowerCase().replace(/\-/g, ' ').split(' ');
+        for (var i = 0; i < parts.length; i++) {
+          nameParts[parts[i]] = (i < parts.length - 1) ? parts[i + 1] : '';
+        }
+      }
+    }
+
+    var next = null;
+    var actor = null;
+    var consume = 0;
+
+    // Test matching of the monster name or character class.
+    var nameMatch = function(word) {
+      if (typeof candidate != 'string')
+        return false;
+      if (word in nameParts) {
+        if (!next || next == word) {
+          actor = name;
+          consume++;
+          next = nameParts[candidate];
+          return true;
+        }
+      } else if (candidate.indexOf('\'s') == candidate.length - 2) {
+        // Possessive form.
+        actor = name;
+        consume++;
+        return true;
+      } else {
+         // Check name synonyms.
+         var synonyms = nameSynonyms[candidate];
+         if (synonyms) {
+           for (var i = 0; i < synonyms.length; i++) {
+             if (nameMatch(synonyms[i]))
+               return true;
+           }
+        }
+      }
+      return false;
+    };
+
+    for (var i = 0; i < tokens.length; i++) {
+      var token = tokens[i];
+      if (token == 'the') {
+        // Start of a noun phrase commonly introducing a subject or object.
+        next = null;
+        actor = null;
+        consume = 1;
+        for (var j = i + 1; j < tokens.length; j++) {
+          var candidate = tokens[j];
+          if (!nameMatch(tokens[j]))
+            break;
+        }
+        if (consume == 1) {
+          if (i < tokens.length - 1) {
+            var next = tokens[i+1];
+            switch(next) {
+            case 'target':
+            case 'ally':
+            case 'enemy':
+              consume++;
+              actor = next;
+            }
+          }
+        }
+        if (consume > 1)
+          tokens.splice(i, consume, {type: '_ACTOR_', value: actor});
+        else
+          tokens.splice(i, consume);  
+      } else {
+        consume = 0;
+        switch(token) {
+        case 'a':
+        case 'an':
+        case 'any':
+        case 'all':
+        case 'each':
+          if (i < tokens.length - 1) {
+            switch(tokens[i+1]) {
+            case 'ally':
+            case 'allies':
+            case 'enemy':
+            case 'enemies':
+            case 'target':
+              consume = 2;
+              tokens.splice(i, 2, {type: '_ACTOR_', value: tokens[i+1]});
+              break;
+            }
+          }
+        }
+        if (!consume && (token == 'a' || token == 'an'))
+          tokens.splice(i, 1);
+      }
+    }
+  }
+
+
+
+  /**
    * Parses a plain text description of a power into a script used to automate much
    * of the powers effects.
    * @param {Object} characterInfo  Details from the loaded character,
@@ -459,29 +585,21 @@ dungeon.LanguageParser = (function() {
       }
     }
     // TODO(kellis): Parse targeting info.
-    var description = power_['Hit'];
     var script = '';
-    if (description) {
-      script += 'onHit:\n'
-      result = dungeon.LanguageParser.parseText(description);
-      if (result.length > 0)
-        script += '  ' + result.join(';\n  ') + ';\n';
-    }
-    var description = power_['Effect'];
-    if (description) {
-      if (script.length == 0)
-        script += 'effect:\n'
-      result = dungeon.LanguageParser.parseText(description);
-      if (result.length > 0)
-        script += '  ' + result.join(';\n  ') + ';\n';
-    }
-    var description = power_['Miss'];
-    if (description) {
-      script += 'onMiss:\n'
-      result = dungeon.LanguageParser.parseText(description);
-      if (result.length > 0)
-        script += '  ' + result.join(';\n  ') + ';';
-    }
+    var parseField = function(name, label) {
+      var description = power_[name];
+      if (description) {
+        result = dungeon.LanguageParser.parseText(description);
+        if (result.length > 0) {
+          script += label + ':\n';
+          script += '  ' + result.join(';\n  ') + ';\n';
+        }
+      }
+    };
+    parseField('Special', 'special');
+    parseField('Hit', 'onHit');
+    parseField('Effect', 'effect');
+    parseField('Miss', 'onMiss');
     return script;
   }
 
@@ -525,6 +643,9 @@ dungeon.LanguageParser = (function() {
           }
         }
       }
+      // Extract participants in the ensuing action.
+      extractActors(tokens);
+
       // Remove the non-informative filler.
       for (var j = tokens.length - 1; j >= 0; j--) {
         var token = tokens[j];
@@ -571,9 +692,14 @@ dungeon.LanguageParser = (function() {
       var key = (typeof token == 'string') ? token : token.type;
       if (key == 'if' || key == 'when') {
         // Currently don't handle conditionals.
-        // Abort rather than collect garbage results.
-        tokens = [];
-        break;
+        // rewind back to last "joiner" and flush remaining tokens.
+        for (var i = index - 1; i >= 0; i--) {
+          var candidate = tokens[i];
+          if (i == 0 || (typeof candidate != 'string' && candidate.type == '_COMBINE_')) {
+            tokens.splice(i, tokens.length - 1);
+            break;
+          } 
+        }
       }
       var r = rules[key];
       while (r) {
@@ -674,16 +800,13 @@ dungeon.LanguageParser = (function() {
           extractMoveEffect(token, effects);
           break;
         case '_CONDITION_':
+        case '_REMOVE_CONDITION_':
           extractConditionEffect(token, effects);
           break;
         case '_HEALING_SURGE_':
-          effects.push('HealingSurge("friendly")');
-          break;
         case '_HEAL_':
-          effects.push('Heal("friendly", "' + token.value + '")');
-          break;
         case '_HIT_POINT_CHANGE_':
-          effects.push('Heal("friendly", "' + token.value + '")');
+          extractHealEffect(token, effects);
           break;
       }
     }
@@ -718,6 +841,18 @@ dungeon.LanguageParser = (function() {
     }
   }
 
+  function extractHealEffect(token, effects) {
+    var value = token.value;
+    var amount = value && value.amount ? value.amount : null;
+    var who = value && value.who ? value.who : 'target';
+    if (who != 'target')
+      who = '"' + who + '"';
+    if (token.type == '_HEALING_SURGE_')
+      effects.push('HealingSurge(' + who + ')');
+    else
+      effects.push('Heal(' + who + ', "' + amount + '")');
+  }
+
   /**
    * Extracts a move effect.  Assumes forced moves are applied to the target and
    * non-forced are applied to the source creature. TODO: handle case where a non-
@@ -729,7 +864,7 @@ dungeon.LanguageParser = (function() {
 
     if (!value.distance && value.type != 'jump' && value.type != 'shift')
       return;
-    var target = 'target';
+    var default_target = 'target';
     switch(value.type) {
       case 'teleport':
       case 'fly':
@@ -737,8 +872,11 @@ dungeon.LanguageParser = (function() {
       case 'run':
       case 'shift':
       case 'jump':
-        target = '"' + characterInfo_.name + '"'
+        default_target = characterInfo_.name;
     }
+    var target = value.who ? value.who : default_target;
+    if (target != 'target')
+      target = '"' + target + '"';
     var effect = 'Move(' + target + ', "' + value.type;
     if (value.distance)
       effect +=  '", ' + value.distance + ')';
@@ -764,7 +902,8 @@ dungeon.LanguageParser = (function() {
     if (power_ && power_['Attack Type'] == 'Personal')
       target = '"' + characterInfo_.name + '"'
 
-    var effect = 'ApplyCondition(' + target + ', "' + value + '")';
+    var fn = condition.type == '_CONDITION_' ? 'ApplyCondition' : 'RemoveCondition';
+    var effect = fn + '(' + target + ', "' + value + '")';
     effects.push(effect);
   }
 
