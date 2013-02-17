@@ -75,16 +75,19 @@ dungeon.Powers.prototype = {
    */
   onPowerUsed: function() {
     if (this.activePower_) {
-      // Retrieve characte/monster info for selected targets from client.
-      var targetIndicies = this.client_.getTargets();
-      var targets = [];
-      for(var i = 0;i < targetIndicies.length; i++) {
-        targets.push(this.client_.getCharacter(targetIndicies[i]));
-      }
-      this.activePower_.resolve(targets);
+      // TODO - store off index to make lookup easier.
+      var name = this.activePower_.characterInfo_.name;
+      var source = this.client_.getCharacterIndex(name);
+
+      var usage = {
+        source: source,
+        targets: this.client_.getTargets(),
+        power: this.activePower_.getName()
+      };
+      this.activePower_.phase_ = dungeon.Power.Phase.RESOLUTION;
+      this.client_.dmAttackResult(usage);
     }
   },
-
 
   /**
    * Loads details description of player and monster powers.
@@ -95,45 +98,13 @@ dungeon.Powers.prototype = {
 
   /**
    * Create a new power as a variant on another.
-   * @param {name: string,
-   *         variant=: {string: function}|Array.<{string, function}>,
-   *         onHit=: Array.<{applyEffect: function, getTooltip: function}>,
-   *         onMiss=: Array.<{applyEffect: function, getTooltip: function}}> data  
-   *    Description of the power.
-   *    |variant| is a set of replacement functions or a list of sets.
-   *    |onHitEffects| is a list of function pairs for applying effects on a hit.
-   *    |onMissEffects| is a list of function pairs for applying effects on a miss.
+   * @param {name: string, script: Array.<string>} Description of the power.
    */
   create: function(data) {
     var power = new dungeon.Power(data.name);
-    if (data.variant)
-      this.injectMethods(power, data.variant);
-    if (data.onHit) {
-      for (var i = 0; i < data.onHit.length; i++) {
-        power.addOnHitEffect(data.onHit[i]);
-      }
-    }
-    if (data.onMissEffects) {
-      for (var i = 0; i < data.onMiss.length; i++) {
-        power.addOnMissEffect(data.onMiss[i]);
-      }
-    }
+    power.script_ = data.script.join('\n');
     this.add(data.name, power);
     return power;
-  },
-
-  /**
-   * Overrides methods in a power. This is the means by which powers are
-   * customized.
-   */
-  injectMethods: function(power, methods) {
-    for (key in methods) {
-      var addition = methods[key];
-      if (addition instanceof Function)
-        power[key] = addition;
-      else
-        this.injectMethods(power, addition);
-    }
   },
 
   client: function() {
@@ -170,8 +141,12 @@ dungeon.Power.prototype = {
    */
   initialize: function(name) {
     this.name_ = name;
+    this.script_ = null;
+    this.requiresToHitRoll_ = false;
+    this.damageList_ = [];
     this.onHitEffects_ = [];
     this.onMissEffects_ = [];
+    this.generalEffects_ = [];
   },
 
   /**
@@ -214,124 +189,136 @@ dungeon.Power.prototype = {
       }
     }
     if (this.details_) {
-      // Make assumption that first weapon in list is best.
-      // TODO(kellis): Check assumption.
-      // TODO(kellis): Track which weapon is equiped?
+      // Weapons are listed in the character file in order of preference, with
+      // best weapon first.  At some point it would be nice to track which
+      // weapon is actually equiped.
       var weapons = this.details_.weapons;
       this.weapon_ = weapons && weapons.length > 0 ? weapons[0] : null;
-    }
-    this.applyPreTargettingEffects();
-  },
 
-  /**
-   * Resolves the effect of using a power. Called after confirmation of
-   * targets.
-   */
-  resolve: function(targets) {
-    this.phase_ = dungeon.Power.Phase.RESOLUTION;
-
-    // Results of using the power are fully resolved. By require DM 
-    // repsonse before taking effect. 
-    var result = {
-      type: 'attack-result',  // TODO(kellis): Change to power-result
-      characters: [],
-      details: '', // Gory details about each roll.
-      log: '', // Hit and miss messages (concise log).
-      summary: '', // Who is hitting whom with what.
-    };
-
-    result.summary = this.logPowerUse(targets);
-
-    if (this.powerDealsDamage()) {
-      var damageRoll = this.rollDamage();
-      result.details += damageRoll.log;
-      var attackResults = null;
-      if (this.requiresToHitRoll()) {
-        attackResults = this.resolveToHit(targets, damageRoll);
-        if (attackResults.log)
-          result.details  += attackResults.log;
+      // Initialize script for power.
+      if (! ('script' in this.details_)) {
+        try {
+          var script = dungeon.LanguageParser.generateScript(
+              this.characterInfo_, this.getName());
+          this.details_.script = script;
+        } catch(err) {
+          console.log('Failure during natural language parsing of power ' + this.getName());
+          console.log(err.message);
+          this.details_.script = '';
+        }
       }
-      var attackedStat = this.getAttackedStat();
-      if (attackResults)
-         result.details += 'Attacking versus ' + attackedStat + '\n';
-      for (var i = 0; i < targets.length; i++) {
-        var target = targets[i].name;
-        var hit = true; // Automatically hit if no roll required.
-        var damage = damageRoll.value;
-        if (attackResults) {
-          var defStat = parseInt(this.getCharacterAttribute(
-                                 targets[i], attackedStat));
-          hit = (defStat <= attackResults.attack[i]);
-          damage = attackResults.damage[i];
-        }
-        var damageModifier = this.getDamageModifier(targets[i]);
-        damage += damageModifier;
-        if (hit) {
-          result.log += this.characterInfo_.name + ' hits ' + target
-              + ' for ' + damage + ' damage.\n';
-          if (damageModifier) {
-             if (damageModifier < 0) {
-               result.log +='[resisted ' + (-damageModifier) +
-                   ' damage.]\n';
-             } else {
-                result.log += '[took ' + damageModifier +
-                    ' extra damage.]\n';
-             }
-          }
-          result.log += this.applyOnHitEffects(targets[i]);
-        } else {
-          // TODO: Handle Effect on miss.
-          result.log += this.characterInfo_.name + ' misses ' +
-              target;
-          var missDamage = this.damageOnMiss(damage);
-          if (missDamage && attackResults.attack[i] > 0 ) {
-             // Non-crit-fail attack doing reduced damage.
-             damage = missDamage;
-             result.log += ', but still deals ' + missDamage + ' damage';
-          } else {
-            damage = 0;
-          }
-          result.log += '.\n';
-          result.log += this.applyOnMissEffects(target);
-        }
-        if (damage) {
-          var tempStr = targets[i].condition.stats['Temps'];
-          var temps = tempStr ? parseInt(tempStr) : 0;
-          var newhp = parseInt(targets[i].condition.stats['Hit Points']);
-          temps -= damage;
-          if (temps < 0) {
-            newhp += temps;
-            temps = 0;
-          }
-          var targetIndex = this.client_.getCharacterIndex(target);
-          result.characters.push(
-              [targetIndex,
-               {'Hit Points': newhp,
-                'Temps': temps}]);
-          // TODO: Handle effect on hit.
-        } // if damage
-      } // for target
-
-    } else {
-      // Power does not deal damage.
-      for (var j = 0; j < targets.length; j++) 
-        result.log += this.applyOnHitEffects(targets[j], result);
-    }
-    this.client_.dmAttackResult(result); // TODO: Deferred result?
+    } 
+    this.parseScript();
   },
 
   /**
-   * Sends notification that power has been used on one or more targets.
-   * @param {Array.<Object>} targets List of character info for targets.
+   * Parses effects out of the script representation.
    */
-  logPowerUse: function(targets) {
-    var targetNames = [];
-    for (var i = 0; i < targets.length; i++)
-      targetNames.push(targets[i].name);
-    var message = this.characterInfo_.name + ' uses "' + this.getName() +
-      '" on ' + targetNames.join(',') + '.\n';
-    this.client_.sendEvent({type: 'log', text: message});
-    return message;
+  parseScript: function() {
+    this.requiresToHitRoll_ = false;
+    this.damageList_ = [];
+    this.onHitEffects_ = [];
+    this.onMissEffects_ = [];
+    this.generalEffects_ = [];
+    var activeList = null;
+    var script = this.script_;
+    if (!script && this.details_)
+      script = this.details_['script'];
+    if (script && script.length > 0) {
+      try {
+        var parts = script.split('\n');
+        for (var i = 0; i < parts.length; i++) {
+          var line = parts[i];
+          if (line.length == 0)
+            continue;
+          if (line.indexOf('onHit:') == 0) {
+            this.requiresToHitRoll_ = true;
+            activeList = this.onHitEffects_;
+            continue;
+          }
+          if (line.indexOf('onMiss:') == 0) {
+            activeList = this.onMissEffects_;
+            continue;
+          }
+          if (line.indexOf('effect:') == 0) {
+            activeList = this.generalEffects_;
+            continue;
+          }
+          // TODO - script should contain targetting info as well as onCrit.
+          this.parseStatement(line, activeList);
+        }
+      } catch(err) {
+        console.log('Failure interpreting script for power ' + this.getName());
+        console.log(err.message);
+      }
+    }
+  },
+
+  /**
+   * Parses a single expression in the script converting to a more convenient
+   * object representation.
+   */
+  parseStatement: function(text, activeList) {
+    text = text.trim();
+    if (!activeList) {
+      console.log('Warning: Parsing an expression outside of a group');
+      return;
+    }
+    var target = 'target';
+    var Damage = function(target, roll, type) {
+      return {
+        effect: 'damage',
+        target: target,
+        roll: roll,
+        type: type
+      };
+    }
+    var Ongoing = function(v) {
+      return {
+        effect: 'condition',
+        target: v.target,
+        condition: v.type + v.roll
+      };
+    };
+    var ApplyCondition = function(target, type) {
+      return {
+        effect: 'condition',
+        target: target,
+        condition: type
+      };
+    };
+    var RemoveCondition = function(target, type) {
+      return ApplyCondition(target, '-' + type);
+    };
+    var Heal = function(target, roll) {
+      return {
+        effect: 'heal',
+        target: target,
+        amount: roll,
+      }
+    };
+    var HealingSurge = function(target) {
+      return {
+        effect: 'heal',
+        target: target,
+        amount: 'surge'
+      };
+    };
+    var Move = function(target, type, distance) {
+      return {
+        effect: 'move',
+        target: target,
+        type: type,
+        distance: distance
+      };
+    };
+    var HalfDamage = function() {
+      return {
+        effect: 'halfdamage'
+      }
+    };
+    var result = eval(text);
+    activeList.push(result);
   },
 
   /**
@@ -339,7 +326,15 @@ dungeon.Power.prototype = {
    * @return {boolean} True if the power deals damage to targets.
    */
   powerDealsDamage: function() {
-    return this.getDamageString() != undefined;
+    var list = this.onHitEffects_;
+    if (list) {
+      for (var i = 0; i < list.length; i++) {
+        var effect = list[i];
+        if (effect['effect'] == 'damage')
+          return true;
+      }
+    }
+    return false;
   },
 
   /**
@@ -347,7 +342,7 @@ dungeon.Power.prototype = {
    * @return {boolean} True if a to-hit roll is required.
    */
   requiresToHitRoll: function() {
-    return this.getToHit() != undefined;
+    return this.requiresToHitRoll_;
   },
 
   /**
@@ -355,135 +350,204 @@ dungeon.Power.prototype = {
    * @return {log: string, value: Number, max: Number}
    */
   rollDamage: function() {
-    // Characters typically do damage based on weapon and monsters use 
-    // "natural" weapons.
-    var dmgStr = this.getDamageString();
-    var damage = this.rollDice(dmgStr);
-    var logStr = 'Rolling damage: ' + dmgStr + '\n';
-    logStr += damage.str + '\n';
-
-    return {
-      log: logStr,
-      value: damage.value,
-      max: damage.max
-    };
-  },
-
-  /**
-   * Returns the damage on a miss.
-   * @param{numeric} damageOnHit Damage roll for a non-crit hit.
-   */
-  damageOnMiss: function(damageOnHit) {
-    return 0;
-  },
-
-  /**
-   * Resolves attacks on targets.  Requires confirmation from DM.
-   * @param {array.<Object>} Array of character info for targets.
-   * @param {log: string, value: numeric, max: numeric} damage
-   *     Result of damage roll. 
-   */
-  resolveToHit: function(targets, damage) {
-    var toHitBase = this.getToHit();
-    var toHitStr = '1d20 + ' + toHitBase;
-
-    // Allow effect bonus for attacker.
-    var bonus = this.getCharacterAttribute(this.characterInfo_, 'Attack');
-    if (bonus)
-      toHitStr += ' + ' + bonus;
-
-    // Determine toHit adjustments for each target.
-    var adjustedToHitString = [];
-    for (var i = 0; i < targets.length; i++) {
-      if (this.hasEffect(targets[i], 'Grants Combat Advantage')) {
-        // TODO(kellis): Not quite generic enough as in some cases the bonus can be higher for
-        // having combat advantage.  Keeping it separate from Defense modifier to more closely
-        // reflect game mechanics and to be more visible.
-        adjustedToHitString[i] = toHitStr + ' + 2';
+    var results = [];
+    var list = this.onHitEffects_;
+    if (list) {
+      for (var i = 0; i < list.length; i++) {
+        var effect = list[i];
+        if (effect['effect'] == 'damage') {
+          var dmgStr = effect['roll'];
+          var dmgType = effect['type'];
+          var damage = this.rollDice(dmgStr);
+          results.push({
+            damageString: dmgStr,
+            critString: damage.max + '', // Fails to account for magic weapon.
+            damageType: dmgType,
+            rollString: damage.str,
+            value: damage.value
+          });
+        }
       }
+    }
+    return results;
+  },
+
+  /**
+   * Generate to-hit rolls.
+   * @return {Array.<{roll: number, 
+   *                  base: number, 
+   *                  attackBonus: number, 
+   *                  adjustments: Array.<add: number, reason: string>>}
+   */
+  rollToHit: function(targets) {
+
+    // Bonus to attack rolls.
+    var baseAttack = parseInt(this.getToHit());
+    var attackedStat = this.getAttackedStat();
+    var attackBonus = this.getCharacterAttribute(this.characterInfo_, 'Attack');
+    var attackBonusStr = '';
+    attackBonus = attackBonus.adjusted;
+  
+    var results = [];
+    for (var i = 0; i < targets.length; i++) {
+      var targetInfo = this.client_.getCharacter(targets[i]);
+      var adjustedAttack = baseAttack + attackBonus;
+      var hitRoll = {
+        attack: {
+          roll: 1 + Math.floor(Math.random() * 20),
+          base: baseAttack,
+          adjusted: baseAttack,
+          adjustments: [],
+        },
+        defense: this.getCharacterAttribute(targetInfo, attackedStat)
+      };
+      
+      if (this.hasEffect(targetInfo, 'Grants Combat Advantage') ||
+          this.hasEffect(this.characterInfo_, 'Combat Advantage')) {
+        // TODO(kellis): Determine correct modifier for combat advantage based on creature and
+        // circumstances.  Using default value of 2 for now. Also only applies to melee attacks.
+        hitRoll.attack.adjustments.push({add: 2, reason: 'Combat Advantage'});
+        adjustedAttack += 2;
+      }
+      if (attackBonus)
+        hitRoll.attack.adjustments.push({add: attackBonus, reason: 'Attack'});
+
       // TODO: Add modifiers for target concealment, running, ...
-    }
 
-    logStr = 'Rolling attack(s): ' + toHitStr + '\n';
-    var attack = [];
-    var damages = [];
-    for (var i = 0; i < targets.length; i++) {
-      var curattack = this.rollDice(adjustedToHitString[i] ?
-          adjustedToHitString[i] : toHitStr);
-      if (curattack.rolls[0][0] == 20) {
-        logStr += 'Critical HIT '+ curattack.str +'\n';
-        curattack.value = 100; // Hack to ensure a hit.
-        // TODO: Add effect of magic weapons.
-        damages.push(damage.max);
-      } else if (curattack.rolls[0][0] == 1) {
-        logStr += 'Critical FAIL '+ curattack.str +'\n';
-        curattack.value = -100; // Hack to ensure a miss.
-        damages.push(0);
-      } else {
-        logStr += curattack.str + '\n';
-        damages.push(damage.value);
-      }
-      attack.push(curattack.value);
+      hitRoll.attack.adjusted = adjustedAttack;
+      results.push(hitRoll);
     }
-
-    return {
-      log: logStr,
-      attack: attack,
-      damage: damages
-    };
+    return results;
   },
+
 
   // Effects -------------------------------------
 
-  addOnHitEffect: function(effect) {
-    this.onHitEffects_.push(effect); 
-  },
-
-  addOnMissEffect: function(effect) {
-    this.onMissEffects_.push(effect);
+  /**
+   * Apply secondary effects that are are based on a to-hit roll.
+   * @param{number} targetIndex  Reference index of the target.
+   * @param{Array.<string>} log List of log messages for DM.
+   * @param{Array.<Object>} results List of updates resulting from power.
+   */
+  applyOnHitEffects: function(targetIndex, log, results) {
+    this.applyEffects(targetIndex, this.onHitEffects_, log, results, false);
   },
 
   /**
-   * Apply an effect that triggers prior to targetting.
-   * Includes effects that do not require targetting.
-   * @return {string} Description of effects for logging.
+   * Apply secondary effects that are are based on scoring a critical
+   *  with a to-hit roll.
+   * @param{number} targetIndex  Reference index of the target.
+   * @param{Array.<string>} log List of log messages for DM.
+   * @param{Array.<Object>} results List of updates resulting from power.
    */
-  applyPreTargettingEffects: function() {
-    return '';
+  applyOnCritEffects: function(target, log, results) {
+    // Implement me.
   },
 
   /**
-   * Apply effects that triggers on a successful hit. May include
-   * effecs on friendlies that auto-hit.
-   * @param {Object} target CharacterInformation for the target.
-   * @param {Object} result Object for storing effects.
-   * @return {string} Description of effects for logging.
+   * Apply effects that are not based on a to-hit roll.
+   * @param{number} targetIndex  Reference index of the target.
+   * @param{Array.<string>} log List of log messages for DM.
+   * @param{Array.<Object>} results List of updates resulting from power.
    */
-  applyOnHitEffects: function(target, result) {
-    var outcome = [];
-    for (var i = 0; i < this.onHitEffects_.length; i++) {
-      var effect = this.onHitEffects_[i];
-      outcome.push(effect.applyEffect.apply(this, [target, result]));
+  applyGeneralEffects: function(targetIndex, log, results) {
+    this.applyEffects(targetIndex, this.generalEffects_, log, results, true);
+  },
+
+  /**
+   * Apply effects that are not based on a miss.
+   * @param{number} targetIndex  Reference index of the target.
+   * @param{Array.<string>} log List of log messages for DM.
+   * @param{Array.<Object>} results List of updates resulting from power.
+   */
+  applyOnMissEffects: function(targetIndex, log, results) {
+    this.applyEffects(targetIndex, this.onMissEffects_, log, results, true);
+  },
+
+  /**
+   * Apply secondary effects that are are based on scoring a critical
+   *  with a to-hit roll.
+   * @param{number} targetIndex  Reference index of the target.
+   * @param{Array.<string>} log List of log messages for DM.
+   * @param{Array.<Object>} results List of updates resulting from power.
+   * @param{boolean} includeDamageEffects Whether to include damage when resolving
+   *     the effects.
+   */
+  applyEffects: function(targetIndex, effectsList, log, results, includeDamageEffects) {
+    var targetInfo = this.client_.getCharacter(targetIndex);
+    var healing = 0;
+    var damage = 0;
+    for (var i = 0; i < effectsList.length; i++) {
+      var effect = effectsList[i];
+      if (effect['effect'] == 'damage' && !includeDamageEffects)
+        continue;
+      if (effect['target'] != 'target')
+        continue;
+      // TODO: handle effects on self and allies.
+      switch(effect['effect']) {
+        case 'condition':
+          log.push(effect['condition']);
+          if (!results.effects)
+            results.effects = [];
+          results.effects.push(effect['condition']);
+          break;
+        case 'heal':
+          var amount = effect['amount'];
+          var hp = 0;
+          if (amount == 'surge') {
+            var maxHp = parseInt(targetInfo.source.stats['Hit Points']);
+            hp = Math.floor(maxHp / 4);
+            log.push('healing surge for ' + hp);
+          } else {
+            var roll = this.rollDice(amount);
+            hp = roll.value;
+            log.push('heal for ' + hp);
+          }
+          healing += hp;
+          break;
+        case 'damage':
+          // Damage for effects that do not require a to-hit roll.
+          // Damage on hit is already accounted for.
+          var damageStr = effect['roll'];
+          var damageType = effect['type'];
+          var roll = this.rollDice(damageStr);
+          var hp = roll.value;
+          log.push(hp + ' ' + damageType + ' damage');
+          damage += hp; 
+          break;
+        case 'move':
+          log.push(effect['type'] + ' ' + effect['distance']);
+          break;
+        case 'halfdamage':
+          break;
+      }
     }
-    return outcome.join('\n');
-  },
-
-  /**
-   * Apply effects that trigger on a miss.
-   * @param {Object} target CharacterInformation for the target.
-   * @param {Object} result Object for storing effects.
-   * @return {string} Description of effects for logging.
-   */
-  applyOnMissEffects: function(target, result) {
-    return '';
-  },
-
-  /**
-   * Apply effects that trigger after all other effects are resolved.
-   * @return {string} Description of effects for logging.
-   */
-  applyPostResolutionEffects: function() {
-    return '';
+    // Stack all heals and damage at the end.
+    if (healing) {
+      var maxHp = parseInt(targetInfo.source.stats['Hit Points']);
+      var currentHp = parseInt(targetInfo.condition.stats['Hit Points']);
+      healing += currentHp;
+      if (healing > maxHp)
+        healing = maxHp;
+      log.push(healing + '/' + maxHp + 'HP');
+      results['Hit Points'] = healing;
+    }
+    if (damage) {
+      var currentHp = parseInt(targetInfo.condition.stats['Hit Points']);
+      hp += currentHp;
+      var tempStr = targetInfo.condition.stats['Temps'];
+      var temps = tempStr ? parseInt(tempStr) : 0;
+      var newHp = parseInt(targetInfo.condition.stats['Hit Points']);
+      var maxHp = parseInt(targetInfo.source.stats['Hit Points']);
+      temps -= damage;
+      if (temps < 0) {
+        newHp += temps;
+        temps = 0;
+      }
+      results['Hit Points'] = newHp;
+      results['Temps'] = temps;
+      log.push(newHp + '/' + maxHp + 'HP + ' + temps + ' temps');
+    }
   },
 
   // DM confirmation of effect.
@@ -540,84 +604,46 @@ dungeon.Power.prototype = {
   },
 
   /**
-   * Retrieves an attribute, which may be modified by conditions
-   * for a character.
-   * @param {Object} character  Character inforation.
+   * Retrieves an attribute, which may be modified by conditions.
+   * @param {Object} character  Character information.
    * @param {string} attribute  Name of the attribute.
-   * @param {Number} Adjusted value of the attribute.
+   * @return {
+   *   base: number,
+   *   adjusted: number,
+   *   adjustments: Array<add: number, reason: string>}
    */
   getCharacterAttribute: function(character, attribute) {
     var defenseAttrs = ['AC', 'Reflex', 'Fortitude', 'Will'];
 
     var value = parseInt(character.condition.stats[attribute]);
     if (!value) value = 0;
+    var results = {
+      base: value,
+      adjusted: value,
+      adjustments: []
+    }
     if (defenseAttrs.indexOf(attribute) >= 0) {
-      value += this.getCharacterAttribute(character, 'Defense');
+      var defense = this.getCharacterAttribute(character, 'Defense').adjusted;
+      if (defense) {
+        value += defense;
+        results.adjustments.push({add: defense, reason: 'Defense'});
+      }
     }
     if (character.condition.effects) {
       var effectRegex = new RegExp(attribute+'[ ]*([+-])[ ]*([0-9]*)');
       for (var i = 0; i < character.condition.effects.length; i++) {
         var effectMatch = effectRegex.exec(character.condition.effects[i]);
         if (effectMatch) {
-          if (effectMatch[1] == '+')
-            value += parseInt(effectMatch[2]);
-          else
-            value -= parseInt(effectMatch[2]);
+          var delta = parseInt(effectMatch[2]);
+          if (effectMatch[1] == '-')
+             delta = -delta;
+          value += delta;
+          results.adjustments.push({add: delta, reason: attribute});
         }
       }
     }
-    return value;
-  },
-
-  addCondition: function(target, condition, result) {
-    var index = this.client_.getCharacterIndex(target.name);
-    var list = result.characters;
-    var entry = null;
-    for (var i = 0; i < list.length; i++) {
-      if (list[i][0] == index) {
-        entry = list[i];
-        break;
-      }
-    }
-    if (!entry) {
-      entry = [index, {}];
-      result.characters.push(entry);
-    }
-    if (!entry[1].effects)
-      entry[1].effects = [];
-    entry[1].effects.push(condition);
-  },
-
-  removeCondition: function(target, condition, result) {
-    addCondition(target, '-' + condition, result);
-  },
-
-  /**
-   * Heals target.
-   * @param {string} target Name of the target.
-   * @param {Object} result Structure for storing "attack" results.
-   * @param {number} hp Number of hit points to add.
-   */
-  heal: function(target, result, hp) {
-    var index = this.client_.getCharacterIndex(target.name);
-    var list = result.characters;
-    var entry = null;
-    for (var i = 0; i < list.length; i++) {
-      if (list[i][0] == index) {
-        entry = list[i];
-        break;
-      }
-    }
-    if (!entry) {
-      entry = [index, {}];
-      result.characters.push(entry);
-    }
-    var maxHp = parseInt(target.source.stats['Hit Points']);  
-    var currentHp = parseInt(target.condition.stats['Hit Points']);
-    var newHp = Math.min(maxHp, currentHp + hp);
-    var healedHp = newHp - currentHp;
-    entry[1]['Hit Points'] = newHp;
-    return 'Healed ' + healedHp + ' (from ' + currentHp + ' to ' + newHp + ').';
+    results.adjusted = value;
+    return results;
   },
 
   /**
@@ -662,13 +688,6 @@ dungeon.Power.prototype = {
       dmgStr = this.weapon_.damage;
     else if (this.details_)
       dmgStr = this.details_.damage;
-    if (!dmgStr)
-      return;
-    // TODO: Might be better to defer including this bonus to allow for DM
-    // modification.
-    bonus = this.getCharacterAttribute(this.characterInfo_, 'Damage');
-    if (bonus)
-      dmgStr += ' + ' + bonus;
     return dmgStr;
   },
 
@@ -728,15 +747,36 @@ dungeon.Power.prototype = {
    * Short description of power.
    */
   getTooltip: function() {
+    var keywords = {};
     var tooltip = [];
     if (this.requiresToHitRoll())
       tooltip.push(this.getToHit() + ' versus ' + this.getAttackedStat() + '.');
     if (this.powerDealsDamage())
       tooltip.push(this.getDamageString() + ' damage.');
-    for (var i = 0; i < this.onHitEffects_.length; i++) {
-      var effect = this.onHitEffects_[i];
-      if ('getTooltip' in effect)
-        tooltip.push(effect.getTooltip.apply(this));
+    // Fetch keywords of interest for tooltip.
+    var extractEffects = function(list) {
+      for (var i = 0; i < list.length; i++) {
+        var effect = list[i];
+        var name = effect['effect'];
+        if (name == 'move')
+          keywords[effect['type']] = true;
+        else if (name == 'condition')
+          keywords[effect['condition']] = true;
+        else if (name == 'heal')
+          keywords['heal'] = true;
+      }
+    };
+    extractEffects(this.onHitEffects_);
+    extractEffects(this.generalEffects_);
+    for (var key in keywords)
+      tooltip.push(key);
+    // Does the power do half damage on a miss?
+    for (var i = 0; i < this.onMissEffects_.length; i++) {
+      var effect = this.onMissEffects_[i];
+      if (effect['effect'] == 'halfdamage') {
+        tooltip.push('half on miss');
+        break;
+      }
     }
     return tooltip.join(' ');
   },
@@ -805,97 +845,10 @@ dungeon.Power.prototype = {
 
 // ---------------------------- Specialized Powers ----------------------------
 
+
 dungeon.Powers.prototype.customizedPowers = (function() {
-
-  // Stone fist flurry of blows.
-  var SFFoB = {
-    getDamageString: function() {
-      var modifier = this.characterInfo_.source.stats['Strength modifier'];
-      var damage = 3 + parseInt(modifier); // TODO: +2 if switching targets.
-      return "" + damage;
-    }
-  };
-
-  // Open the gate of battle.
-  var OtGoB = {
-    getDamageModifier: function(target) {
-      var modifier = dungeon.Power.prototype.getDamageModifier.apply(
-          this, [target]);
-      // 1D10 extra damage to uninjured target.
-      var maxHp = parseInt(target.source.stats['Hit Points']);
-      var currentHp = parseInt(target.condition.stats['Hit Points']);
-      if (maxHp == currentHp)
-        modifier += Math.floor(Math.random() * 10 + 1);
-      return modifier; 
-    }
-  };
-
-  // Furious assault.
-  var FurAslt = {
-    getDamageString: function() {
-      return "1d8";  // actually 1[W].
-    }
-  };
-
-  // Attacks that do half damage.
-  var HalfDmg = {
-    damageOnMiss: function(damageOnHit) {
-      return Math.floor(damageOnHit/2);
-    },
-  };
-
-  /**
-   * Forced movement, which may be a push, pull, slide or teleport.
-   */
-  var ForceMove = function(type, past, distance) {
-    return {
-      applyEffect: function(target) {
-        // Not a persistant condition. Simply logging the effect is
-        // sufficient for now to remind player and DM.
-        var messageSuffix = (distance == 1) ? ' space.\n' : ' spaces.\n'        
-        return target.name + ' ' + past + ' ' + distance + messageSuffix;
-      },
-
-      getTooltip: function() {
-        return type + ' ' + distance + '.';
-      }
-    };
-
-  };
-
-  var Push = function(n) {
-    return ForceMove('Push', 'pushed', n);
-  };
-
-  var Pull = function(n) {
-    return ForceMove('Pull', 'pulled', n);
-  };
-
-  var Slide = function(n) {
-    return ForceMove('Slide', 'slid', n);
-  };
-
-  var Teleport = function(n) {
-    return ForceMove('Teleport', 'teleported', n);
-  };
-
-  /**
-   * Target is slowed.
-   */
-  var Slow = {
-    applyEffect: function(target, result) {
-        this.addCondition(target, 'slow', result);
-        return target.name + ' has been slowed.';
-    },
-
-    getTooltip: function() {
-      return 'Slow.';
-    }
-  }
-
-  /**
-   * Target self.
-   */
+/*
+  // TODO - implement auto-self targetting.
   var Personal = {
     autoSelect: function() {
       return true;
@@ -906,96 +859,22 @@ dungeon.Powers.prototype.customizedPowers = (function() {
           target.y == this.characterInfo_.y;
     },
   };
-
-  /**
-   * Bonus or penalty to all defense.
-   */
-  var Defense = function(n) {
-    return {
-      applyEffect: function(target, result) {
-        var delta = (n < 0) ? n : '+' + n;
-        var condition = 'Defense' + delta;
-        this.addCondition(target, condition, result);
-        return target.name + ' has ' + delta + ' to all defenses.';
-      },
-      getTooltip: function() {
-        var delta = (n < 0) ? n : '+' + n;
-        return 'Defense' + delta;
-      }
-    };
-  };
-
-  /**
-   * Heal for 1/4 max HP.
-   */
-  var HealingSurge = {
-    applyEffect: function(target, result) {
-      // TODO: Track number of healing surges remaining.
-      var maxHP = parseInt(target.source.stats['Hit Points']);
-      return this.heal(target, result, Math.floor(maxHP / 4));
-    },
-
-    getTooltip: function() {
-      return 'Heal.';
-    }
-  };
+*/
 
   return [
+    // TODO: self-targetting for second wind.
     {name: 'Second Wind',
-     onHit: [HealingSurge],
-     variant: Personal
-    },
-    {name: 'Healing Surge',
-     onHit: [HealingSurge]
-    },
-    {name: 'Stone Fist Flurry of Blows',
-     variant: SFFoB
-    },
-    {name: 'Supreme Flurry',
-     variant: SFFoB
+     script: ['effect:',
+              'HealingSurge(target)']
     },
     {name: 'Furious Assault',
-     variant: FurAslt
-    },
-    {name: 'Open the Gate of Battle',
-     variant: OtGoB
-    },
-    {name: 'Masterful Spiral',
-     variant: HalfDmg
-    },
-    {name: 'One Hundred Leaves',
-     variant: HalfDmg,
-     onHit: [Push(2)]
-    },
-    {name: 'Arc of the Flashing Storm',
-     onHit: [Push(2)]
-    },
-    {name: 'Centered Defense',
-     variant: [Personal],
-     onHit: [Defense(2)]
-    },
-    {name: 'Encaging Spirits',
-     onHit: [Push(1), Slow]
-    },
-    {name: 'Bastion of Health',
-     onHit: [HealingSurge]
-    },
-    {name: 'Healing Word',
-     onHit: [HealingSurge]
-    },
-    {name: 'Feyjump Shot',
-     onHit: [Teleport(3)]
-    },
-    {name: 'Hymn of Resurgence',
-     onHit: [Defense(-2)]
-    },
-    {name: 'Servitude in Death',
-     variant: HalfDmg
-    },
-    {name: 'Storm of Spirit Shards',
-     variant: HalfDmg
+     script: ['effect:',
+              'Damage(target, "1d8", "untyped")']
     },
   ];
+
+  // TODO: Stand, grab, bullrush, run...
+
 
 })();
 

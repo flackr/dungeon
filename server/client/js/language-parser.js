@@ -211,8 +211,8 @@ dungeon.LanguageParser = (function() {
   insertRule(1, 'end of', '_WHEN_', 'end');
   insertRule(1, '_EQUATE_ to', '_EQUATE_', 'equal');
   insertRule(1, 'is _EQUATE_', '_EQUATE_', 'equal');
-  insertRule(1, 'gains combat advantage', '_CONDITION_', 'CombatAdvantage');
-  insertRule(1, 'grants combat advantage', '_CONDITION_', 'GrantsCombatAdvantage');
+  insertRule(1, 'gains combat advantage', '_CONDITION_', 'Combat Advantage');
+  insertRule(1, 'grants combat advantage', '_CONDITION_', 'Grants Combat Advantage');
   insertRule(1, 'half damage', '_HALF_DAMAGE_');
   insertRule(1, 'healing surge', '_HEALING_SURGE_');
   insertRule(1, 'hit points', '_HIT_POINTS_');

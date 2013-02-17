@@ -796,6 +796,11 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.sendEvent(result);
   },
 
+  /**
+   * Show attack results to DM for final blessing.
+   * @param {Object} message Message containing the attack details.
+   *    See dmAttackResult for a full description of the message.
+   */
   onDmAttackResultMsg: function(message) {
     var role = document.body.parentNode.getAttribute('role');
     if (role == 'dm') {
@@ -803,12 +808,19 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
   },
 
+  /**
+   * 
+   */
   dmAttackResult: function(result) {
     var role = document.body.parentNode.getAttribute('role');
     if (role == 'dm') {
-      alert("Combat result:\n" + result.summary + result.details + result.log);
-      this.sendEvent({type: 'log', text: result.details});
-      this.sendEvent(result);
+      var dialog = dungeon.Dialog.getInstance('use-power');
+      dialog.update(result);
+      dialog.show();
+      // >>> Implement me >>>>
+      //alert("Combat result:\n" + result.summary + result.details + result.log);
+      //this.sendEvent({type: 'log', text: result.details});
+      //this.sendEvent(result);
     } else {
       var message = {
         type: 'dm-attack-result',

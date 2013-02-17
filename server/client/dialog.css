@@ -68,6 +68,53 @@
   font-weight: bold;
 }
 
+/* --------------- Use Power dialog -------------- */
+
+#use-power-dialog-content {
+  max-height: 500px;
+  min-width: 200px;
+  overflow-y: auto;
+}
+
+#use-power-dialog section {
+  font-size: 10pt;
+  font-weight: bold;
+  margin: 8px 0;
+}
+
+#attack-calc-template,
+#attack-table-template,
+#attack-target-template,
+#damage-roll-template,
+#damage-template,
+#simple-table-template,
+#simple-target-template {
+  display: none;
+}
+
+#use-power-dialog table td,
+#use-power-dialog table th {
+  line-height: 1.4em;
+  padding: 0 5px;
+}
+
+#use-power-dialog table {
+  text-align: center;
+}
+
+#use-power-dialog table td {
+  vertical-align: baseline;
+}
+
+table.simple-table {
+  text-align: left;
+}
+
+.damage-table td:first-child,
+.attack-table th:first-child,
+.attack-table td:first-child {
+  text-align: left;
+}
 
 /* --------------- Power editor dialog ------------- */
 

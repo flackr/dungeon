@@ -1,0 +1,71 @@
+<div class="dialog-container">
+  <div class="dialog-title">
+    <div id="use-power-title"></div>
+    <div class="close-icon cancel-button"></div>
+  </div>
+  <div id="use-power-dialog-content" class="dialog-content">
+    <div id="power-results"></div>
+    <div id="power-script"></div>
+  </div>
+  <div class="button-bar">
+    <button class="close-button">OK</button>
+    <!-- <button class="cancel-button">Cancel</button> -->
+  </div>
+  <!-- Templates for populating the dialog -->
+  <!-- Powers dealing damage -->
+  <table id = "damage-template" class="damage-table">
+    <tr><th>Damage</th><th>Crit</th><th>Type</th><th>Roll</th><th>Mod</th></tr>
+  </table>
+  <table hidden>
+    <tr id="damage-roll-template" class = "damage-roll">
+      <td class="damage-string"></td>
+      <td class="crit-damage-string"</td>
+      <td class="damage-type"></td>
+      <td class="damage-roll"</td>
+      <td>
+        <input class="damage-modifier" type="number" min="-100" max="100" value="0">
+      </td>
+    </tr>
+  </table>
+  <!-- Standard attack requiring a to-hit roll -->
+  <table id="attack-table-template" class = "attack-table">
+    <tr>
+      <th>Target</th>
+      <th>Attack</th>
+      <th>Defense</th>
+      <th>Adjustments</th>
+      <th>Results</th>
+    </tr>
+  </table>
+  <table hidden>
+    <tr id="attack-target-template" class="attack-target">
+      <td class="target-name"></td>
+      <td class="attack-roll"></td>
+      <td class="target-defense"></td>
+      <td>
+        <table class="attack-mod-table">
+          <tr>
+            <td><input class="attack-mod" type="number" min="-100" max="100" value="0"></td>
+            <td>to hit</td>
+          </tr>
+          <tr>
+            <td><input class="damage-resist"  type="number" min="-100" max="100" value="0"></td>
+            <td>damage</td>
+          </tr>
+        </table>
+      </td>
+      <td class="attack-results"></td>
+    </tr>
+  </table>
+  <!-- Powers that do not require a to-hit roll -->
+  <table id="simple-table-template" class = "simple-table">
+      <th>Target</th>
+      <th>Results</th>
+  </table>
+  <table hidden>
+    <tr id="simple-target-template" class="simple-target">
+      <td class="target-name"></td>
+      <td class="attack-results"></td>
+    </tr>
+  </table>
+</div>

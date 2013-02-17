@@ -173,7 +173,7 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
             var found = false;
             // Effects with potency are are the form:
             // "Name +/- #"
-            var effect = parseEffect(effectMods[i]);
+            var effect = parseEffect(effectMods[j]);
             var effectRemoval = false;
             // A leading '-' indicates condition removal.
             if (effect[0].charAt(0) == '-') {
@@ -184,19 +184,19 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
               var e = parseEffect(list[k]);
               if (e[0] == effect[0]) {
                 found = true;
-                if (conditionRemoval) {
+                if (effectRemoval) {
                   list.splice(k, 1);
                   break;
                 }
                 // Typically effects of the same type are non-stacking.
                 // Replace effect only if new effect is more potent.
                 if (e[1] && effect[1] && effect[1] > e[1])
-                  list[k] = effectMods[i];
+                  list[k] = effectMods[j];
                 break;
               }
             }
             if (!found)
-              list.push(effectMods[i]);
+              list.push(effectMods[j]);
           }
         }
         this.dispatchEvent('character-updated', index);
