@@ -312,9 +312,10 @@ dungeon.Power.prototype = {
         distance: distance
       };
     };
-    var HalfDamage = function() {
+    var HalfDamage = function(target) {
       return {
-        effect: 'halfdamage'
+        effect: 'halfdamage',
+        target: target
       }
     };
     var result = eval(text);
@@ -326,15 +327,18 @@ dungeon.Power.prototype = {
    * @return {boolean} True if the power deals damage to targets.
    */
   powerDealsDamage: function() {
-    var list = this.onHitEffects_;
-    if (list) {
-      for (var i = 0; i < list.length; i++) {
-        var effect = list[i];
-        if (effect['effect'] == 'damage')
-          return true;
+    var findDamageEffect = function(list) {
+      if (list) {
+        for (var i = 0; i < list.length; i++) {
+          var effect = list[i];
+          if (effect['effect'] == 'damage')
+            return true;
+        }
       }
+      return false;
     }
-    return false;
+    return findDamageEffect(this.onHitEffects_) ||
+      findDamageEffect(this.generalEffects_);
   },
 
   /**
@@ -369,6 +373,8 @@ dungeon.Power.prototype = {
         }
       }
     }
+    // cache value for computing 1/2 damage on a miss.
+    this.damageRolls_ = results;
     return results;
   },
 
@@ -519,6 +525,13 @@ dungeon.Power.prototype = {
           log.push(effect['type'] + ' ' + effect['distance']);
           break;
         case 'halfdamage':
+          // Half-damage does not apply to minions.
+          var maxHp = parseInt(targetInfo.source.stats['Hit Points']); // >>>>>
+          if (maxHp > 1 && this.damageRolls_ && this.damageRolls_.length > 0) {
+            var roll = this.damageRolls_[0];
+            var hp = Math.floor(roll.value / 2);
+            log.push(hp + ' ' + roll.damageType + ' damage on miss');
+          }
           break;
       }
     }
@@ -688,6 +701,15 @@ dungeon.Power.prototype = {
       dmgStr = this.weapon_.damage;
     else if (this.details_)
       dmgStr = this.details_.damage;
+    if (!dmgStr) {
+      // Extract from power
+      for (var i = 0; i < this.generalEffects_.length; i++) {
+        var effect = this.generalEffects_[i];
+        if (effect['effect'] == 'damage') {
+          return effect['roll'];
+        }
+      }
+    }
     return dmgStr;
   },
 
@@ -699,9 +721,6 @@ dungeon.Power.prototype = {
   getDamageModifier: function(target) {
     // TODO - Test for target vulnerabilities and resistances.
     return 0;
-  },
-
-  getEffectsTooltip: function() {
   },
 
   getName: function() {

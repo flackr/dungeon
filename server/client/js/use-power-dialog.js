@@ -48,8 +48,6 @@ dungeon.UsePowerDialog = (function() {
         this.displaySimpleTargetTable();
       }
       this.updateResults();
-
-      // TODO handle attacks without to-hits rolls.
     },
 
     /**
@@ -184,8 +182,6 @@ dungeon.UsePowerDialog = (function() {
         resultsTable.appendChild(result);
         result.querySelector('.target-name').textContent = target.name;
       }
-      console.log('implement me');
-      // >>>>>
     },
 
     /**
@@ -252,7 +248,6 @@ dungeon.UsePowerDialog = (function() {
         case HitType.MISS:
           messages.push('MISS');
           // Handle case of half damage on miss, and other miss effects.
-          // Think that only primary damage counts if 1/2 on hit.  No damage on minions.
           this.results[targetIndex]['Log'] = this.user.name + ' misses ' + targetInfo.name;
           this.power.applyOnMissEffects(targetIndex, messages, this.results[targetIndex]);
           break;
