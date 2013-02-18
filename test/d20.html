@@ -1,0 +1,65 @@
+<DOCTYPE=html>
+<html>
+<head>
+<style>
+td {
+  text-align: right;
+  padding: 2px 10px;
+}
+</style>
+</head>
+<body>
+<table>
+  <tr>
+    <th>Roll</th>
+    <th>Observed</th>
+    <th>Expected</th>
+    <th>Deviation</th>
+    <th>Error</th>
+  </r>
+</table>
+<div>
+  <span>Pearson&apos;s cumulative test statistic = </span>
+  <span id="result"></span>
+</div>
+<div>Degrees of freedom = 19</div>
+<div>P = 0.05 cutoff = 30.14</div>
+<script>
+  var trials = 1000000;
+  var tally = [];
+  for (var i = 1; i <= 20; i++) {
+    tally[i] = 0;
+  }
+  for (var i = 0; i < trials; i++) {
+    var r = 1 + Math.floor(Math.random() * 20);
+    tally[r]++;
+  }
+  var sum = 0;
+  var expectedTally = trials / 20;
+  var table = document.querySelector('table');
+  for (var i = 1; i <= 20; i++) {
+    var element = document.createElement('tr');
+    var roll = document.createElement('td');
+    roll.textContent = i;
+    element.appendChild(roll);
+    var count = document.createElement('td');
+    count.textContent = tally[i];
+    element.appendChild(count);
+    var expected = document.createElement('td');
+    expected.textContent = expectedTally;
+    element.appendChild(expected);
+    var deviation = document.createElement('td');
+    var delta = tally[i] - expectedTally;
+    deviation.textContent = delta;
+    element.appendChild(deviation);
+    var error = document.createElement('td');    
+    var term = delta * delta / expectedTally;
+    error.textContent = term.toFixed(4);
+    element.appendChild(error);
+    sum += term;
+    table.appendChild(element);
+  }
+  document.querySelector("#result").textContent = sum.toFixed(2);
+</script>
+</body>
+</html>
