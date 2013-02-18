@@ -176,11 +176,10 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
     // Assign a placement index based on initiative order. New critters added
     // during combat are merged into the list with an assigned index.  When a
     // monster dies, other creatures retain their index leaving holes in the
-    // numbering in order to simplify bookkeepping during turn order advancement.
+    // numbering in order to simplify bookkeeping during turn order advancement.
     var index = 0;
     var last = '';
     for (var i = 0; i < entries.length; i++) {
-      entries[i].setAttribute('index', index);
       var name = entries[i].getElementsByClassName('combat-tracker-name')[0].textContent;
       var characterIndex = this.client.getCharacterIndex(name);
       var characterData = this.client.getCharacter(characterIndex);
@@ -189,6 +188,7 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
         index++;
         last = sourceName;
       }
+      entries[i].setAttribute('index', index);
     }
     this.onSetCharacterTurn(0);
   },
@@ -196,7 +196,8 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
   onSetCharacterTurn: function(nextIndex) {
     var bounds = [];
     var lastName = null;
-    var nodes = $('combat-initiative-list').getElementsByClassName('combat-initiative-list-entry');
+    var initiativeList = $('combat-initiative-list');
+    var nodes = initiativeList.getElementsByClassName('combat-initiative-list-entry');
 
     // Clear turn highlight
     for (var i = 0; i < nodes.length; i++)
@@ -229,6 +230,24 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
       else
         break;
     }
+    // Scroll initiative list ensure that the active selection is visible.
+    var active = initiativeList.querySelectorAll('.active-turn');
+    if (active.length > 0) {
+      var first = active[0];
+      var last = active[active.length - 1];
+      var top = first.offsetTop;
+      var bottom = last.offsetTop + last.clientHeight;
+      var offset = initiativeList.offsetTop;
+      var scrollTop = offset + initiativeList.scrollTop;
+      if (scrollTop > top) {
+        initiativeList.scrollTop = top - offset;
+      } else if (initiativeList.scrollTop + initiativeList.clientHeight
+          < bottom) {
+        var repos = Math.max(0, bottom - initiativeList.clientHeight - offset);
+        initiativeList.scrollTop = repos;
+      }
+    }
+
     $('combat-end-turn').disabled = false;
     this.turnIndex = nextIndex;
   },

@@ -1243,6 +1243,19 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       // Movement overlay
       ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
       var speed = parseInt(character.condition.stats['Speed'] || 0);
+      // Check if creature is prone, immobalized, or slowed.
+      var effects = character.condition.effects;
+      if (effects) {
+        for (var j = 0; j < effects.length; j++) {
+          var effect = effects[j];
+          if (effect == 'prone' || effect == 'immobalized' || effect == 'grabbed') {
+            speed = 0;
+            break;
+          }
+          if (effect == 'slowed')
+            speed = 2;
+        }
+      }
       for (var j = -speed; j <= speed; j++) {
         for (var k = -speed; k <= speed; k++) {
           if (Math.sqrt(j*j + k*k) <= (speed + 0.8))
