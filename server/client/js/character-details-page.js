@@ -276,7 +276,7 @@ dungeon.CharacterDetailsPage = (function() {
         return function(e) {
           e.stopPropagation();
           var dialog = dungeon.Dialog.getInstance('power-editor');
-          dialog.update(characterData, selectedPower);
+          dialog.update(characterData, selectedPower.name);
           dialog.show();
         }
       };

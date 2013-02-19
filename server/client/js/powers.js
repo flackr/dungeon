@@ -92,8 +92,10 @@ dungeon.Powers.prototype = {
   /**
    * Loads details description of player and monster powers.
    */
-  onLoadPowers: function() {
-    console.log('ping');
+  onLoadPowers: function(eventData) {
+    if (eventData.type == 'load-powers') {
+      localStorage.setItem( 'dungeon-scripts', JSON.stringify(eventData.data));
+    }
   },
 
   /**
@@ -197,17 +199,30 @@ dungeon.Power.prototype = {
 
       // Initialize script for power.
       if (! ('script' in this.details_)) {
-        try {
-          var script = dungeon.LanguageParser.generateScript(
-              this.characterInfo_, this.getName());
-          this.details_.script = script;
-        } catch(err) {
-          console.log('Failure during natural language parsing of power ' + this.getName());
-          console.log(err.message);
-          this.details_.script = '';
+        var script = null;
+        // First check scripts archived in local storage.  Scripts retrieved
+        // from local storage are not shared with other clients.  Export powers
+        // to a file and import in order to share across clients.
+        var scripts = JSON.parse(localStorage.getItem('dungeon-scripts'));
+        if (scripts) {
+          var characterName = this.characterInfo_.name;
+          var characterScripts = scripts[characterName];
+          if (characterScripts)
+            script = characterScripts[this.getName()];
         }
+        if (!script) {
+          // Nothing archived.  Parse from description in character or monster file.
+          try {
+            script = dungeon.LanguageParser.generateScript(
+                this.characterInfo_, this.getName());
+          } catch(err) {
+            console.log('Failure during natural language parsing of power ' + this.getName());
+            console.log(err.message);
+          }
+        }
+        this.details_.script = script ? script : '';
       }
-    } 
+    }
     this.parseScript();
   },
 
@@ -264,6 +279,11 @@ dungeon.Power.prototype = {
       console.log('Warning: Parsing an expression outside of a group');
       return;
     }
+    // Normal convension is to use the variable 'self' to refer to 'this' when
+    // passing a reference to another function within Javascript; however,
+    // 'self' is being used in the scripting language for the power to refer to
+    // the character using the power. 
+    var self = this.characterInfo_.name;
     var target = 'target';
     var Damage = function(target, roll, type) {
       return {
@@ -281,11 +301,16 @@ dungeon.Power.prototype = {
       };
     };
     var ApplyCondition = function(target, type) {
-      return {
+      var condition = {
         effect: 'condition',
         target: target,
         condition: type
       };
+      var parts = type.split(' ');
+      if (parts && parts[0] == 'marked') {
+        condition.condition = type + ' [%s]'.replace('%s', self);
+      }
+      return condition;
     };
     var RemoveCondition = function(target, type) {
       return ApplyCondition(target, '-' + type);
@@ -481,13 +506,15 @@ dungeon.Power.prototype = {
    */
   applyEffects: function(targetIndex, effectsList, log, results, includeDamageEffects) {
     var targetInfo = this.client_.getCharacter(targetIndex);
+    var targetName = targetInfo.name;
     var healing = 0;
     var damage = 0;
     for (var i = 0; i < effectsList.length; i++) {
       var effect = effectsList[i];
       if (effect['effect'] == 'damage' && !includeDamageEffects)
         continue;
-      if (effect['target'] != 'target')
+      var targetting = effect['target'];
+      if (targetting != 'target' && targetting != targetName)
         continue;
       // TODO: handle effects on self and allies.
       switch(effect['effect']) {
@@ -526,7 +553,7 @@ dungeon.Power.prototype = {
           break;
         case 'halfdamage':
           // Half-damage does not apply to minions.
-          var maxHp = parseInt(targetInfo.source.stats['Hit Points']); // >>>>>
+          var maxHp = parseInt(targetInfo.source.stats['Hit Points']);
           if (maxHp > 1 && this.damageRolls_ && this.damageRolls_.length > 0) {
             var roll = this.damageRolls_[0];
             var hp = Math.floor(roll.value / 2);
@@ -744,6 +771,16 @@ dungeon.Power.prototype = {
   },
 
   /**
+   * Retrieve the script for defining a power.
+   */
+  getScript: function() {
+    var script = this.script_;
+    if (!script && this.details_)
+      script = this.details_['script'];
+    return script;
+  },
+
+  /**
    * Conditions for limiting number of targets.  May be a maximum target count
    * within range, or specify friend versus foe.
    */
@@ -808,6 +845,12 @@ dungeon.Power.prototype = {
   getUsage: function() {
     if (this.details_)
       return this.details_['Power Usage'];
+  },
+
+
+  updateScript: function(newContent) {
+    if (this.details_)
+      this.details_['script'] = newContent;
   },
 
   // Random Goodness -----------------------------------  
@@ -884,16 +927,11 @@ dungeon.Powers.prototype.customizedPowers = (function() {
     // TODO: self-targetting for second wind.
     {name: 'Second Wind',
      script: ['effect:',
-              'HealingSurge(target)']
+              '  HealingSurge(target)']
     },
-    {name: 'Furious Assault',
-     script: ['effect:',
-              'Damage(target, "1d8", "untyped")']
-    },
+    // TODO: Stand, grab, bullrush, run...
+
   ];
-
-  // TODO: Stand, grab, bullrush, run...
-
 
 })();
 

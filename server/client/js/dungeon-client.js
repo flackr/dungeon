@@ -1213,6 +1213,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     
     // Draw grid.
     ctx.beginPath();
+    ctx.lineWidth = 1;
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
     for (var i = view.y1; i < view.y2; i++) {
     	var y = baseY + (i - view.y1) * this.viewport.tileSize;
@@ -1333,6 +1334,18 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       var y = baseY + (character.y - view.y1) * tw + tw / 2;
       ctx.arc(x, y, tw/4, 0, 2*Math.PI, true);
       ctx.fill();
+
+      // Mark any critter that has ongoing effects good or bad.
+      var hasEffects = character.condition.effects &&
+          character.condition.effects.length > 0;
+      if (hasEffects) {
+        ctx.beginPath();
+        ctx.strokeStyle = '#000';
+        ctx.fillStyle = '#ff0';
+        ctx.arc(x + tw/4, y + tw/4, tw/8, 0, 2*Math.PI, true);
+        ctx.fill();
+        ctx.stroke();
+      }
 
       this.drawHealthBar(ctx,
                          Math.round(x - tw / 2 + 1 + 1 / 32 * tw),

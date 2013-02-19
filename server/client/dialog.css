@@ -123,7 +123,6 @@ table.simple-table {
   -webkit-box-align: stretch;
   -webkit-box-pack: justify;
   display: -webkit-box;
-  min-height: 300px;
 }
 
 #power-editor-dialog .dialog-content {
@@ -133,74 +132,14 @@ table.simple-table {
   display: -webkit-box;
 }
 
-#power-editor-dialog .dialog-content > section {
-  display: inline-block;
-  min-width: 150px;
-  padding-right: 10px;
-  vertical-align: top;
-}
-
-#power-editor-dialog .dialog-content > section:last-child {
-  padding-right: 0;
-}
-
-.edit-keyword-list {
-  margin-top: 5px;
-}
-
-.edit-keyword {
-  -webkit-box-orient: horizontal;
-  -webkit-box-align: stretch;
-  -webkit-box-pack: justify;
-  -webkit-box-shadow: 3px 3px 3px rgba(0, 0, 0, 0.5);
-  border-radius: 6px;
-  background: #fff;
-  border: 1px solid #ccc;
-  display: -webkit-box;
-  margin-right: 3px;
-  margin-top: 5px;
-  padding: 5px;
-  position: relative;
-}
-
-.edit-keyword-remove.close-icon {
-  -webkit-box-flex: 0;
-  display: -webkit-box;
-  margin-left: 5px;
-  margin-right: 0;
-  vertical-align: middle;
-}
-
-.edit-keyword-label {
+.spacer {
   -webkit-box-flex: 1;
-  vertical-align: middle;
 }
 
-.edit-keyword#edit-keyword-template {
-  display: none;
-}
+/* ------------- Custom script dialog ----------------- */
 
-#edit-add-keyword {
-  margin-top: 8px;
-}
-
-#edit-attack-table {
-  display: table;
-  margin-top: 5px;
-}
-
-#edit-attack-table > * {
-  display: table-row;
-  margin: 8px 0;
-}
-
-#edit-attack-table > * > * {
-  display: table-cell;
-  padding: 0 10px 5px 0;
-}
-
-#edit-attack-table > * > *:nth-child(2) > select {
-  width: 100%;
+#script-export-instructions {
+  width: 480px;
 }
 
 /* ------------- Add effect dialog --------------------- */

@@ -532,7 +532,8 @@ div.power-conpendium-link {
 
 #combat-initiative-list {
   -webkit-box-sizing: content-box;
-  height: 120px;
+  min-height: 40px;
+  max-height: 120px;
   overflow-y: auto;
 }
 
@@ -727,7 +728,7 @@ html[role=player] #combat-stop-button {
 }
 
 .ongoing-effect-name {
-  -webkit-flex-box: 1;
+  -webkit-box-flex: 1;
 }
 
 

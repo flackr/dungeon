@@ -193,24 +193,36 @@ dungeon.UsePowerDialog = (function() {
         contentArea.getElementsByClassName('attack-target') :
         contentArea.getElementsByClassName('simple-target');
 
+      // Track total damage applied to each target to properly cumulate the effect of
+      // multi-attacks.
+      var totalDamage = [];
+
       for (var i = 0; i < this.info.targets.length; i++) {
         var resultsElement = entries[i].querySelector('.attack-results');
         var targetIndex = this.info.targets[i];
+        if(totalDamage[targetIndex] == undefined)
+          totalDamage[targetIndex] = 0;
         var targetInfo = this.client.getCharacter(targetIndex);
+        var totalDamageFromAttack = 0;
         this.results[targetIndex] = {};
-        var totalDamage = 0;
         var hitType = HitType.HIT; // Automatic hit if roll not required.
         if (this.toHitRolls) {
           var roll = this.toHitRolls[i];
           var tweak = roll.tweak | 0;
           var attackTotal = roll.attack.roll + roll.attack.adjusted + tweak;
           var attackTarget = roll.defense.adjusted;
-          if (roll.attack.roll == 1)
+          if (roll.attack.roll == 1) {
             hitType = HitType.CRIT_FAIL;
-          else if (attackTotal >= attackTarget)
-            hitType = (roll.attack.roll == 20) ? HitType.CRIT_HIT : HitType.HIT;
-          else
+          } else if (roll.attack.roll == 20) {
+            // A 20 always hits, but only a crit if it would otherwise hit.
+            hitType = (attackTotal >= attackTarget)  ? HitType.CRIT_HIT : HitType.HIT;
+          } 
+          else if (attackTotal >= attackTarget) {
+            hitType = roll.attack.roll > this.getCritThreshold() ?
+                HitType.CRIT_HIT : HitType.HIT;
+          } else {
             hitType = HitType.MISS;
+          }
         }
         var messages = [];
         switch(hitType) {
@@ -239,7 +251,8 @@ dungeon.UsePowerDialog = (function() {
               messages.push(hitTypeStr + ' for ' + damage + ' ' +
                   damageRoll. damageType + ' damage');
 
-              totalDamage += damage;
+              totalDamage[targetIndex] += damage;
+              totalDamageFromAttack += damage;
             }
           }
           // Apply non-daamge effects.
@@ -254,10 +267,10 @@ dungeon.UsePowerDialog = (function() {
         }
 
         // Tally up all damage sources and report how messed up the target becomes.
-        if (totalDamage > 0) {
+        if (totalDamageFromAttack > 0) {
           // Message for logging.
           this.results[targetIndex]['Log'] =
-              this.user.name + ' inflicts ' + totalDamage +
+              this.user.name + ' inflicts ' + totalDamageFromAttack +
               ' damage to ' +  targetInfo.name;
 
           var tempStr = targetInfo.condition.stats['Temps'];
@@ -265,7 +278,9 @@ dungeon.UsePowerDialog = (function() {
           var newHp = parseInt(targetInfo.condition.stats['Hit Points']);
           var maxHp = parseInt(targetInfo.source.stats['Hit Points']);
 
-          temps -= totalDamage;
+          // Cumulative damage, potentially across multiple attacks on same target.
+          // e.g. Twin Strike.
+          temps -= totalDamage[targetIndex];
           if (temps < 0) {
             newHp += temps;
             temps = 0;
@@ -280,6 +295,18 @@ dungeon.UsePowerDialog = (function() {
         if (resultsElement)
           resultsElement.innerHTML = messages.join('<br>');
       }
+    },
+
+    /**
+     * Determines target roll for a critical.  Usually a 20, but may be reduced
+     * by certain effects.
+     */
+    getCritThreshold: function() {
+      // TODO: Implement me.
+      // Hunter's Instinct crits on a 19 or 20, but only if using a ranged attack
+      // against a target within 2 squares.
+      var critTarget = 20;
+      return critTarget;            
     },
 
     /**

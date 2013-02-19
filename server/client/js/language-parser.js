@@ -206,6 +206,7 @@ dungeon.LanguageParser = (function() {
       'GrantsCombatAdvantage');
   insertRule(1, 'attack rolls', '_ATTACK_ROLLS_');
   insertRule(1, 'can spend a healing surge', '_HEALING_SURGE_');
+  insertRule(1, '_DAMAGE_TYPE_ _COMBINE_ _DAMAGE_TYPE_' ,'_DAMAGE_TYPE_', 'T[0]/T[2]');
   // TODO: verify that _NUMERIC_ == 0 when applying following rule.
   insertRule(1, 'drops to _NUMERIC_ _HIT_POINTS_', '_WHEN_', 'unconscious');
   insertRule(1, 'end of', '_WHEN_', 'end');
@@ -241,11 +242,6 @@ dungeon.LanguageParser = (function() {
   insertRule(2, '_NUMERIC_ _COMBINE_ _DAMAGE_TYPE_ damage', '_DAMAGE_',
       '[{amount: "T[0]", type: "untyped"},' + 
       '{amount: "T[0]", type: "T[3]"}]', true);
-  insertRule(2, '_NUMERIC_ _DAMAGE_TYPE_ _COMBINE_ _DAMAGE_TYPE_ damage',
-      '_DAMAGE_',
-      '[{amount: "T[0]", type: "T[1]"},' + 
-      '{amount: "T[0]", type: "T[3]"}]', true);
-
   insertRule(2, 'ongoing _DAMAGE_', '_ONGOING_DAMAGE_', 'T[1]', true);
 
   // Conditions.
