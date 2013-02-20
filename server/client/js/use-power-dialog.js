@@ -149,7 +149,6 @@ dungeon.UsePowerDialog = (function() {
             defenseStr += '<br>' + mods.join('<br>');
           }
           result.querySelector('.target-defense').innerHTML = defenseStr;
-
           var self = this;
           var updateCallback = (function() {
             var n = i;
@@ -159,7 +158,16 @@ dungeon.UsePowerDialog = (function() {
               self.updateResults();
             };
           })();
-          result.querySelector('.attack-mod').onchange = updateCallback; 
+          result.querySelector('.damage-mod').onchange = updateCallback;
+          var updateCallback = (function() {
+            var n = i;
+            var input = result.querySelector('.damage-mod');
+            return function() {
+              hitRolls[n].damageTweak = parseInt(input.value);
+              self.updateResults();
+            };
+          })();
+          result.querySelector('.damage-mod').onchange = updateCallback;
         }
       }
       return hitRolls;
@@ -235,14 +243,12 @@ dungeon.UsePowerDialog = (function() {
             for (var j = 0; j < this.damageRolls.length; j++) {
               var damageRoll = this.damageRolls[j];
               var damage = damageRoll.value;
-              var damageTweak = damageRoll.tweak | 0;
+              var damageTweak = (damageRoll.tweak | 0) + (roll.damageTweak | 0);
               if (hitType == HitType.CRIT_HIT) {
                 var critRoll = this.power.rollDice(damageRoll.critString);
                 damage = critRoll.value;
               }
               damage = parseInt(damage) + damageTweak;
-
-              // TOOD - handle resistances/vulnerabilities.
 
               var damageType = damageRoll.damageType;
               damageType = (damageType == 'untyped') ? '' : ' ' + damageType;

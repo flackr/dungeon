@@ -14,6 +14,8 @@ dungeon.CustomScriptsDialog = (function() {
 
     show: function() {
       var scripts = JSON.parse(localStorage.getItem('dungeon-scripts'));
+      if (!scripts)
+        scripts = {};
       this.json = {
         type: 'powers',
         data: scripts

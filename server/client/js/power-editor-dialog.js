@@ -55,7 +55,7 @@ dungeon.PowerEditorDialog = (function() {
         if (!character) {
           character = scripts[characterName] = {}; 
         }
-        character[this.powerName] = newContent;
+        character[this.powerName] = {script: newContent, update: Date.now()};
         localStorage.setItem( 'dungeon-scripts', JSON.stringify(scripts));
         this.power.updateScript(newContent);
       }
@@ -91,10 +91,12 @@ dungeon.PowerEditorDialog = (function() {
         var characterName = this.characterData.name;
         var character = scripts[characterName];
         if (character) {
-          if ('this.powerName' in character)
-            delete character['this.powerName'];
+          if (this.powerName in character)
+            delete character[this.powerName];
         }
       }
+      localStorage.setItem( 'dungeon-scripts', JSON.stringify(scripts));
+      this.power.resetScript();
       this.reload();
     },
 
@@ -102,7 +104,8 @@ dungeon.PowerEditorDialog = (function() {
      * Clean whipe of all power customizations.
      */
     onReset: function() {
-      localStorage.remove('dungeon-scripts');
+      localStorage.removeItem('dungeon-scripts');
+      dungeon.Powers.getInstance().reset();
       this.reload();
     },
 

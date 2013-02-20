@@ -61,6 +61,18 @@ dungeon.Powers.prototype = {
   },
 
   /**
+   * Forces all powers to reload.  Called when reverting all script
+   * customizations.
+   */
+  reset: function() {
+    this.powers_ = {};
+    var list = this.customizedPowers;
+    for (var i = 0; i < list.length; i++) {
+      this.create(list[i]);
+    }
+  },
+
+  /**
    * Selecting a power triggers its use.  Note that powers requiring
    * additional user interaction prior to resolution can be cancelled.
    */
@@ -94,6 +106,8 @@ dungeon.Powers.prototype = {
    */
   onLoadPowers: function(eventData) {
     if (eventData.type == 'load-powers') {
+      // TODO: Differentiate between a load replace and a load merge.
+      //       Use timestamps in customization in the event of a merge.
       localStorage.setItem( 'dungeon-scripts', JSON.stringify(eventData.data));
     }
   },
@@ -149,6 +163,7 @@ dungeon.Power.prototype = {
     this.onHitEffects_ = [];
     this.onMissEffects_ = [];
     this.generalEffects_ = [];
+    this.reset = true;
   },
 
   /**
@@ -198,7 +213,7 @@ dungeon.Power.prototype = {
       this.weapon_ = weapons && weapons.length > 0 ? weapons[0] : null;
 
       // Initialize script for power.
-      if (! ('script' in this.details_)) {
+      if (this.reset || ! ('script' in this.details_)) {
         var script = null;
         // First check scripts archived in local storage.  Scripts retrieved
         // from local storage are not shared with other clients.  Export powers
@@ -207,8 +222,11 @@ dungeon.Power.prototype = {
         if (scripts) {
           var characterName = this.characterInfo_.name;
           var characterScripts = scripts[characterName];
-          if (characterScripts)
-            script = characterScripts[this.getName()];
+          if (characterScripts) {
+            var data = characterScripts[this.getName()];
+            if (data)
+              script = data.script;
+          }
         }
         if (!script) {
           // Nothing archived.  Parse from description in character or monster file.
@@ -221,6 +239,7 @@ dungeon.Power.prototype = {
           }
         }
         this.details_.script = script ? script : '';
+        this.reset = false;
       }
     }
     this.parseScript();
@@ -851,6 +870,10 @@ dungeon.Power.prototype = {
   updateScript: function(newContent) {
     if (this.details_)
       this.details_['script'] = newContent;
+  },
+
+  resetScript: function() {
+    this.reset = true;
   },
 
   // Random Goodness -----------------------------------  
