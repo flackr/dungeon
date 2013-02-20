@@ -362,7 +362,23 @@ dungeon.Power.prototype = {
         target: target
       }
     };
+    var power = this;
+    var simplify = function(expr) {
+      if (expr instanceof Object) {
+        for (key in expr) {
+          var value = expr[key];
+          if (typeof value == 'string') {
+            expr[key] = power.simplifyExpression(value);
+          } else {
+            expr[key] = simplify(value);
+          }
+        }
+      }
+      return expr;
+    }
     var result = eval(text);
+    if (result)
+      result = simplify(result);
     activeList.push(result);
   },
 
@@ -406,10 +422,19 @@ dungeon.Power.prototype = {
         if (effect['effect'] == 'damage') {
           var dmgStr = effect['roll'];
           var dmgType = effect['type'];
+          var crit = null;
+          if (i == 0 && this.weapon_) {
+            dmgStr = this.weapon_.damage;
+            crit = this.weapon_.crit;
+          }
+          if (dmgStr.indexOf('[W]') >= 0)
+            dmgstr = this.getDamageString();
           var damage = this.rollDice(dmgStr);
+          if (!crit)
+            crit = damage.max;
           results.push({
             damageString: dmgStr,
-            critString: damage.max + '', // Fails to account for magic weapon.
+            critString: crit,
             damageType: dmgType,
             rollString: damage.str,
             value: damage.value
@@ -877,6 +902,35 @@ dungeon.Power.prototype = {
   },
 
   // Random Goodness -----------------------------------  
+
+  /**
+   * Applies substitutions into an expression.
+   *   '{atr}' is substrituted for the appropriate attribute modifier.
+   */  
+  simplifyExpression: function(expr) {
+    var subs = {
+      'str': 'Strength',
+      'con': 'Constitution',
+      'wis': 'Wisdom',
+      'cha': 'Charisma',
+      'int': 'Intelligence',
+      'dex': 'Dexterity'  
+    };
+    // Substitute attribute modifiers.
+    var matches = expr.match(/\{[a-z]+\}/g);
+    if (matches) {
+      for (var i = 0; i < matches.length; i++) {
+        var match = matches[i];
+        var key = match.substring(1, match.length-1);
+        if (key in subs) {
+          var value = this.characterInfo_.source.stats[subs[key] + ' modifier'];
+          expr = expr.replace(match, value);
+        }
+      }
+    }
+    // TODO: handle other stats such as speed, ...
+    return expr;
+  },
 
   /**
    * Resolves a dice roll.

@@ -67,7 +67,8 @@ dungeon.UsePowerDialog = (function() {
           var result = $('damage-roll-template').cloneNode(true);
           result.removeAttribute('id');
           damageTable.appendChild(result);
-          result.querySelector('.damage-string').textContent = roll.damageString;
+          var damageString = roll.damageString;
+          result.querySelector('.damage-string').innerHTML = damageString;
           result.querySelector('.crit-damage-string').textContent = roll.critString;
           result.querySelector('.damage-type').textContent = roll.damageType;
           result.querySelector('.damage-roll').textContent = roll.rollString;
@@ -150,7 +151,7 @@ dungeon.UsePowerDialog = (function() {
           }
           result.querySelector('.target-defense').innerHTML = defenseStr;
           var self = this;
-          var updateCallback = (function() {
+          var updateAttackCallback = (function() {
             var n = i;
             var input = result.querySelector('.attack-mod');
             return function() {
@@ -158,8 +159,8 @@ dungeon.UsePowerDialog = (function() {
               self.updateResults();
             };
           })();
-          result.querySelector('.damage-mod').onchange = updateCallback;
-          var updateCallback = (function() {
+          result.querySelector('.attack-mod').onchange = updateAttackCallback;
+          var updateDamageCallback = (function() {
             var n = i;
             var input = result.querySelector('.damage-mod');
             return function() {
@@ -167,7 +168,7 @@ dungeon.UsePowerDialog = (function() {
               self.updateResults();
             };
           })();
-          result.querySelector('.damage-mod').onchange = updateCallback;
+          result.querySelector('.damage-mod').onchange = updateDamageCallback;
         }
       }
       return hitRolls;

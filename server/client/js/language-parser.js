@@ -108,7 +108,8 @@ dungeon.LanguageParser = (function() {
   // Regular expressions for extracting numeric content.
   var patterns = {
     '_NUMBER_': /[0-9]+/,
-    '_ROLL_': /[0-9]+d[0-9]+/
+    '_ROLL_': /[0-9]+d[0-9]+/,
+    '_WEAPON_DAMGE_': /[0-9]*\[[wW]\]/
   };
 
   // Monster or class names that has one or more synonyms.
@@ -173,6 +174,7 @@ dungeon.LanguageParser = (function() {
 
   // Treat die rolls as numeric expressions.
   insertRule(0, '_ROLL_', '_NUMERIC_', 'T[0]');
+  insertRule(0, '_WEAPON_DAMGE_', '_NUMERIC_', '"T[0]".replace("w", "W")', true);
 
   // Relax categorization of numeric type to simplify rules for
   // combining expressions.
@@ -189,10 +191,10 @@ dungeon.LanguageParser = (function() {
   // Resolve attribute modifications immediately based on player stats.
   insertRule(0, '_ATTRIBUTE_ modifier', '_MODIFIER_', 'T[0]');
   insertRule(0, 'your _MODIFIER_', '_MODIFIER_', 'T[1]');
-  insertRule(0, '_MODIFIER_', '_NUMERIC_', 'getModifier("T[0]")', true);
+  insertRule(0, '_MODIFIER_', '_NUMERIC_', '"{"+"T[0]".substring(0,3)+"}"', true);
 
   // Extracts numeric value for stat or modifier based on character info.
-  insertRule(0, '_STAT_', '_NUMERIC_', 'getStat("T[0]")', true);
+  insertRule(0, '_STAT_', '_NUMERIC_', '"[" + "T[0]" + "]"', true);
   insertRule(0, 'your _STAT_', '_STAT_', 'T[1]');
 
   // Apply rules which combine numeric expressions before resolving
@@ -256,14 +258,14 @@ dungeon.LanguageParser = (function() {
 
   // Attack/defense/skill/... modifiers.
   insertRule(2, '_ADJUSTMENT_ _ATTACK_ROLLS_ _EQUATE_ _NUMERIC_', '_CONDITION_',
-      'sanitizeAdjustment("attack", "T[0]", T[3])', true);
+      'sanitizeAdjustment("Attack", "T[0]", T[3])', true);
   insertRule(2, '_ADJUSTMENT_ _DEFENSE_ _EQUATE_ _NUMERIC_', '_CONDITION_',
       'sanitizeAdjustment("T[1]", "T[0]", T[3])', true);
   insertRule(2, '_ADJUSTMENT_ _EQUATE_ _NUMERIC_', '_NUMERIC_', 'T[2]');
   insertRule(2, '_ADJUSTMENT_ to', '_ADJUSTMENT_', 'T[0]');
   insertRule(2, '_OPERATOR_ _NUMERIC_ _ADJUSTMENT_ to', '_NUMERIC_',
       'T[0]T[1]');
-  insertRule(2, '_NUMERIC_ _ATTACK_ROLLS_', '_CONDITION_', 'attackT[0]');
+  insertRule(2, '_NUMERIC_ _ATTACK_ROLLS_', '_CONDITION_', 'AttackT[0]');
   insertRule(2, '_NUMERIC_ _DEFENSE_', '_CONDITION_', 'T[1]T[0]');
   insertRule(2, '_NUMERIC_ as _ADJUSTMENT_ damage', '_CONDITION_', 'damageT[0]');
   insertRule(2, '_NUMERIC_ _SKILL_ checks', '_CONDITION_', 'T[1]T[0]');
@@ -313,7 +315,7 @@ dungeon.LanguageParser = (function() {
   insertRule(4, 'twice _NUMERIC_', '_NUMERIC_', '2*T[1]', true);
   insertRule(4, '_OPERATOR_ _NUMERIC_ _ADJUSTMENT_', '_NUMERIC_', 'T[0]T[1]');
   insertRule(4, '_SKILL_ check to _MOVE_ with _NUMERIC_', '_MOVE_',
-      '{type: "T[3]", skillcheck: "T[0]T[5]"}', true);
+      'augment(T[3], "skillcheck", "T[0]T[5]")', true);
 
   // Power-up fragments that need to be aligned with previous statement.
   insertRule(4, '_NUMERIC_ _HIT_POINTS_', '_HIT_POINT_CHANGE_', 
@@ -374,26 +376,7 @@ dungeon.LanguageParser = (function() {
    * @return {numeric} Value of the attribute modifier.
    */
   function getModifier(attribute) {
-    if (characterInfo_) {
-      var key = attribute.charAt(0).toUpperCase() + attribute.substring(1) +
-        ' modifier';
-      var value = characterInfo_.stats[key]; 
-      return value | 0;
-    }
-    return 0;
-  }
-
-  /**
-   * Retrieve the value of a stat.
-   * @parma {string} name  The name of the stat.
-   */
-  function getStat(name) {
-    if (characterInfo_) {
-      var key = name.charAt(0).toUpperCase() + name.substring(1);
-      var value = characterInfo_.stats[key];
-      return value | 0;
-    }
-    return 0;
+    return '[' + attribute.substring(0, 3) + ']';
   }
 
   /**
@@ -442,7 +425,12 @@ dungeon.LanguageParser = (function() {
     case 'bonus':
       value = Math.abs(value);
     }
-    return  attribute + value;
+    var attr = attribute;
+    if (attr == 'ac')
+      attr = 'AC';
+    else
+      attr = attr.charAt(0).toUpperCase() + attr.substring(1);
+    return  attr + value;
   }
 
   /**
@@ -606,7 +594,7 @@ dungeon.LanguageParser = (function() {
    */
   function parseText(text) {
     var result = [];
-    text = text.replace(/\[W\]/g, getWeaponDamage());
+    //text = text.replace(/\[W\]/g, getWeaponDamage());
     var spacer = function(v) {
       return ' ' + v + ' ';
     }
@@ -873,11 +861,12 @@ dungeon.LanguageParser = (function() {
     var target = value.who ? value.who : default_target;
     if (target != 'target')
       target = '"' + target + '"';
-    var effect = 'Move(' + target + ', "' + value.type;
+    var effect = 'Move(' + target + ', "' + value.type + '"';
     if (value.distance)
-      effect +=  '", ' + value.distance + ')';
+      effect +=  ', "' + value.distance + '"';
+    effect += ')';
     if (value.skillcheck)
-      effect += '", "' + value.skillcheck + '")';
+      effect = 'SkillCheck(' + effect + ', "' + value.skillcheck + '")';
     effects.push(effect);
   }
 
