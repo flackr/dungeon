@@ -246,7 +246,7 @@ dungeon.UsePowerDialog = (function() {
               var damage = damageRoll.value;
               var damageTweak = (damageRoll.tweak | 0) + (roll.damageTweak | 0);
               if (hitType == HitType.CRIT_HIT) {
-                var critRoll = this.power.rollDice(damageRoll.critString);
+                var critRoll = this.power.rollDice(damageRoll.critString + '');
                 damage = critRoll.value;
               }
               damage = parseInt(damage) + damageTweak;
