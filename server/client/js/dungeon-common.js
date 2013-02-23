@@ -128,8 +128,10 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
         this.objects[index][field] = eventData.details[field];
       }
     } else if (eventData.type == 'move') {
-      this.characterPlacement[eventData.index].x = eventData.x;
-      this.characterPlacement[eventData.index].y = eventData.y;
+      if (this.characterPlacement[eventData.index]) {
+        this.characterPlacement[eventData.index].x = eventData.x;
+        this.characterPlacement[eventData.index].y = eventData.y;
+      }
     } else if (eventData.type == 'register-character-prototype') {
       // TODO(kellis): Check if character already registered.
       this.characterRegistry.push(eventData.character);
