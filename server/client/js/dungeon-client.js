@@ -27,6 +27,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.canvas.addEventListener('mousewheel', this.onMouseWheel.bind(this));
     document.body.addEventListener('keyup', this.onKeyUp.bind(this));
 
+    $('attack-button').addEventListener('click', this.attackSelectedTargets.bind(this));
+    $('cancel-button').addEventListener('click', this.cancelSelectedTarget.bind(this));
+
     // Switching between views.
     $('character-selector').addEventListener(
         'click', this.onSelectView.bind(this, 'page', 'character'));
@@ -738,15 +741,23 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     else if (key == 189 || key == 109) // - or numpad -
       this.zoom(-1);
     else if (key == 32 || key == 13) {
-      if (this.ui.targets) {
-        this.attackTargets();
-      }
+      this.attackSelectedTargets();
     } else if (key == 27) {
+      this.cancelSelectedTarget();
+    }
+  },
+
+  attackSelectedTargets: function() {
+    if (this.ui.targets) {
+      this.attackTargets();
+    }
+  },
+
+  cancelSelectedTarget: function() {
       if (this.ui.targets) {
         this.ui.targets.pop();
         this.update();
       }
-    }
   },
   
   /*
