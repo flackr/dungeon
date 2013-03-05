@@ -694,8 +694,18 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       return;
     } else {
       // If target square is occupied, select the character.
-      for (var i = 0; i < this.characterPlacement.length; i++) {
-        if (this.characterPlacement[i].x == evt.x && this.characterPlacement[i].y == evt.y) {
+      // For creature size large and up, the placement index marks the top left corner.
+      for (var i in this.characterPlacement) {
+        var width = this.getCharacterWidthInTiles(i);
+        var char = this.characterPlacement[i];        
+        if (evt.x >= char.x && evt.x < char.x + width &&
+            evt.y >= char.y && evt.y < char.y + width) {
+          if (this.ui.selected == i && width > 1) {
+            // Hack to allow large creatures to shift 1 square to the right or
+            // down. Should really keep track of where on the critter we
+            // initiated the selection so that we can track the delta.
+            break;
+          }
           this.ui.selected = i;
           this.ui.path = null;
           this.dispatchEvent('character-selected', this.characterPlacement[i]);
@@ -817,10 +827,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       var dialog = dungeon.Dialog.getInstance('use-power');
       dialog.update(result);
       dialog.show();
-      // >>> Implement me >>>>
-      //alert("Combat result:\n" + result.summary + result.details + result.log);
-      //this.sendEvent({type: 'log', text: result.details});
-      //this.sendEvent(result);
     } else {
       var message = {
         type: 'dm-attack-result',
@@ -1185,6 +1191,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     };
     var baseX = Math.floor(w / 2 - (this.viewport.x - view.x1) * this.viewport.tileSize);
     var baseY = Math.floor(h / 2 - (this.viewport.y - view.y1) * this.viewport.tileSize);
+    var tw = this.viewport.tileSize;
 
     // Draw a black background
     ctx.fillStyle = '#000';
@@ -1230,19 +1237,11 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
     // Mark selected character and indicate movement range.
     if (this.ui.selected != undefined) {
-      var character = this.characterPlacement[this.ui.selected];
-      var tw = this.viewport.tileSize;
-      var x = baseX + (character.x - view.x1) * tw + tw / 2;
-      var y = baseY + (character.y - view.y1) * tw + tw / 2;
-      
-      ctx.beginPath();
-      ctx.strokeStyle = '#ff0';
-      ctx.lineWidth = tw/32;
-      ctx.arc(x, y, tw/4 + 2, 0, 2*Math.PI, true);
-      ctx.stroke();
+      this.drawCharacter(this.ui.selected, 'selection', view, baseX, baseY);
         
       // Movement overlay
       ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+      var character = this.characterPlacement[this.ui.selected];
       var speed = parseInt(character.condition.stats['Speed'] || 0);
       // Check if creature is prone, immobalized, or slowed.
       var effects = character.condition.effects;
@@ -1257,9 +1256,12 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
             speed = 2;
         }
       }
-      for (var j = -speed; j <= speed; j++) {
-        for (var k = -speed; k <= speed; k++) {
-          if (Math.sqrt(j*j + k*k) <= (speed + 0.8))
+      var width = this.getCharacterWidthInTiles(this.ui.selected);
+      for (var j = -speed; j < speed + width; j++) {
+        for (var k = -speed; k < speed + width; k++) {
+          var dx = j < 0 ? j : j >= width ? j - width + 1 : 0;
+          var dy = k < 0 ? k : k >= width ? k - width + 1 : 0;
+          if (Math.sqrt(dx * dx + dy * dy) <= (speed + 0.8))
             ctx.fillRect(baseX + (character.x + j - view.x1) * tw,
                          baseY + (character.y + k - view.y1) * tw,
                          tw,
@@ -1282,17 +1284,22 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       for (var index in targetFreq) {
         var character = this.characterPlacement[index];
         var tw = this.viewport.tileSize;
-        var x = baseX + (character.x - view.x1) * tw + tw / 2;
-        var y = baseY + (character.y - view.y1) * tw + tw / 2;
+        var width = tw * this.getCharacterWidthInTiles(index);
+        var baseRadius = width / 2 - tw / 4 + 3;
+        var x = baseX + (character.x - view.x1) * tw + width / 2;
+        var y = baseY + (character.y - view.y1) * tw + width / 2;
         for (var j = 0; j < targetFreq[index]; j++) {
           ctx.beginPath();
           ctx.lineWidth = 2;
-          ctx.arc(x, y, tw/3 + j*3, 0, 2*Math.PI, true);
+          ctx.arc(x, y, baseRadius + j * 3, 0, 2*Math.PI, true);
           ctx.stroke();
         }
       }
     }
 
+    // TODO: Fix path for critters with size >= Large.  Index of critter is in
+    // the top left corner.  Path should trace from center or from edge closest
+    // to move direction.
     if (this.ui.path && this.ui.path.path && this.ui.path.path.length) {
       ctx.strokeStyle = '#f00';
       ctx.beginPath();
@@ -1323,30 +1330,16 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       if (character.x < view.x1 || character.x >= view.x2 ||
           character.y < view.y1 || character.y >= view.y2)
         continue;
+
       var name = character.name;
       var isMonster = character.source.charClass == 'Monster';
+      if (i != this.ui.selected)
+        this.drawCharacter(i, 'type', view, baseX, baseY);
+      this.drawCharacter(i, 'effects', view, baseX, baseY);
 
-      ctx.fillStyle = isMonster ? '#f00' : '#00f';
-
-      ctx.beginPath();
-      var tw = this.viewport.tileSize;
-      var x = baseX + (character.x - view.x1) * tw + tw / 2;
-      var y = baseY + (character.y - view.y1) * tw + tw / 2;
-      ctx.arc(x, y, tw/4, 0, 2*Math.PI, true);
-      ctx.fill();
-
-      // Mark any critter that has ongoing effects good or bad.
-      var hasEffects = character.condition.effects &&
-          character.condition.effects.length > 0;
-      if (hasEffects) {
-        ctx.beginPath();
-        ctx.strokeStyle = '#000';
-        ctx.fillStyle = '#ff0';
-        ctx.arc(x + tw/4, y + tw/4, tw/8, 0, 2*Math.PI, true);
-        ctx.fill();
-        ctx.stroke();
-      }
-
+      var width = this.getCharacterWidthInTiles(i);
+      var x = baseX + (character.x - view.x1) * tw + tw * width / 2;
+      var y = baseY + (character.y - view.y1) * tw + tw / 2; 
       this.drawHealthBar(ctx,
                          Math.round(x - tw / 2 + 1 + 1 / 32 * tw),
                          Math.round(y - tw / 2 + 1 + 1 / 32 * tw),
@@ -1372,6 +1365,92 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       this.drawTextInBounds(ctx, x, Math.round(y - tw / 2 - tw / 32), name, x_bounds[0], x_bounds[1], isMonster ? '#f00' : '#00f', textHeight);
     }
   },
+
+  /**
+   * Returns the width of a critter in tiles, which is dependent on its size
+   * category and ranges from 1 to 4.  Multiple tiny critters can fit into the
+   * same square. Support for tiny fellas is currently not implemented.
+   */
+  getCharacterWidthInTiles: function(index) {
+    var character = this.characterPlacement[index];
+    if (!character)
+      return 0;
+    var size = character.source.stats['Size'];
+    switch(size) {
+      case 'Tiny': // Actually two critters per square is allowed for tiny.
+      case 'Small':
+      case 'Medium':
+        return 1;
+      case 'Large':
+        return 2;
+      case 'Huge':
+        return 3;
+      case 'Gargantuan':
+        return 4;
+      default:
+        return 1;
+    }
+  },
+
+  /**
+   * Draws a character on the map.
+   * @param {number} index The character placement index.
+   * @param {string} state The state for displaying the character, which may be
+   *     one of the following: 'selection', 'type', or 'effects'.
+   */
+  drawCharacter: function(index, state, view, baseX, baseY) {
+    var ctx = this.canvas.getContext('2d');
+    var character = this.characterPlacement[index];
+    var tw = this.viewport.tileSize;
+    var tileWidth = this.getCharacterWidthInTiles(index);
+    var radius = tw * tileWidth / 2;
+    var x = baseX + (character.x - view.x1) * tw + radius;
+    var y = baseY + (character.y - view.y1) * tw + radius;
+
+    var drawStroke = false, drawFill = false;
+    ctx.lineWidth = 1;
+    switch(state) {
+      case 'selection':
+        drawStroke = true;
+        ctx.strokeStyle = '#ff0';
+        ctx.lineWidth = tw/32;
+        // Deliberate fall-through.
+      case 'type':
+        var isMonster = character.source.charClass == 'Monster';
+        var effects = character.condition.effects;
+        if (effects) {
+          for (var j = 0; j < effects.length; j++) {
+            var effect = effects[j];
+            if (effect == 'pet' || effect == 'dominated')
+              isMonster = false;
+          }
+        }
+        drawFill = true;
+        ctx.fillStyle = isMonster ? '#f00' : '#00f';
+        break;
+      case 'effects':
+        var hasEffects = character.condition.effects &&
+            character.condition.effects.length > 0;
+        if (hasEffects) {
+          drawStroke = drawFill = true;
+          ctx.strokeStyle = '#000';
+          ctx.fillStyle = '#ff0';
+          x += radius / 2;
+          y += radius / 2;
+          radius = 0.4 * tw;
+        }
+        break;
+    }
+    if (drawStroke || drawFill) {
+      ctx.beginPath();
+      ctx.arc(x, y, radius - tw/4, 0, 2*Math.PI, true);
+      if (drawFill)
+        ctx.fill();
+      if (drawStroke)
+        ctx.stroke();
+    }
+  },
+
 
 });
 

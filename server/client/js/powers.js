@@ -662,7 +662,20 @@ dungeon.Power.prototype = {
    * @param {Object} target Character info for the target.
    */
   selectionMatch: function(position, target) {
-    return position.x == target.x && position.y == target.y;
+    var width = 1;
+    var size = target.source.stats['Size'];
+    switch(size) {
+      case 'Large':
+        width = 2;
+        break;
+      case 'Huge':
+        width = 3;
+        break;
+      case 'Gargantuan':
+        width = 4;
+    }
+    return position.x >= target.x && position.x < target.x + width &&
+        position.y >= target.y && position.y < target.y + width;
   },
 
   /**
