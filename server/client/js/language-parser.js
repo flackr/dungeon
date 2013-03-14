@@ -191,7 +191,7 @@ dungeon.LanguageParser = (function() {
   // Resolve attribute modifications immediately based on player stats.
   insertRule(0, '_ATTRIBUTE_ modifier', '_MODIFIER_', 'T[0]');
   insertRule(0, 'your _MODIFIER_', '_MODIFIER_', 'T[1]');
-  insertRule(0, '_MODIFIER_', '_NUMERIC_', '"{"+"T[0]".substring(0,3)+"}"', true);
+  insertRule(0, '_MODIFIER_', '_NUMERIC_', 'getModifier("T[0]")', true);
 
   // Extracts numeric value for stat or modifier based on character info.
   insertRule(0, '_STAT_', '_NUMERIC_', '"[" + "T[0]" + "]"', true);
@@ -258,9 +258,9 @@ dungeon.LanguageParser = (function() {
 
   // Attack/defense/skill/... modifiers.
   insertRule(2, '_ADJUSTMENT_ _ATTACK_ROLLS_ _EQUATE_ _NUMERIC_', '_CONDITION_',
-      'sanitizeAdjustment("Attack", "T[0]", T[3])', true);
+      'sanitizeAdjustment("Attack", "T[0]", "T[3]")', true);
   insertRule(2, '_ADJUSTMENT_ _DEFENSE_ _EQUATE_ _NUMERIC_', '_CONDITION_',
-      'sanitizeAdjustment("T[1]", "T[0]", T[3])', true);
+      'sanitizeAdjustment("T[1]", "T[0]", "T[3]")', true);
   insertRule(2, '_ADJUSTMENT_ _EQUATE_ _NUMERIC_', '_NUMERIC_', 'T[2]');
   insertRule(2, '_ADJUSTMENT_ to', '_ADJUSTMENT_', 'T[0]');
   insertRule(2, '_OPERATOR_ _NUMERIC_ _ADJUSTMENT_ to', '_NUMERIC_',
@@ -376,6 +376,11 @@ dungeon.LanguageParser = (function() {
    * @return {numeric} Value of the attribute modifier.
    */
   function getModifier(attribute) {
+    if (characterInfo_) {
+       var name = attribute.charAt(0).toUpperCase() + attribute.substring(1) + ' modifier';
+       var value = characterInfo_.stats[name];
+       return parseInt(value);
+    }
     return '[' + attribute.substring(0, 3) + ']';
   }
 
@@ -388,7 +393,7 @@ dungeon.LanguageParser = (function() {
       if (power_.weapons && power_.weapons.length > 0) {
         // TODO: Use weapon name and extract from inventory once parsed.
         //       For now, cheating by looking up resolved damage and extracting
-        //       the relavent section.
+        //       the relevant section.
         var dmgStr = power_.weapons[0].damage;
         if (!dmgStr)
           return '';
@@ -573,10 +578,15 @@ dungeon.LanguageParser = (function() {
     var parseField = function(name, label) {
       var description = power_[name];
       if (description) {
-        result = dungeon.LanguageParser.parseText(description);
-        if (result.length > 0) {
-          script += label + ':\n';
-          script += '  ' + result.join(';\n  ') + ';\n';
+        try {
+          result = dungeon.LanguageParser.parseText(description);
+          if (result.length > 0) {
+            script += label + ':\n';
+            script += '  ' + result.join(';\n  ') + ';\n';
+          }
+        } catch(err) {
+          console.log('Error in language parser while processing ' + name);
+          console.log(err.message);
         }
       }
     };
