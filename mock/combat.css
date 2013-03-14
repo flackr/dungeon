@@ -1,0 +1,78 @@
+#game,
+#powers,
+#toolbar,
+#initiative {
+  margin: 0;
+  padding: 0;
+  position: absolute;
+}
+
+#powers {
+  top: 20px;
+  left: 20px;
+  width: 200px;
+  height: 200px;
+  border: 1px solid black;
+  background-color: white;
+}
+
+#powers > .list > div {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  border: 1px solid black;
+  margin: 3px;
+  text-align: center;
+}
+
+#powers > .list .summary {
+  position: absolute;
+  text-overflow: ellipsis;
+  width: 30px;
+  height: 10px;
+  font-size: 8px;
+}
+
+#powers > .list > div .desc {
+  display: none;
+}
+
+#powers > .list > div:hover .desc {
+  display: block;
+}
+
+#toolbar > div:hover > div {
+  display: block;
+}
+
+.desc, .popup {
+  display: none;
+  position: absolute;
+  margin-top: 100px;
+  margin-left: 20px;
+  width: 150px;
+  height: 200px;
+  background: #ffa;
+  border: 1px solid black;
+  text-align: left;
+}
+
+#toolbar {
+  top: 15px;
+  right: 15px;
+  border: 1px solid black;
+  display: inline-block;
+}
+
+#toolbar > div {
+  width: 25px;
+  height: 25px;
+  border: 1px solid black;
+  display: inline-block;
+  margin: 3px;
+}
+
+.popup {
+  top: 50px;
+  right: 15px;
+}
