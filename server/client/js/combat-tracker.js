@@ -116,9 +116,11 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
         }
       }
     }
-    var entries =  $('combat-initiative-list').getElementsByClassName('combat-initiative-list-entry');
+    var entries =  $('combat-initiative-list').getElementsByClassName(
+        'combat-initiative-list-entry');
     for (var i = 0; i < entries.length; i++) {
-       var candidate = entries[i].getElementsByClassName('combat-tracker-name')[0].textContent;
+       var candidate = entries[i].getElementsByClassName(
+           'combat-tracker-name')[0].textContent;
        if (candidate == characterData.name) {
          var checkbox = entries[i].getElementsByTagName('INPUT')[0];
          var wasChecked = checkbox.checked;
@@ -128,6 +130,12 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
          break;
        }
     }
+
+    $('current-hp').value = characterData.condition.stats['Hit Points'];
+    var temps = characterData.condition.stats['Temps'];
+    if (temps == undefined)
+      temps = 0;
+    $('current-temp-hp').value = temps;
   },
 
   reportCombatAdvantageStatus: function(name, checked) {
