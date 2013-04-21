@@ -218,6 +218,25 @@ dungeon.ParseMonster = (function() {
         var effects =  power.getElementsByTagName('Effect');
         for (var j = 0; j < effects.length; j++) {
           description = extractor(effects[j], 'Description');
+          // Scan back to see if description is embedded in a MonsterAttack
+          // block.
+          if (j > 0) {
+            // In the case of nested effects, each needs to be listed with its
+            // corresponding name.  These effects may be stacked, or may be
+            // alternatives depending on the top-level description.
+            var attackName = null;
+            var parent = effects[j].parentNode;
+            while (parent != power) {
+              if (parent.tagName == 'MonsterAttack')
+                attackName = extractor(parent, 'Name');
+              if (parent == effects[0]) {
+                if (description && description.length > 0)
+                  description = '\n\t' + attackName + ': ' + description;
+                break;
+              }
+              parent = parent.parentNode;
+            }
+          }
           if (description && description.length > 0)
             onHit.push(description);
         }
