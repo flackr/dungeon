@@ -201,10 +201,26 @@ dungeon.CharacterDetailsPage = (function() {
         if (value) {
            var sectionElement = block.getElementsByClassName(section)[0];
            sectionElement.hidden = false;
-           var valueElement = sectionElement.getElementsByClassName('power-value')[0];
-           // Setting as text content does not preserve newlines or multiple whitespace
-           // indent.
+           var valueElement = sectionElement.getElementsByClassName(
+               'power-value')[0];
+           // Setting as text content does not preserve newlines or multiple
+           // whitespace indent.  
            value = value.replace(/^\s+|\s+$/g,'');
+           if (key.indexOf('Augment') == 0) {
+             // Ugly hack to force power augmentation to start on a separate
+             // line. Augmentations override rules for one or more categories
+             // such as 'Attack Type' and 'Hit'.  Each category should start
+             // on a separate line.
+             value = '\n' + value;
+             var matches = value.match(/(^|\n)[A-Z a-z]+(?=\:)/g);
+             if (matches) {
+               for (var i = 0; i < matches.length; i++) {
+                 var match = matches[i];
+                 var index = value.indexOf(match);
+                 value = value.replace(match, '<em>' + match + '</em>');
+               }
+             }
+           }
            value = value.replace(/\n/g, '<br>');
            value = value.replace(/(\t)+/g, '&nbsp; &nbsp; &nbsp;');
            valueElement.innerHTML = value;
@@ -259,6 +275,8 @@ dungeon.CharacterDetailsPage = (function() {
       SetValue('Hit', 'power-hit-effects');
       SetValue('Effect', 'power-general-effects');
       SetValue('Miss', 'power-miss-effects');
+      SetValue('Augment1', 'power-augment-1-effects');
+      SetValue('Augment2', 'power-augment-2-effects');
       SetValue('Conditions', 'power-conditions');
 
       var url = power.url;

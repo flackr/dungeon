@@ -144,6 +144,8 @@ dungeon.ParseCharacter = (function() {
       data.name = name;
       var specifics = power.getElementsByTagName('specific');
       var last = null;
+      var powerAugmentationIndex = 0;
+      var powerAugmentation = null;
       for (var j = 0; j < specifics.length; j++) {
          var detail = specifics[j];
          var attribute = detail.getAttribute('name');
@@ -151,10 +153,17 @@ dungeon.ParseCharacter = (function() {
          var firstChar = attribute.charAt(0);
          if (last && (firstChar == ' ' || firstChar == '\t')) {
            // Combine with previous attribute.  An attribute starting with a
-           // space is used to denote a subheading.  By combining, we preserve
-           // proper ordering
+           // space is used to denote a subheading.  By combining, we
+           // preserve proper ordering
            data[last] = data[last] + '\n' + attribute.trim() + ': ' + value;
          } else {
+           if (attribute == 'Augment') {
+             // Strange formatting of power augmentation for psionic classes.
+             // The augment tag is repeated and following tags rather than
+             // being nested, are at the same level and start with whitespace.
+             attribute = 'Augment' + (++powerAugmentationIndex);
+             value = '';
+           }
            data[attribute] = value;
            last = attribute;
          }

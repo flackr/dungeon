@@ -281,7 +281,7 @@ html[ui=mobile] #sidebar {
 .stat-block h2 {
   display: table-cell;
   font: 18px 'sans' bold;
-  line-height 28px;
+  line-height: 28px;
   padding: 10px;
 }
 
@@ -413,6 +413,12 @@ div.power-conpendium-link {
 
 .power-details-toggle {
   float: right;
+}
+
+.power-value em {
+  color: rgb(50, 50, 150);
+  font-style: normal;
+  font-weight: 600;
 }
 
 #compendium-url {
