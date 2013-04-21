@@ -130,12 +130,14 @@ dungeon.CombatTracker.prototype = extend(dungeon.EventSource.prototype, {
          break;
        }
     }
-
-    $('current-hp').value = characterData.condition.stats['Hit Points'];
-    var temps = characterData.condition.stats['Temps'];
-    if (temps == undefined)
-      temps = 0;
-    $('current-temp-hp').value = temps;
+    var active = $('active-character-name').textContent;
+    if (active == characterData.name) {
+      $('current-hp').value = characterData.condition.stats['Hit Points'];
+      var temps = characterData.condition.stats['Temps'];
+      if (temps == undefined)
+        temps = 0;
+      $('current-temp-hp').value = temps;
+    }
   },
 
   reportCombatAdvantageStatus: function(name, checked) {
