@@ -493,18 +493,7 @@ div.power-conpendium-link {
   z-index: 0 !important;
 }
 
-#map-tiles > *,
-#map-functions > * {
-  width: 25px;
-  height: 25px;
-  background-color: white;
-  border: 1px solid #ccc;
-}
 
-#map-tiles > *[selected],
-#map-functions > *[selected] {
-  border-color: red;
-}
 
 #combat-tracker-page:not([hidden]) {
   -webkit-box-align: stretch;
@@ -652,8 +641,6 @@ div.power-conpendium-link {
   width: 20px;
 }
 
-html[role=player] #map-tiles,
-html[role=player] #map-functions,
 html[role=player] #save-button,
 html[role=player] #undo-button,
 html[role=player] #combat-start-button,

@@ -1,0 +1,221 @@
+<link rel="import" href="popup.html">
+
+<polymer-element name="power-card-section" attributes="label">
+  <template>
+    <style>
+      :host {
+        display: block;
+        font: 12px 'sans';
+        margin: 5px;
+      }
+      #label {
+        font-weight: bold;
+      }
+      #value {
+        display: inline;
+      }
+      :host[hidden] {
+        display: none;
+      }
+    </style>
+    <content>
+      <div>
+        <span id="label">{{label}}: </span>
+        <div id="value"></div>
+      </div>
+    </content>
+  </template>
+  <script>
+    Polymer('power-card-section', {
+      label: '',
+
+      setValue: function(html) {
+        this.$.value.innerHTML = html;
+      }
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="power-details">
+  <template>
+    <style>
+      #content {
+        max-width: 400px;
+      }
+      #description {
+        font-style: italic;
+        font-family: serif;
+      }
+      table {
+        width: 100%;
+      }
+      td {
+        vertical-align: top;
+      }
+      #header td:first-child {
+        -webkit-padding-end: 10px;
+        white-space: nowrap;
+      }
+      #weapon-group {
+        border-radius: 6px;
+        border: 1px solid #555;
+      }
+      #weapon-selector {
+        float: right;
+        margin: 5px;
+      }
+    </style>
+    <div id="content">
+      <table id="header">
+        <tr>
+          <td id="action-type"></td>
+          <td id="attack-type"></td>
+        </tr>
+        <tr>
+          <td></td>
+          <td id="targets"></td>
+        </tr>
+      </table>
+      <div id="description"></div>
+      <power-card-section id="recharge" label="Recharge"></power-card-section>
+      <power-card-section id="trigger" label="Trigger"></power-card-section>
+      <div id="weapon-group">
+        <div id="weapon-selector">
+        </div>
+        <power-card-section id="to-hit" label="To Hit"></power-card-section>
+        <power-card-section id="damage" label="Damage"></power-card-section>
+        <power-card-section id="critical" label="Critical"></power-card-section>
+      </div>
+      <power-card-section id="special" label="Special"></power-card-section>
+      <power-card-section id="on-hit" label="On Hit"></power-card-section>
+      <power-card-section id="effect" label="Effect"></power-card-section>
+      <power-card-section id="on-miss" label="On Miss"></power-card-section>
+      <power-card-section id="augment-1" label="Augment 1"></power-card-section>
+      <power-card-section id="augment-2" label="Augment 2"></power-card-section>
+      <power-card-section id="conditions" label="Conditions">
+      </power-card-section>
+    </div>
+  </template>
+  <script>
+    Polymer('power-details', {
+    });
+  </script>
+</polymer-element>
+
+<!-- Displays details for a character power-->
+<polymer-element name="power-card-popup" extends="popup-window">
+  <script>
+    Polymer('power-card-popup', {
+
+      ready: function() {
+        var el = document.createElement('power-details');
+        el.id = 'details';
+        this.addContent(el);
+        var client = dungeon.getClient();
+        client.addEventListener('select-power', this.onSelectPower.bind(this));
+      },
+
+      update: function(power, character) {
+        this.setHeader(power.getName());
+        var self = this;
+        var details = self.$.content.querySelector('#details');
+        var setSubtitle = function(section, value) {
+          var el = details.$[section];
+          if (el)
+            el.textContent = value || '';
+        };
+        setSubtitle('action-type', power.getActionType());
+        setSubtitle('attack-type', power.getAttackType());
+        var targets = power['Targets'] ? 'Targets' : 'Target';
+        setSubtitle('targets', power.getTargets());
+        setSubtitle('description', power.getDescription());
+
+        details.querySelectorAll('power-card-section').array().forEach(
+            function(e) {e.hidden = true;});
+
+        this.setValue(power.getRecharge(), 'recharge');
+        this.setValue(power.getTrigger(), 'trigger');
+        this.setValue(power.getValue('Special'), 'special');
+        this.setValue(power.getValue('Hit'), 'on-hit');
+        this.setValue(power.getValue('Effect'), 'effect');
+        this.setValue(power.getValue('Miss'), 'on-miss');
+        this.setValue(power.getValue('Augment1'), 'augment-1');
+        this.setValue(power.getValue('Augment2'), 'augment-2');
+        this.setValue(power.getValue('Conditions'), 'conditions');
+
+        var weapons = power.getValue('weapons');
+        if (weapons && weapons.length > 0) {
+          details.$['weapon-group'].hidden = false;
+          // TODO display combo-box to set weapon.
+          // Default to 1st weapon in the list, which is the best choice.
+          var w = weapons[0];
+          details.$['weapon-selector'].textContent = w.name;
+
+          this.setValue(w.crit, 'critical');
+          var toHitStr = w.toHit + ' versus ' + w.defense;
+          if (toHitStr.indexOf('-') != 0)
+            toHitStr = '+' + toHitStr;
+          this.setValue(toHitStr, 'to-hit');
+          this.setValue(w.damage, 'damage'); 
+        } else {
+          details.$['weapon-group'].hidden = true;
+        }
+      },
+
+      update_: function(power, character) {
+        if (power.weapons && power.weapons.length > 0) {
+          this.$.content.querySelector('#to-hit').hidden = false;
+          this.setValue(power, 'Critical', 'critical');
+          this.setValue(power, 'Effect', 'effect');
+          this.setValue(power, 'Miss', 'miss');
+          this.setValue(power, 'Augment1', 'augment-1');
+          this.setValue(power, 'Augment2', 'augment-2');
+          this.setValue(power, 'Conditions', 'conditions');
+        }
+      },
+
+      setValue: function(value, section) {
+/*
+        var value;
+        if (typeof key == 'string') {
+          value = power[key];
+        } else {
+          value = [];
+          for (j = 0; j < key.length; j++) {
+            value.push(power[key[j]]);
+          }
+          value = value.join('\n');
+        }
+*/
+        var details = this.$.content.querySelector('#details');
+        var sectionElement = details.$[section];
+        if (!sectionElement) {
+          console.error('Unable to find section ' + section);
+          return;
+        }
+        sectionElement.hidden = !value;
+        if (value) {
+           // Setting as text content does not preserve newlines or multiple
+           // whitespace indent.  
+           value = value.replace(/^\s+|\s+$/g,'');
+           value = value.replace(/\n/g, '<br>');
+           value = value.replace(/(\t)+/g, '&nbsp; &nbsp; &nbsp;');
+           sectionElement.setValue(value);
+        } else {
+           sectionElement.setValue('');
+        }
+      },
+
+      onSelectPower: function(power, character) {
+        this.update(power, character);
+        // TODO - only show on a long press or right click.
+        this.show();
+
+        // Hack to remove leading text node.
+        // TODO: Figure out why this hack is necessary.
+        if (this.firstChild && this.firstChild.nodeType == 3)
+          this.removeChild(this.firstChild);
+      },
+    });
+  </script>
+</polymer-element>

@@ -1,0 +1,655 @@
+<link rel="import" href="popup.html">
+
+<!-- An element for tracking hit points -->
+<polymer-element name="hp-tracker">
+  <template>
+    <style>
+      div {
+        padding: 0;
+        margin: 0;
+      }
+      input {
+        text-align: right;
+        width: 32px;
+      }
+      span {
+        font: 12px 'sans';
+      }
+    </style>
+    <content>
+      <div>
+        <input id="hp"></input>
+        <span>/</span>
+        <span id="max"></span>
+        <span>HP +</span>
+        <input id="temps"></input>
+        <span>Temps</span>
+      </div>
+    </content>
+  </template>
+  <script>
+    Polymer('hp-tracker', {
+      ready: function() {
+        var self = this;
+        var createOnChangeCallback = function(input, stat) {
+          return function() {
+            var client = dungeon.getClient();
+            client.sendEvent({
+              type: 'use-power', 
+              character: client.getCharacterIndex(self.id),
+              power: 'Stat-tweak',
+              data: {stat: stat, tweak: input.value}
+            });
+          };
+        };
+        var addEventListener = function(field, stat) {
+          var input = self.$[field];
+          input.addEventListener('change',
+              createOnChangeCallback(input, stat));
+        }
+        addEventListener('hp', 'Hit Points');
+        addEventListener('temps', 'Temps');
+      },
+
+      get hp() {
+        return ParseInt(this.$.hp);
+      },
+
+      set hp(value) {
+        this.$.hp.value = value;
+      },
+
+      set max(value) {
+        this.$.max.textContent = value;
+      },
+
+      set name(value) {
+        this.id = value;
+      },
+
+      get temps() {
+        return ParseInt(this.$.temps);
+      },
+
+      set temps(value) {
+        this.$.temps.value = value;
+      },
+    });
+  </script>
+</polymer-element>
+
+<!-- An element for displaying tabbed content -->
+<polymer-element name="tabbed-content" attributes="activeTab">
+  <template>
+    <style>
+     :host {
+       -webkit-box-align: justify;
+       -webkit-box-orient: vertical;
+       -webkit-box-pack: stretch;
+       display: -webkit-box;
+     }
+
+     ::part(header) {
+       -webkit-box-flex: 0;
+       -webkit-box-align: baseline;
+       -webkit-box-orient: horizontal;
+       -webkit-box-pack: start;
+       border-bottom: 1px solid #777;
+       display: -webkit-box;
+       font: 12px 'sans';
+     }
+
+     ::part(container) {
+       -webkit-box-flex: 1;
+       position: relative;
+     }
+
+     ::part(header) .tab {
+       border-bottom: 2px 'transparent';
+       display: -webkit-box;
+       padding: 5px 10px;
+     }
+
+     ::part(header) .tab.active {
+       border-bottom: 2px solid black;
+     }
+    </style>
+    <div part="header">
+      <content select=".tab"></content>
+    </div>
+    <div part="container">
+      <content select="#{{activeTab}}"></content>
+    </div>
+  </template>
+  <script>
+    activeTab: null,
+
+    Polymer('tabbed-content', {
+      addTab: function(tabName, elementName) {
+        var el = document.createElement(elementName);
+        el.id = tabName;
+        this.appendChild(el);
+        var tab = document.createElement('div');
+        tab.classList.add('tab');
+        tab.textContent = tabName;
+        this.attachListener(tab);
+        this.appendChild(tab);
+        if (!this.activeTab)
+          this.selectTab(tabName);
+      },
+
+      selectTab: function(tabName) {
+         this.activeTab = tabName;
+         var nodes = this.querySelectorAll('.tab');
+         for (var i = 0; i < nodes.length; i++) {
+           if (nodes[i].textContent == tabName)
+             nodes[i].classList.add('active');
+           else
+             nodes[i].classList.remove('active');
+         }
+      },
+
+      attachTabListeners: function() {
+        var self = this;
+        var tabs = this.querySelectorAll('.tab');
+        tabs.array().forEach(function(tab) {
+          self.attachListener(tab);
+        });
+      },
+
+      attachListener: function(tab) {
+        var self = this;
+        tab.addEventListener('pointerdown', function(event) {
+          self.selectTab(tab.textContent);
+        });
+      },
+    });
+  </script>
+</polymer-element>
+
+<!-- An element for displaying character stats such as attributes and defenses
+ -->
+<polymer-element name="character-stats">
+  <template>
+    <style>
+     :host {
+       font: 12px 'sans';
+     }
+     table {
+       margin: 0 auto;
+     }
+     td {
+       text-align: right;
+       padding-right: 5px;
+     }
+    </style>
+    <table>
+      <tr>
+        <td>STR:</td><td id="Strength"></td><td id="Strength_modifier"</td>
+        <td>AC:</td><td id="AC"></td>
+      </tr>
+      <tr>
+        <td>CON:</td><td id="Constitution"></td>
+        <td id="Constitution_modifier"</td>
+        <td>Fort:</td><td id="Fortitude"></td>
+        <td>
+      </tr>
+      <tr>
+        <td>DEX:</td><td id="Dexterity"></td><td id="Dexterity_modifier"</td>
+        <td>Ref:</td><td id="Reflex"></td>
+      </tr>
+      <tr>
+        <td>INT:</td><td id="Intelligence"></td>
+        <td id="Intelligence_modifier"</td>
+        <td>Will:</td><td id="Will"></td>
+      </tr>
+      <tr>
+        <td>WIS:</td><td id="Wisdom"></td><td id="Wisdom_modifier"</td>
+        <td>Spd:</td><td id="Speed"></td>
+
+      </tr>
+      <tr>
+        <td>CHA:</td><td id="Charisma"></td><td id="Charisma_modifier"</td>
+        <td>Init:</td><td id="Initiative"></td>
+      </tr>
+    </table>
+    <table>
+      <tr><td>Passive Insight:</td><td id="Passive_Insight"></td></tr>
+      <tr><td>Passive Perception:</td><td id="Passive_Perception"></td></tr>
+      <tr><td>Bloodied:</td><td id="Bloodied"></td></tr>
+      <tr><td>Healing surge amount:</td><td id="Surge_Amount"></td></tr>
+      <tr><td>Healing surges per day:</td><td id="Healing_Surges"></td></tr>
+    </table>
+  </template>
+  <script>
+    Polymer('character-stats', {
+      update: function(character) {
+        this.updateEntries(character, 'attributes');
+        this.updateEntries(character, 'defenses');
+        this.updateEntries(character, 'health');
+        this.updateEntries(character, 'other');
+      },
+
+      updateEntries: function(character, category) {
+        var stats = character.source[category];
+        for (var i = 0; i < stats.length; i++) {
+          var name = stats[i];
+          var id = name.replace(/ /g, '_');
+          var field = this.$[id];
+          var value = character.source.stats[name] || '?';
+          if (field)
+            field.textContent = value;
+          else
+            console.log('unable to set value for ' + name + ' in category ' +
+                category);
+          var modifier = character.source.stats[name + ' modifier'];
+          field = this.$[name + '_modifier'];
+          if (field) {
+            if (!modifier)
+              modifier = '?';
+            if (modifier > 0)
+              modifier = '+' + modifier;
+            field = this.$[name + '_modifier'];
+            field.textContent = '(' + modifier + ')'; 
+          }
+        }
+      },
+    });
+  </script>
+</polymer-element>
+
+<!-- An element for displaying character skills -->
+<polymer-element name="character-skills">
+  <template>
+    <style>
+     :host {
+       font: 12px 'sans';
+     }
+     td:nth-child(even) {
+       text-align: right;
+       padding-right: 5px;
+     }
+     td:nth-child(odd) {
+       text-align: left;
+     }
+    </style>
+    <table>
+      <tr>
+        <td>Acrobatics:</td><td id="Acrobatics" class="skill"></td>
+        <td>Insight:</td><td id="Insight" class="skill"></td>
+      </tr>
+      <tr>
+        <td>Arcana:</td><td id="Arcana" class="skill"></td>
+        <td>Intimidate:</td><td id="Intimidate" class="skill"></td>
+      </tr>
+      <tr>
+        <td>Athletics:</td><td id="Athletics" class="skill"></td>
+        <td>Nature:</td><td id="Nature" class="skill"></td>
+      </tr>
+      <tr>
+        <td>Bluff:</td><td id="Bluff" class="skill"></td>
+        <td>Perception:</td><td id="Perception" class="skill"></td>
+      </tr>
+      <tr>
+        <td>Diplomacy:</td><td id="Diplomacy" class="skill"></td>
+        <td>Religion:</td><td id="Religion" class="skill"></td>
+      </tr>
+      <tr>
+        <td>Dungeon.:</td><td id="Dungeoneering" class="skill"></td>
+        <td>Stealth:</td><td id="Stealth" class="skill"></td>
+      </tr>
+      <tr>
+        <td>Endurance:</td><td id="Endurance" class="skill"></td>
+        <td>Streetwise:</td><td id="Streetwise" class="skill"></td>
+      </tr>
+      <tr>
+        <td>Heal:</td><td id="Heal" class="skill"></td>
+        <td>Thievery:</td><td id="Thievery" class="skill"></td>
+      </tr>
+      <tr>
+        <td>History:</td><td id="History" class="skill"></td>
+      </tr>
+    </table>
+  </template>
+  <script>
+    Polymer('character-skills', {
+      update: function(character) {
+        for (var key in this.$) {
+          var el = this.$[key];
+          el.textContent = '?';
+        }
+        var stats = character.source['skills'];
+        for (var i = 0; i < stats.length; i++) {
+          var name = stats[i];
+          var id = name.replace(/ /g, '_');
+          var field = this.$[id];
+          var value = character.source.stats[name] || '?';
+          if (field)
+            field.textContent = value;
+          else
+            console.log('unable to set value for ' + name);
+        }
+      },
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="power-summary-badge">
+  <template>
+  </template>
+  <script>
+    Polymer('power-summary-badge', {
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="power-summary" attributes=
+    "active power label type usage tooltip melee ranged burst blast personal"
+    on-pointerdown="{{onPointerDown}}">
+  <template>
+    <style>
+     :host ::part(button)  {
+       -webkit-box-orient: horizontal;
+       -webkit-box-pack: stretch;
+       border: 2px solid white;
+       border-radius: 6px;
+       display: -webkit-box;
+       font: 12px 'sans';
+       padding: 3px;
+       margin: 2px 0;
+     }
+     :host[usage="At-Will"] ::part(button) {
+       background-color: #44aa00;
+       border-color: #44aa00;
+       color: white;
+     }
+     :host[usage="At-Will"][active] ::part(button) {
+       border-color: #446600;
+     }
+     :host[usage="Encounter"] ::part(button) {
+       background-color: red;
+       border-color: red;
+       color: white;
+     }
+     :host[usage="Encounter"][active] ::part(button) {
+       border-color: #ffaa00;
+     }
+     :host[usage="Recharge"] ::part(button) {
+       background-color: #ff4400;
+       border-color: #ff4400;
+       color: white;
+     }
+     :host[usage="Recharge"][active] ::part(button) {
+       border-color: #ffaa00;
+     }
+     :host[usage="Daily"] ::part(button) {
+       background-color: #bbb;
+       border-color: #bbb;
+       color: black;
+     }
+     :host[usage="Daily"][active] ::part(button) {
+       border-color: #555;
+     }
+     
+     ::part(name) {
+       -webkit-box-flex: 1;
+       display: -webkit-box;
+     }
+
+     ::part(badge) {
+       -webkit-box-flex: 0;
+       background-color: #fff;
+       background-position: left top;
+       background-repeat: no-repeat;
+       background-size: 100%;
+       display: none;
+       height: 16px;
+       margin: 0 2px;
+       width: 16px;
+     }
+
+     :host[melee] #melee-badge {
+       -webkit-filter: grayscale(100%);
+       background-image: url('images/Sword-Right-icon.png');
+       display: -webkit-box;
+     }
+
+     :host[ranged] #bow-badge {
+       -webkit-filter: grayscale(100%);
+       background-image: url('images/bow-icon.png');
+       display: -webkit-box;
+     }
+
+     :host[blast] #blast-badge {
+       -webkit-filter: grayscale(100%);
+       background-image: url('images/blast-icon.png');
+       display: -webkit-box;
+     }
+
+     :host[burst] #burst-badge {
+       -webkit-filter: grayscale(100%) invert(100%);
+       background-color: #000;
+       background-image: url('images/burst-icon.png');
+       display: -webkit-box;
+     }
+
+    </style>
+    <div part="button">
+      <div part="name">{{label}}</div>
+      <div part="badge" id="melee-badge"></div>
+      <div part="badge" id="bow-badge"></div>
+      <div part="badge" id="blast-badge"></div>
+      <div part="badge" id="burst-badge"></div>
+    </div>
+  </template>
+  <script>
+    Polymer('power-summary', {
+      active: false,
+      melee: false,
+      ranged: false,
+      burst: false,
+      blast: false,
+      personal: false,
+
+      onPointerDown: function(event) {
+        var client = dungeon.getClient();
+        client.dispatchEvent('select-power', this.details);
+        var selected = this.parentElement.querySelector('[active]');
+        if (selected && selected != this)
+          selected.active = false;
+        this.active = true;
+      },
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="simple-power-list">
+ <template>
+    <style>
+      :host {
+        padding-top: 1px;
+      }
+    </style>
+   <div>
+      <content select="power-summary[usage='Daily']"></content>
+      <content select="power-summary[usage='Encounter']"></content>
+      <content select="power-summary[usage='Recharge']"></content>
+      <content select="power-summary[usage='At-Will']"></content>
+    <div>
+  </template>
+  <script>
+    Polymer('simple-power-list', {
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="tabbed-power-list">
+  <template>
+    <style>
+      :host {
+        padding-top: 1px;
+      }
+    </style>
+    <tabbed-content id="grouped-list">
+      <div class="tab">At-Will</div>
+      <div class="tab">Encounter</div>
+      <div class="tab">Daily</div>
+      <div id="At-Will">
+        <content select="power-summary[usage='At-Will']"></content>
+      </div>
+      <div id="Encounter">
+        <content select="power-summary[usage='Encounter']"></content>
+        <content select="power-summary[usage='Recharge']"></content>
+      </div>
+      <div id="Daily">
+        <content select="power-summary[usage='Daily']"></content>
+      </div>
+    </tabbed-content>
+  </template>
+  <script>
+    Polymer('tabbed-power-list', {
+      ready: function() {
+        var grouped = this.$['grouped-list'];
+        grouped.attachTabListeners();
+        grouped.selectTab("At-Will");
+      }
+    });
+  </script>
+</polymer-element>
+
+
+<!-- An element for listing character powers -->
+<polymer-element name="character-powers">
+  <template>
+    <style>
+    </style>
+    <content select="#list"></content>
+  </template>
+  <script>
+    Polymer('character-powers', {
+
+      /**
+       * Character using the power, which is used to simplify the description
+       * of powers (eg. resolve stat dependent modifiers).
+       */
+      activeCharacter: null,
+
+      update: function(character) {
+        this.activeCharacter = character;
+        this.reset();
+        var powers = character.source.powers;
+        var names = [];
+        var map = {};
+        for (var i = 0; i < powers.length; i++) {
+          names.push(powers[i].name);
+          map[powers[i].name] = powers[i];
+        }
+        names.sort();
+
+        var listType = (names.length > 6) ? 
+            'tabbed-power-list' : 'simple-power-list';
+        var list = document.createElement(listType);
+        list.id = 'list';
+        this.appendChild(list);
+
+        this.compact = names.length > 6;
+        for (var i = 0; i < names.length; i++) {
+          this.insert(list, map[names[i]]);
+        }
+      },
+
+      reset: function() {
+        while(this.firstChild) {
+          this.removeChild(this.firstChild);
+        }
+      },
+
+      insert: function(list, power) {
+        var el = document.createElement('power-summary');
+        el.activeCharacter = this.activeCharacter;
+        el.power = power.name;
+        var repository = dungeon.Powers.getInstance();
+        el.details = repository.get(power.name);
+        el.details.useBy(this.activeCharacter);
+        el.label = this.simplifyPowerName(power.name);
+        el.action = power['Action Type'];
+        el.usage = this.simplifyUsage(power['Power Usage']);
+        var attackType = power['Attack Type'];
+        if (attackType) {
+          attackType = attackType.toLowerCase();
+          var typeContains = function(keyword) {
+            return attackType.indexOf(keyword) >= 0;
+          }
+          // use icons to provide quick synopsis of power usage.
+          // TODO: Create icons similar to the roster icon.
+          el.melee = typeContains('melee') || typeContains('close');
+          el.ranged = typeContains('ranged') || typeContains('within');
+          el.burst = typeContains('burst');
+          el.blast = typeContains('blast');
+          el.personal = typeContains('personal');
+          // TODO: interrupt, heal, ...
+        }
+        list.appendChild(el);
+      },
+      simplifyUsage: function(usage) {
+        // TODO(kellis): Add other filters here as required.
+        return usage.replace('(Special)', '').trim();
+      },
+
+      simplifyPowerName: function(name) {
+        // TODO(kellis): Add other filters here as required.
+        return name.replace('[Movement Technique]', '(move)');
+      },
+
+    });
+  </script>
+</polymer-element>
+
+<!-- An element for displaying character information -->
+<polymer-element name="character-popup" extends="popup-window"
+  on-character-selected="{{onCharacterSelected}}">
+  <script>
+    Polymer('character-popup' , {
+
+      /**
+       * Active character.
+       */
+      character: undefined,
+
+      ready: function() {
+        var hpTracker = document.createElement('hp-tracker');
+        this.addContent(hpTracker);
+        var tabbedContent = document.createElement('tabbed-content');
+        this.addContent(tabbedContent);
+        tabbedContent.addTab('Stats', 'character-stats'); 
+        tabbedContent.addTab('Skills', 'character-skills');
+        // tabbedContent.addTab('Feats', 'div'); 
+        tabbedContent.addTab('Powers', 'character-powers');
+        tabbedContent.selectTab('Powers');
+        this.style.width = '200px';
+      },
+
+      show: function(character) {
+        this.character = character;
+        this.setHeader(character.name);
+        this.update();
+        this.super();
+      },
+
+      update: function() {
+        var hpTracker = this.$.content.querySelector('hp-tracker');
+        hpTracker.name = this.character.name;
+        hpTracker.hp = this.character.condition.stats['Hit Points'];
+        hpTracker.max = this.character.source.stats['Hit Points'];
+        hpTracker.temps = this.character.condition.stats['Temps'] || 0;
+        var charStats = this.$.content.querySelector('character-stats');
+        charStats.update(this.character);
+        var charSkills = this.$.content.querySelector('character-skills');
+        charSkills.update(this.character);
+        var charPowers = this.$.content.querySelector('character-powers');
+        charPowers.update(this.character);
+      }
+
+    });
+  </script>
+</polymer-element>

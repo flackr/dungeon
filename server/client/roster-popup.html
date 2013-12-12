@@ -1,0 +1,220 @@
+<link rel="import" href="popup.html">
+<polymer-element name="roster-entry" attributes="name level charClass active"
+    on-pointerdown="{{onPointerDown}}">
+  <template>
+    <style>
+      :host {
+        display: block;
+        margin-top: 5px;
+        width: 100%;
+      }
+
+      :host:first-child {
+        margin-top: 0;
+      }
+
+      #entry {
+        background: #eee;
+        border-radius: 5px;
+        display: block;
+        padding: 3px;
+      }
+
+      :host[active] #entry {
+        background: #555;
+        color: #fff;
+      }
+
+      ::part(title) {
+        display: block;
+        font: 14px 'sans' bold;
+      }
+
+      ::part(subtitle) {
+        display: none;
+      }
+
+      :host[active]::part(subtitle) {
+        display: block;
+        font: 10px 'sans';
+        margin-top: 5px;
+      }
+    </style>
+    <content>
+      <div id="entry">
+        <div part="title">{{name}}</div>
+        <div part="subtitle">Level: {{level}} Class: {{charClass}}</div>
+      </div>
+    <content>
+  </template>
+  <script>
+    Polymer('roster-entry', {
+      active: false,
+
+      onPointerDown: function(event) {
+        this.fire('enable-drag-insert-character', {name: this.name});
+        var selected = this.parentNode.querySelector('roster-entry[active]');
+        if (selected != this) {
+          if (selected)
+            selected.active = false;
+          this.active = true;
+        }
+        // Allow event propagation to popup window.
+      },
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="roster-popup" extends="popup-window" attributes="compact"
+    on-enable-drag-insert-character="{{onEnableDragInsertCharacter}}"
+    on-pointerup="{{onPointerUp}}">
+  <script>
+    Polymer('roster-popup', {
+
+      blockPointerEventPropagation: false,
+
+      ready: function() {
+        this.setHeader('Roster');
+        this.setInstructions(
+            'Select a character and drag it onto the combat map.  Addtional ' +
+            'characters may be loaded via the context menu.');
+      },
+
+      /**
+       * Refreshes the list of character prototypes in the roster.
+       * @override
+       */
+      show: function() {
+        var client = dungeon.getClient();
+        this.registryListener = this.onCharacterRegistryUpdate.bind(this);
+        client.addEventListener('character-registry-update',
+                                this.registryListener);
+        var list = client.characterList;
+        this.clear();
+        var names = [];
+        for (var name in list) {
+          names.push(name);
+        }
+        var self = this;
+        names.sort();
+        names.forEach(function(name) {
+          var el = document.createElement('roster-entry');
+          el.name = name;
+          el.level = list[name].level;
+          el.charClass = list[name].charClass;
+          self.addContent(el);
+        });
+        this.super();
+      },
+
+      /**
+       * @override.
+       */
+      close: function() {
+        var client = dungeon.getClient();
+        client.removeEventListener('character-registry-update',
+                                   this.registryListener);
+         this.super();
+      },
+
+      onEnableDragInsertCharacter: function(event) {
+        this.blockPointerEventPropagation = true;
+        var overlay = this.parentNode;
+        var self = this;
+        var name = event.detail.name;
+        var defaultCursor = overlay.style.cursor;
+        overlay.style.cursor = this.createCharacterInsertCursor();
+        overlay.overridePointerEvent('move', function(event) {
+          event.stopPropagation();
+        });
+        overlay.overridePointerEvent('up', function(event) {
+          var client = dungeon.getClient();
+          var coords = $('combat-map').computeMapCoordinates(event);
+          client.sendEvent({
+            type: 'add-character-instance',
+            character: {name: name, x: coords.x, y: coords.y}
+          });
+          overlay.resetPointerEvent('move');
+          overlay.resetPointerEvent('up');
+          overlay.style.cursor = defaultCursor ? defaultCursor : '';
+          self.blockPointerEventPropagation = false;
+        });
+      },
+
+      /**
+       * Inserts or replaces an entry in the roster.
+       * @param {string} name Name of the new or updated character.
+       */
+      onCharacterRegistryUpdate: function(name) {
+        var nodes = this.$.content.querySelectorAll('roster-entry');
+        var insertIndex = -1;
+        var replaceIndex = -1;
+        for (var i = 0; i < nodes.length; i++) {
+          var candidate = nodes[i];
+          if(candidate.name == name) {
+            replaceIndex = i;
+            break;
+          } else if(candidate.name > name) {
+            insertIndex = i;
+            break;
+          }
+        }
+        var client = dungeon.getClient();
+        var list = client.characterList;
+        var el = document.createElement('roster-entry');
+        el.name = name;
+        el.level = list[name].level;
+        el.charClass = list[name].charClass;
+        if (replaceIndex >= 0)
+          nodes[replaceIndex].parentElement.replaceChild(el,
+              nodes[replaceIndex]);
+        else if (insertIndex >= 0)
+          nodes[insertIndex].parentElement.insertBefore(el, nodes[insertIndex]);
+        else
+          this.addContent(el);
+      },
+
+/*
+      onPointerDown: function(event) {
+        event.stopPropagation();
+      },
+*/
+
+      onPointerUp: function(event) {
+        if (this.blockPointerEventPropagation) {
+          event.stopPropagation();
+          var overlay = this.parentNode;
+          overlay.resetPointerEvent('move');
+          overlay.resetPointerEvent('up');
+          overlay.style.cursor = '';
+          self.blockPointerEventPropagation = false;
+        }
+      },
+
+      createCharacterInsertCursor: function() {
+        var canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 32;
+        var context = canvas.getContext('2d');
+        var drawShape = function(color, width) {
+          context.strokeStyle = context.fillStyle = color;
+          context.lineWidth = width;
+          context.beginPath();
+          context.arc(16, 16, 12, 0, 2*Math.PI, true);
+          context.moveTo(16, 3);
+          context.lineTo(16, 29);
+          context.moveTo(3, 16);
+          context.lineTo(29, 16);
+          context.arc(16, 16, 8, 0, 2*Math.PI, true);
+          context.stroke();
+        };
+        drawShape('#000', 4);
+        drawShape('#ff0', 2);
+        var cursor = new Image();
+        cursor.src = canvas.toDataURL('image/png');
+        var url = 'url("' + cursor.src + '") 16 16, auto';
+        return url;
+      },
+
+    });
+  </script>
+</polymer-element>

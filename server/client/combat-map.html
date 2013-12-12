@@ -1,0 +1,841 @@
+<link rel="import" href="map-tool.html">
+<link rel="import" href="map-overlay.html">
+<link rel="import" href="context-menu.html">
+<link rel="import" href="roster-popup.html">
+<link rel="import" href="character-popup.html">
+<link rel="import" href="power-card-popup.html">
+
+<polymer-element name="combat-map" on-mousewheel="{{onMouseWheel}}"
+    on-pointerdown="{{onPointerDown}}" on-pointermove="{{onPointerMove}}"
+    on-pointerup="{{onPointerUp}}" on-contextmenu="{{onContextMenu}}"
+    on-show-popup="{{onShowPopup}}" attributes="role">
+  <template>
+    <style>
+      :host {
+        height: 100%;
+        position: absolute;
+        width: 100%;
+      }
+
+      canvas {
+        height: 100%;
+        width: 100%;
+      }
+
+      :host[role="player"] map-tool{
+        display: none !important;
+      }
+    </style>
+    <content>
+      <canvas width="{{width}}" height="{{height}}" id="canvas"></canvas>
+      <map-tool position="top-left" id="map-functions">
+        <div>0</div>
+        <div>1</div>
+        <div>3</div>
+        <div>5</div>
+      </map-tool>
+      <map-tool position="bottom-left" id="map-tiles"></map-tool>
+      <map-overlay id="popups-overlay" modal="false">
+        <roster-popup id="roster"></roster-popup>
+        <character-popup id="character-summary"></character-popup>
+        <power-card-popup id="power-card"></power-card-poup>
+      </map-overlay>
+      <map-overlay id="dialog-overlay" modal="true"></map-overlay>
+      <map-overlay id="context-menu-overlay" modal="auto-release"
+        style="z-index: 10000;">
+        <context-menu id="context-menu"></context-menu>
+      </map-overlay>
+    </content>
+  </template>
+  <script>
+    /**
+     * Delay before context menu is shown.
+     * @const {number}
+     */
+    var LONGPRESS_DELAY_MSEC = 500;
+
+    /**
+     * Threshold movement for initiating a drag operation.
+     * @const {number}
+     */
+    var DRAG_THRESHOLD = 10;
+
+    /**
+     * Modes of operation for the pointer.  Touch and mouse events are
+     * consolidated as pointer events.
+     * @enum {string}
+     */
+    var PointerMode = {
+      CONTEXT_MENU: 'context-menu', // Showing the context menu.
+      DRAG_OR_LONGPRESS: 'drag', // Start of a drag or longpress gesture.
+      DRAW: 'draw', // Update map tiles.
+      HOVER: 'hover', // Mouse press or touch is not active.
+      MOVE: 'move', // Move selected object or character.
+      PAN: 'pan', // A specialized drag operation for panning the viewport.
+      RESIZE: 'resize', // Resize selected object.
+      SELECT: 'select', // Select object or character.
+    };
+
+    Polymer('combat-map', {
+      /**
+       * Height of the map in px.
+       * @type {number}
+       */
+      height: 600,
+
+      /**
+       * Width of the map in px.
+       * @type {number}
+       */
+      width: 800,
+
+      /**
+       * Stale if a redraw request is pending. Prevents spamming updates.
+       * @type {boolean}
+       */
+      stale: false,
+
+      /**
+       * Index of the selected character.
+       * @type {number}
+       */
+      characterSelection: undefined,
+
+      /**
+       * Name of the selected power.
+       * @type {string}
+       */
+      selectedPower: null,
+
+      /**
+       * Indices of selected targets.
+       * @type {Array.<int>}
+       */
+      targets: null,
+
+      /**
+       * @constructor
+       */
+      ready: function() {
+        this.viewport = {
+          x: 30,
+          y: 30,
+          tileSize: 32,
+          tileSizeFloat: 32,
+        };
+        window.addEventListener('resize', this.resize.bind(this));
+        dungeon.MapEditor.initialize(this.$['map-functions'],
+                                     this.$['map-tiles']);
+        this.pointer = {mode: PointerMode.HOVER};
+        this.resize();
+      },
+
+      /**
+       * Updates the canvas size to keep in sync with the screen size.
+       */
+      resize: function() {
+        this.width = this.clientWidth;
+        this.height = this.clientHeight;
+      },
+
+      /**
+       * Observer that the screen widht has changed.
+       */
+      widthChanged: function() {
+        this.update();
+      },
+
+      /**
+       * Observer that the screen height has changed.
+       */
+      heightChanged: function() {
+        this.update();
+      },
+
+      /**
+       * Schedules a screen redraw.
+       */
+      update: function() {
+        // If stale then a redraw should have already have been queued.
+        if (!this.stale) {
+          this.stale = true;
+          var self = this;
+          requestAnimFrame(function() {
+             self.redraw();
+          });
+        }
+      },
+
+      /**
+       * Updates the combat map.
+       */
+      redraw: function() {
+        this.stale = false;
+        var map = this.$.canvas;
+        var ctx = map.getContext('2d');
+
+        // Draw a black background
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, this.width, this.height);
+
+        this.computeVisibleTiles();
+        this.drawBackground(ctx);
+        this.drawForeground(ctx);
+        this.drawGrid(ctx);
+
+        // Special handling for selected character.
+        this.drawSelectedCharacter(ctx);
+
+        // Mark targets.
+        // this.drawTargetIndicators(ctx);
+
+        // Draw remaining charcters.
+        this.drawCharacters(ctx);
+      },
+
+      /**
+       * Computes the bounds of a tile.
+       * @return {{left: number, top: number, width: number, height: number}}
+       */
+      getTileBounds: function(row, col) {
+        var tw = this.viewport.tileSize;
+        return {
+          left: this.baseX + (col - this.view.x1) * tw,
+          top: this.baseY + (row - this.view.y1) * tw,
+          width: tw,
+          height: tw
+        };
+      },
+
+      /**
+       * Displays background tiles on the map.
+       * @param {!Object} ctx The canvas drawing context.
+       */
+      drawBackground: function(ctx) {
+        var client = dungeon.getClient();
+        if (!client.ui.mapImages || !client.map)
+          return;
+        for (var i = this.view.y1; i < this.view.y2; i++) {
+          for (var j = this.view.x1; j < this.view.x2; j++) {
+            var bounds = this.getTileBounds(i, j);
+            ctx.drawImage(client.ui.mapImages[client.map[i][j]],
+                          bounds.left, bounds.top, bounds.width, bounds.height);
+          }
+        }
+      },
+
+      /**
+       * Displays foreground objects on the map.
+       * @param {!Object} ctx The canvas drawing context.
+       */
+      drawForeground: function(ctx) {
+        var client = dungeon.getClient();
+        if (!client.ui.mapImages || !client.objects)
+          return;
+        for (var i = 0; i < client.objects.length; i++) {
+          var object = client.objects[i];
+          if (object.x + object.w <= this.view.x1 ||
+              object.y + object.h <= this.view.y1 ||
+              object.x >= this.view.x2 || object.y >= this.view.y2)
+            continue;
+          var bounds = this.getTileBounds(object.y, object.x);
+          ctx.drawImage(client.ui.mapImages[object.tile],
+                        bounds.left, bounds.top, bounds.width, bounds.height);
+        }
+      },
+
+      /**
+       * Displays gridlines on the map.
+       * @param {!Object} ctx The canvas drawing context.
+       */
+      drawGrid: function(ctx) {
+        ctx.beginPath();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+        var tw = this.viewport.tileSize;
+        for (var i = this.view.y1; i < this.view.y2; i++) {
+    	  var y = this.baseY + (i - this.view.y1) * tw;
+          ctx.moveTo(0, y);
+          ctx.lineTo(this.width, y);
+        }
+        for (var i = this.view.x1; i < this.view.x2; i++) {
+          var x = this.baseX + (i - this.view.x1) * tw;
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, this.height);
+        }
+        ctx.stroke();
+      },
+
+      drawSelectedCharacter: function(ctx) {
+        if (this.selectedCharacter != undefined) {
+          var client = dungeon.getClient();
+          this.drawCharacter(ctx, this.selectedCharacter, 'selection');
+
+          // Movement overlay
+          ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+          var character = client.characterPlacement[this.selectedCharacter];
+          var speed = parseInt(character.condition.stats['Speed'] || 0);
+          // Check if creature is prone, immobalized, or slowed.
+          var effects = character.condition.effects;
+          if (effects) {
+            for (var j = 0; j < effects.length; j++) {
+              var effect = effects[j];
+              if (effect == 'prone' || effect == 'immobalized' ||
+                  effect == 'grabbed') 
+              {
+                speed = 0;
+                break;
+              }
+              if (effect == 'slowed')
+                speed = 2;
+              }
+          }
+          var width = this.getCharacterWidthInTiles(this.selectedCharacter);
+          var tw = this.viewport.tileSize;
+          for (var j = -speed; j < speed + width; j++) {
+            for (var k = -speed; k < speed + width; k++) {
+              var dx = j < 0 ? j : j >= width ? j - width + 1 : 0;
+              var dy = k < 0 ? k : k >= width ? k - width + 1 : 0;
+              if (Math.sqrt(dx * dx + dy * dy) <= (speed + 0.8))
+                ctx.fillRect(this.baseX + (character.x + j - this.view.x1) * tw,
+                             this.baseY + (character.y + k - this.view.y1) * tw,
+                             tw,
+                             tw);
+            }
+          }
+        }
+      },
+
+      /**
+       * Displays combatants.
+       * @param {!Object} ctx Graphics context.
+       */
+      drawCharacters: function(ctx) {
+        var client = dungeon.getClient();
+        var tw = this.viewport.tileSize;
+        var self = this;
+        var mapX = function(x) {
+          return self.baseX + (x - self.view.x1) * tw;
+        };
+        var mapY = function(y) {
+          return self.baseY + (y - self.view.y1) * tw;
+        };
+        for (var i = 0; i < client.characterPlacement.length; i++) {
+          var character = client.characterPlacement[i];
+          if (character.x < this.view.x1 || character.x >= this.view.x2 ||
+              character.y < this.view.y1 || character.y >= this.view.y2)
+            continue;
+
+          var name = character.name;
+          var isMonster = character.source.charClass == 'Monster';
+          if (i != this.selectedCharacter)
+            this.drawCharacter(ctx, i, 'type');
+          this.drawCharacter(ctx, i, 'effects');
+
+          var width = this.getCharacterWidthInTiles(i);
+
+          var x = this.baseX + (character.x - this.view.x1) * tw +
+              tw * width / 2;
+          var y = this.baseY + (character.y - this.view.y1) * tw + tw / 2; 
+
+          this.drawHealthBar(ctx,
+                             Math.round(x - tw / 2 + 1 + 1 / 32 * tw),
+                             Math.round(y - tw / 2 + 1 + 1 / 32 * tw),
+                             Math.max(10, Math.round(tw - 2 - 2 / 32 * 2)),
+                             Math.max(1, Math.round(2 / 32 * tw)),
+                             character,
+                             isMonster);
+
+          // Name
+          var textHeight = Math.max(10, tw/3);
+          ctx.font = textHeight + "px Arial";
+          var x_bounds = [0, this.width - 1];
+          for (var j = 0; j < client.characterPlacement.length; j++) {
+            if (client.characterPlacement[i].x !=
+                client.characterPlacement[j].x &&
+                client.characterPlacement[j].y ==
+                client.characterPlacement[i].y) {
+              if (client.characterPlacement[j].x <
+                  client.characterPlacement[i].x) {
+                x_bounds[0] = Math.max(x_bounds[0], 
+                    mapX((client.characterPlacement[j].x + character.x) / 2 + 0.5));
+              } else {
+                x_bounds[1] = Math.min(x_bounds[1],
+                    mapX((client.characterPlacement[j].x + character.x) / 2 + 0.5));
+              }
+            }
+          }
+          this.drawTextInBounds(ctx, x, Math.round(y - tw / 2 - tw / 32), name,
+              x_bounds[0], x_bounds[1], isMonster ? '#f00' : '#00f', textHeight);
+        }
+      },
+
+      /**
+       * Draws text clipped to a bounding box to avoid overlap.
+       * @param {!Object} ctx Graphics context
+       * @param {number} x_center Horizontal midpoint of the label.
+       * @param {number} y Vertical baseline of the label.
+       * @param {string} text Label to display
+       * @param {number} x_left Left clipping boundary
+       * @param {number} x_right Right clipping boundary.
+       * @param {string} textColor CSS respresentation of the text color.
+       * @param {number} textHeight Height of the text in px. 
+       */
+      drawTextInBounds: function(ctx, x_center, y, text, x_left, x_right,
+                                 textColor, textHeight) {
+        var maxWidth = Math.round(x_right - x_left);
+        var textWidth;
+        while ((textWidth = ctx.measureText(text).width) > maxWidth) {
+          text = text.substring(0, text.length - 1);
+        }
+        var x = Math.round(Math.min(x_right - textWidth,
+            Math.max(x_left, x_center - textWidth / 2)));
+        ctx.fillStyle = 'white';
+        ctx.globalAlpha = 0.6;
+        ctx.fillRect(x, y - textHeight - 1, textWidth, textHeight + 2);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = textColor;
+        ctx.fillText(text, x, y);
+      },
+
+      drawHealthBar: function(ctx, hx, hy, hw, hh, character, isMonster) {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(hx - 1, hy - 1, hw + 2, hh + 2);
+        var curHp = Number(character.condition.stats['Hit Points']);
+        var maxHp = Number(character.source.stats['Hit Points']);
+        var hpFraction = curHp / maxHp;
+        var bloodyHp = Number(character.source.stats['Bloodied']);
+        var isBloodied = (curHp <= bloodyHp);
+        var isDying = (curHp <= 0);
+        var temps = parseInt(character.condition.stats['Temps'] || 0);
+        if (isMonster) {
+          ctx.fillStyle = isBloodied ? '#f80' : '#0f0';
+          if (this.role == 'dm') {
+            if (hpFraction > 0)
+              ctx.fillRect(hx, hy, Math.min(1, hpFraction) * hw, hh);
+          } else {
+            ctx.fillRect(hx, hy, isBloodied ? hw / 2 : hw, hh);
+          }
+          ctx.fillStyle = '#000';
+          ctx.fillRect(Math.round(hx + hw / 2), hy, 1, hh);
+        } else {
+          ctx.fillStyle = isDying ? '#f00' : (isBloodied ? '#f80' : '#0f0');
+          var total = bloodyHp + maxHp + temps;
+          var healthRatio = (bloodyHp + curHp) / total;
+          var healthWidth = Math.round(healthRatio * hw);
+          ctx.fillRect(hx, hy, healthWidth, hh);
+          if (temps > 0) {
+            var tempRatio = temps / total;
+            var tempWidth = Math.round(tempRatio * hw);
+            if (healthWidth + tempWidth > hw)
+              tempWidth = hw - healthWidth;
+            ctx.fillStyle = '#ff0';
+            ctx.fillRect(hx + healthWidth, hy, tempWidth, hh);
+          }
+          ctx.fillStyle = '#000';
+          var bloodyRatio = bloodyHp / total;
+          var DyingMarker = Math.round(bloodyRatio * hw);
+          ctx.fillRect(hx + DyingMarker, hy, 1, hh);
+          var BloodyMarker = Math.round(2 * bloodyRatio * hw);
+          ctx.fillRect(hx + BloodyMarker, hy, 1, hh);
+        }
+      },
+
+      /**
+       * Draws a character on the map.
+       * @param {!Object} ctx Graphics context
+       * @param {number} index The character placement index.
+       * @param {string} state The state for displaying the character, which may
+       *     be one of the following: 'selection', 'type', or 'effects'.
+       */
+      drawCharacter: function(ctx,  index, state) {
+        var client = dungeon.getClient();
+        var character = client.characterPlacement[index];
+        var tw = this.viewport.tileSize;
+        var tileWidth = this.getCharacterWidthInTiles(index);
+        var radius = tw * tileWidth / 2;
+        var x = this.baseX + (character.x - this.view.x1) * tw + radius;
+        var y = this.baseY + (character.y - this.view.y1) * tw + radius;
+
+        var drawStroke = false, drawFill = false;
+        ctx.lineWidth = 1;
+        switch(state) {
+          case 'selection':
+            drawStroke = true;
+            ctx.strokeStyle = '#ff0';
+            ctx.lineWidth = tw/32;
+            // Deliberate fall-through.
+          case 'type':
+            var isMonster = character.source.charClass == 'Monster';
+            var effects = character.condition.effects;
+            if (effects) {
+              for (var j = 0; j < effects.length; j++) {
+                var effect = effects[j];
+                if (effect == 'pet' || effect == 'dominated')
+                  isMonster = false;
+              }
+            }
+            drawFill = true;
+            ctx.fillStyle = isMonster ? '#f00' : '#00f';
+            break;
+          case 'effects':
+            var hasEffects = character.condition.effects &&
+                character.condition.effects.length > 0;
+            if (hasEffects) {
+              drawStroke = drawFill = true;
+              ctx.strokeStyle = '#000';
+              ctx.fillStyle = '#ff0';
+              x += radius / 2;
+              y += radius / 2;
+              radius = 0.4 * tw;
+            }
+            break;
+        }
+        if (drawStroke || drawFill) {
+          ctx.beginPath();
+          ctx.arc(x, y, radius - tw/4, 0, 2*Math.PI, true);
+          if (drawFill)
+            ctx.fill();
+          if (drawStroke)
+            ctx.stroke();
+        }
+      },
+
+      /**
+       * Returns the width of a critter in tiles, which is dependent on its size
+       * category and ranges from 1 to 4.  Multiple tiny critters can fit into the
+       * same square. Support for tiny fellas is currently not implemented.
+       */
+      getCharacterWidthInTiles: function(index) {
+        var client = dungeon.getClient();
+        var character = client.characterPlacement[index];
+        if (!character)
+          return 0;
+        var size = character.source.stats['Size'];
+        switch(size) {
+          case 'Tiny': // Actually two critters per square is allowed for tiny.
+          case 'Small':
+          case 'Medium':
+            return 1;
+          case 'Large':
+            return 2;
+          case 'Huge':
+            return 3;
+          case 'Gargantuan':
+            return 4;
+          default:
+            return 1;
+        }
+      },
+
+      // Touch / Mouse controls -----------------
+
+      /**
+       * Arms a long press timer and sets the anchor position for determining
+       * when to initiate a drag gesture.  A longpress activates a context menu.
+       * Drag operations either move a character or pan the display, depending
+       * on whether a character is selected.
+       */
+      onPointerDown: function(e) {
+        this.pointer.x1 = e.clientX;
+        this.pointer.y1 = e.clientY;
+        this.pointer.mapX = this.viewport.x;
+        this.pointer.mapY = this.viewport.y;
+
+        // Right-click context menu handled in onContextMenu.
+        if (e.buttons == 2)
+          return;
+
+        // Handle map updates.
+        var selectedTile = dungeon.MapEditor.selectedTile();
+        if (selectedTile != -1) {
+          this.pointer.mode = PointerMode.DRAW;
+          this.lastTilePos = {};
+          this.updateMap(e);
+          return;
+        }
+
+        this.pointer.mode = PointerMode.DRAG_OR_LONGPRESS;
+
+        // TODO add object selection and move / resize mode here.
+
+        if (this.pointer.mode == PointerMode.DRAG_OR_LONGPRESS) {
+          var self = this;
+          this.longPressTimer = this.asyncMethod(function() {
+            if (self.longPressTimer) {
+              self.resetLongPressTimer();
+              this.fire('contextmenu');
+            }
+          }, null, LONGPRESS_DELAY_MSEC);
+        }
+      },
+
+      /**
+       *
+       */
+      onPointerMove: function(e) {
+        if (this.pointer.mode == PointerMode.DRAW) {
+          this.updateMap(e);
+          return;
+        }
+        var deltaX = e.clientX - this.pointer.x1;
+        var deltaY = e.clientY - this.pointer.y1;
+        if (this.pointer.mode == PointerMode.DRAG_OR_LONGPRESS) {
+          if (Math.abs(deltaX) + Math.abs(deltaY) > DRAG_THRESHOLD)
+            this.pointer.mode = PointerMode.PAN;
+            this.resetLongPressTimer();
+        }
+        // TODO: Add logic for move and resize here.
+
+        if (this.pointer.mode == PointerMode.PAN) {
+          var tw = this.viewport.tileSize;
+          this.viewport.x = (this.pointer.mapX - deltaX / tw);
+          this.viewport.y = (this.pointer.mapY - deltaY / tw);
+          this.update();
+        }
+      },
+
+      /**
+       * Handler for touch end or mouse up.  Action depends on current mode as
+       * as the contents of the selected square.
+       */
+      onPointerUp: function(e) {
+        var mode = this.pointer.mode;
+        this.pointer.mode = PointerMode.HOVER;
+        this.resetLongPressTimer();
+        switch(mode) {
+          case PointerMode.PAN:
+          case PointerMode. DRAW:
+            return;
+        }
+
+        // Convert point to map coordinaes.
+        // Abort if point is outside map area.
+        var client = dungeon.getClient();
+        var pos = this.computeMapCoordinates(e);
+        if (pos.x < 0 || pos.y < 0 ||
+            pos.x >= client.map[0].length ||
+            pos.y >= client.map.length) {
+          return;
+        }
+
+        if (dungeon.MapEditor.selectedSize() == 0) {
+          // Object selection mode.
+          for (var i = client.objects.length - 1; i >= 0; i--) {
+            if (client.objects[i].x <= pos.x &&
+                pos.x <= client.objects[i].x + client.objects[i].w &&
+                client.objects[i].y <= pos.y &&
+                pos.y <= client.objects[i].y + client.objects[i].h) {
+              this.selectedObject = i;
+              return;
+             }
+          }
+          delete this.selectedObject;
+          return;
+        }
+
+        if (this.activePower) {
+          // Update target selection if power is selected.
+          var power = this.activePower;
+          if (power.getPhase() == dungeon.Power.Phase.TARGET_SELECTION) {
+            this.selectTargets(pos);
+          }
+          return;
+        } else {
+          // If target square is occupied, select the character.
+          // For creature size large and up, the placement index marks the top
+          // left corner.
+          for (var i in client.characterPlacement) {
+            var width = this.getCharacterWidthInTiles(i);
+            var char = client.characterPlacement[i];        
+            if (pos.x >= char.x && pos.x < char.x + width &&
+              pos.y >= char.y && pos.y < char.y + width) {
+              if (this.selectedCharacter == i && width > 1) {
+                // Hack to allow large creatures to shift 1 square to the right
+                // or down. Should really keep track of where on the critter we
+                // initiated the selection so that we can track the delta.
+                break;
+              }
+              this.selectedCharacter = i;
+              this.path = null;
+              this.$['character-summary'].show(client.characterPlacement[i]);
+              this.update();
+              return;
+            }
+          }
+        }
+
+        // If no power is active and target square is empty, then move the
+        // selected character.
+        if (this.selectedCharacter !== undefined) {
+          client.sendEvent({
+            x: pos.x,
+            y: pos.y,
+            type: 'move',
+            index: this.selectedCharacter
+          });
+          this.selectedCharacter = undefined;
+          return;
+        }
+      },
+
+      // Map drawing ----------------------
+
+      updateMap: function(e) {
+        var client = dungeon.getClient();
+        var pos = this.computeMapCoordinates(e);
+        if (pos.y == this.lastTilePos.y && pos.x == this.lastTilePos.x)
+          return;
+        this.lastTilePos = pos;
+        var selectedTile = dungeon.MapEditor.selectedTile();
+        var selectedSize = dungeon.MapEditor.selectedSize();
+        if (client.map.length > pos.y && client.map[pos.y].length > pos.x) {
+          if (selectedSize == 0) {
+            var obj = {x: pos.x, y: pos.y, tile: selectedTile, w: 2, h: 2};
+            this.fire('map-update', {type: 'add-object', details: obj});
+          } else {
+            pos.type = 'change';
+            pos.value = selectedTile;
+            pos.size = selectedSize;
+            this.fire('map-update', pos);
+          }
+        }
+      },
+
+      // Context menu ---------------------
+
+      resetLongPressTimer: function() {
+        if (this.longPressTimer) {
+          clearTimeout(this.longPressTimer);
+          this.longPressTimer = undefined;
+        }
+      },
+
+      onContextMenu: function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        this.pointer.mode = PointerMode.CONTEXT_MENU;
+        var menu = this.$['context-menu'];
+        menu.show(this.pointer.x1, this.pointer.y1);
+      },
+
+      // Popups ---------------------------
+
+      onShowPopup: function(event) {
+        this.displayPopup(event.detail.popup);
+      },
+
+      displayPopup: function(name) {
+        var popup = this.$[name];
+        if (!popup) {
+          console.error('Unable to find popup ' + name);
+          return;
+        }
+        popup.show();
+      },
+
+      // Zoom controls --------------------
+
+      /**
+       * Mouse-wheel zoom.
+       * @param {!Event} e The mouse wheel event.
+       */
+      onMouseWheel: function(e) {
+        var delta = e.wheelDelta/120;
+        var mouse = this.computeMapCoordinatesDouble(e);
+        this.zoom(delta, mouse);
+      },
+
+      /**
+       * @param {number} delta Number of zoom steps.  Negative for zooming out
+       * and positive for zooming in.
+       * @param {{x:number, y:number}} mouse Float tile x and y on the map.
+       */
+      zoom: function(delta, mouse) {
+        var oldTileSize = this.viewport.tileSizeFloat;
+        var newTileSize = Math.max(1, oldTileSize *
+           Math.pow(1.1, Math.floor(delta)));
+        this.viewport.tileSizeFloat = newTileSize;
+        newTileSize = Math.round(newTileSize);
+        var zoomRatio = (newTileSize - Math.round(oldTileSize)) / newTileSize;
+        if (zoomRatio != 1) {
+          if (mouse) {
+            this.viewport.x += ((mouse.x - this.viewport.x) * zoomRatio);
+            this.viewport.y += ((mouse.y - this.viewport.y) * zoomRatio);
+          }
+          this.viewport.tileSize = newTileSize;
+          this.update();
+        }
+      },
+
+      // Coordinate Mapping --------------------
+
+      /**
+       * Determines which tiles are visible.
+       */
+      computeVisibleTiles: function() {
+        var tw = this.viewport.tileSize;
+        var gridColumns = this.width / tw;
+        var gridRows = this.height / tw;
+        this.view = {
+          x1: Math.max(0, Math.floor(this.viewport.x - gridColumns / 2)),
+          y1: Math.max(0, Math.floor(this.viewport.y - gridRows / 2)),
+          x2: Math.ceil(this.viewport.x + gridColumns / 2),
+          y2: Math.ceil(this.viewport.y + gridRows / 2)
+        };
+        if (this.map) {
+          this.view.x2 = Math.min(this.map[0].length, this.view.x2);
+          this.view.y2 = Math.min(this.map.length, this.view.y2);
+        }
+        this.baseX = Math.floor(this.width / 2 -
+            (this.viewport.x - this.view.x1) * tw);
+        this.baseY = Math.floor(this.height / 2 -
+            (this.viewport.y - this.view.y1) * tw); 
+      },
+
+      /**
+       * Converts from pixel coordinates to tile coordinates, which are left in
+       * floating point.
+       * @return {x: number, y: number}
+       */
+      computeMapCoordinatesDouble: function(e) {
+        var x = e.clientX;
+        var y = e.clientY;
+        var element = this;
+        while (element) {
+          x -= element.offsetLeft;
+          y -= element.offsetTop;
+          element = element.offsetParent;
+        }
+        var w = parseInt(this.width);
+        var h = parseInt(this.height);
+        var coords = {
+          x: (x - w/2)/this.viewport.tileSize + this.viewport.x,
+          y: (y - h/2)/this.viewport.tileSize + this.viewport.y
+        };
+        return coords;
+      },
+
+      /**
+       * Converts from pixel coordinates to tile coordinates, which are
+       * truncated to integer values.
+       * @return {x: number, y: numbesr}
+       */
+      computeMapCoordinates: function(e) {
+        var coords = this.computeMapCoordinatesDouble(e);
+        coords.x = Math.floor(coords.x);
+        coords.y = Math.floor(coords.y);
+        return coords;
+      },
+
+      // Change observers ------------------------------
+
+      roleChanged: function() {
+        var contextMenu =
+            this.$['context-menu-overlay'].querySelector('#context-menu');
+        contextMenu.role = this.role;
+      },
+    });
+  </script>
+</polymer-element>
+

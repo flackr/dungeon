@@ -1,0 +1,235 @@
+<polymer-element name="popup-close-button" on-pointerdown="{{onPointerDown}}">
+  <template>
+    <style>
+      :host {
+        -webkit-box-flex: 0;
+        background-image: url("./images/cancel.png");
+        display: inline-block;
+        height: 16px;
+        margin: 0 10px;
+        width: 16px;
+      }
+    </style>
+    <content></content>
+  </template>
+  <script>
+    Polymer('popup-close-button', {
+      onPointerDown: function(event) {
+        this.fire('close-popup');
+      },
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="popup-titlebar" attributes="label"
+    on-pointerdown="{{onPointerDown}}">
+  <template>
+    <style>
+      #titlebar {
+        -webkit-box-flex: 0;
+        -webkit-box-align: start;
+        -webkit-box-orient: horizontal;
+        -webkit-box-pack: justify;
+        background: #ccc;
+        border-bottom: 1px solid #999;
+        display: -webkit-box;
+        padding: 8px 0 5px 10px;
+        font: 16px 'sans';
+      }
+
+      #title {
+        -webkit-box-flex: 1;
+      }
+    </style>
+    <content part="popup-window">
+      <div id="titlebar">
+        <div id="title">{{label}}</div>
+        <popup-close-button></popup-close-button>
+      </div>
+    </content>
+  </template>
+  <script>
+    Polymer('popup-titlebar', {
+      label: '',
+
+      onPointerDown: function(event) {
+        var dragFrom = {
+          x: event.clientX,
+          y: event.clientY
+        };
+        this.fire('move-popup', dragFrom);
+        // Allow event propagation to popup window.
+      },
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="popup-instructions" attributes="active value">
+  <template>
+    <style>
+      :host {
+        display: none;
+      }
+
+      :host[active] {
+        color: #777;
+        display: inline-block;
+        font: 12px italic serif;
+        margin: 5px;
+        max-width: 200px;
+        text-align: center;
+      }
+    </style>
+    <div>
+      <span>{{value}}</span>
+    </div>
+  </template>
+  <script>
+    Polymer('popup-instructions', {
+      active: false,
+
+      valueChanged: function() {
+        this.active = this.value && this.value.length > 0;
+      }
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="popup-window" attributes="active header"
+    on-close-popup="{{onClosePopup}}" on-move-popup="{{onMovePopup}}"
+    on-pointerdown="{{onPointerDown}}" on-pointerup="{{onPointerUp}}">
+  <template>
+    <style>
+      :host {
+        -webkit-box-align: stretch;
+        -webkit-box-pack: justify;
+        -webkit-box-orient: vertical;
+        -webkit-box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.5);
+        background-color: #FFF;
+        cursor: default;
+        display: none;
+        position: absolute;
+      }
+
+      :host[active] {
+        display: -webkit-box;
+      }
+
+      #content {
+        -webkit-box-flex: 1;
+        -webkit-box-orient: vertical;
+        display: -webkit-box;
+        font: 12px 'sans';
+        position: relative;
+        margin: 5px;
+      }
+    </style>
+    <content>
+      <popup-titlebar id="titlebar"></popup-titlebar>
+      <popup-instructions id="instructions"></popup-instructions>
+      <div id="content"></div>
+    </content>
+  </template>
+  <script>
+    dungeon.popups = {
+      topmost: 0
+    };
+    Polymer('popup-window', {
+      header: '',
+
+      show: function() {
+        this.active = true;
+        if (this.style.left == '' && this.style.right == '')
+          this.style.right = '10px';
+        if (this.style.top == '' && this.style.bottom == '')
+          this.style.top = '10px';
+        this.parentNode.show(this);
+        this.style.zIndex = ++dungeon.popups.topmost;
+      },
+
+      onClosePopup: function(event) {
+        this.close();
+      },
+
+      onMovePopup: function(event) {
+        this.dragFrom = event.detail;
+        var overlay = this.parentNode;
+        var self = this;
+        overlay.overridePointerEvent('move', function(event) {
+          var dx = event.clientX - self.dragFrom.x;
+          var dy = event.clientY - self.dragFrom.y;
+          self.dragFrom.x = event.clientX;
+          self.dragFrom.y = event.clientY;
+          var top = self.offsetTop + dy;
+          var left = self.offsetLeft + dx;
+          var bottom = top + self.clientHeight;
+          var right = left + self.clientWidth;
+          // Constrain to document bounds.
+          if (bottom > document.body.clientHeight)
+            top = document.body.clientHeight - self.clientHeight;
+          // Back off the limit for the right edge of the popup by the
+          // width of the drop shadow to prevent possible layout changes.
+          var limit = document.body.clientWidth - 5;
+          if (right > limit)
+            left = limit - self.clientWidth;
+          if (top < 0)
+            top = 0;
+          if (left < 0)
+            left = 0;
+          self.style.left = left + 'px';
+          self.style.top = top + 'px';
+          self.style.right = '';
+          self.style.bottom = '';
+          event.stopPropagation();
+        });
+        overlay.overridePointerEvent('up', function(event) {
+          overlay.resetPointerEvent('move');
+          overlay.resetPointerEvent('up');
+          event.stopPropagation();
+        });
+        // Unblock event propagation.
+        this.consumePointerUp = false;
+      },
+
+      onPointerDown: function(event) {
+        // Fix z-index
+        var zindex = parseInt(this.style.zIndex);
+        if (zindex < dungeon.popups.topmost)
+          this.style.zIndex = ++dungeon.popups.topmost;
+        event.stopPropagation();
+        this.consumePointerUp = !this.parentNode.hasEventOverride('up');
+      },
+
+      onPointerUp: function(event) {
+        if (this.consumePointerUp) {
+          console.log('event propagation blocked in popup window'); 
+          event.stopPropagation();
+          this.consumePointerUp = false;
+        }
+      },
+
+      close: function() {
+        this.parentNode.hide(this);
+      },
+
+      setHeader: function(name) {
+        this.$.titlebar.label  = name;
+      },
+
+      setInstructions: function(text) {
+        this.$.instructions.value = text;
+      },
+
+      clear: function() {
+        var container = this.$.content;
+        while (container.firstChild) {
+          container.removeChild(container.firstChild);
+        }
+      },
+
+      addContent: function(elem) {
+        this.$.content.appendChild(elem);
+      },
+    });
+  </script>
+</polymer-element>

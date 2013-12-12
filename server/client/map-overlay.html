@@ -1,0 +1,178 @@
+<polymer-element name="map-overlay" on-pointerdown="{{onPointerDown}}"
+  on-pointerup="{{onPointerUp}}" on-pointermove="{{onPointerMove}}"
+  attributes="active modal zindex">
+  <template>
+    <style>
+      :host {
+        overflow: auto;
+        bottom: 0;
+        display: none;
+        left: 0;
+        position: absolute;
+        right: 0;
+        top: 0;
+      }
+
+      :host[active] {
+        display: block;
+      }
+    </style>
+    <content id="content" select="[active]">
+    </content>
+  </template>
+  <script>
+    /**
+     * @enum {string}
+     */
+    var Modal = {
+      AUTO_RELEASE: 'auto-release',
+      FALSE: 'false',
+      TRUE: 'true'
+    };
+
+    Polymer('map-overlay', {
+
+      /**
+       * Controls the visibility of the overlay.  Only an overlay with acitve
+       * content is visible.
+       * @type {boolean}
+       */
+      active: false,
+
+      /**
+       * All content in the same overlay share the same dialog/window modality.
+       * @type {string}
+       */
+      modal: Modal.FALSE,
+
+      zindex: 1,
+
+      onPointerDownAction: undefined,
+
+      onPointerMoveAction: undefined,
+
+      onPointerUpAction: undefined,
+
+      hide: function(elem) {
+        elem.removeAttribute('active');
+        var visible = this.querySelectorAll('[active]');
+        this.active = visible.length;
+      },
+
+      hideAll: function() {
+        var items = this.querySelectorAll('[active]');
+        items.array().forEach(function(elem) {
+          elem.removeAttribute('active');
+        });
+        this.active = false;
+      },
+
+      onPointerDown: function(e) {
+        if (this.onPointerDownAction)
+          this.onPointerDownAction(e);
+        if (this.modal != Modal.FALSE)
+          e.stopPropagation();
+      },
+
+      onPointerUp: function(e) {
+        if (this.onPointerUpAction)
+          this.onPointerUpAction(e);
+        if (this.modal != Modal.FALSE)
+          e.stopPropagation();
+      },
+
+      onPointerMove: function(e) {
+        if (this.onPointerMoveAction)
+          this.onPointerMoveAction(e);
+        if (this.modal != Modal.FALSE)
+          e.stopPropagation();
+      },
+
+      overridePointerEvent: function(type, callback) {
+        switch(type) {
+          case 'down':
+            callback.onReset = this.onPointerDownAction;
+            this.onPointerDownAction = callback;
+            break;
+          case 'move':
+            callback.onReset = this.onPointerMoveAction;
+            this.onPointerMoveAction = callback;
+            break;
+          case 'up':
+            callback.onReset = this.onPointerUpAction;
+            this.onPointerUpAction = callback;
+            break;
+          default:
+            console.error('Unsupported event type: ' + type);
+        }
+      },
+
+      resetPointerEvent: function(type) {
+        switch(type) {
+          case 'down':
+            this.onPointerDownAction = this.onPointerDownAction.onReset;
+            break;
+          case 'move':
+            this.onPointerMoveAction = this.onPointerMoveAction.onReset;
+            break;
+          case 'up':
+            this.onPointerUpAction = this.onPointerUpAction.onReset;
+            break;
+          default:
+            console.error('Unsupported event type: ' + type);
+        }
+      },
+
+      hasEventOverride: function(type) {
+        var action = null;
+        switch(type) {
+          case 'down':
+            action = this.onPointerDownAction;
+            break;
+          case 'move':
+            action = this.onPointerMoveAction;
+            break;
+          case 'up':
+            action = this.onPointerUpAction;
+            break;
+          default:
+            console.error('Unsupported event type: ' + type);
+        }
+        return (action && action.onReset != action);
+      },
+
+      modalChanged: function() {
+        this.onPointerDownAction = this.onPointerUpAction =
+            this.onPointerMoveAction = undefined;
+        switch(this.modal) {
+          case Modal.AUTO_RELEASE:
+            this.style.background = 'transparent';
+            var self = this;
+            this.onPointerUpAction = function(e) {
+              console.log('Auto-release overlay');
+              self.hideAll();
+            };
+            break;
+          case Modal.FALSE:
+            this.style.background = 'transparent';
+            break;
+          case Modal.TRUE:
+            this.style.background = 'rgba(0, 0, 0, 0.5)';
+            break;
+          default:
+            console.error('Invalid value for modal attribute: ' + this.modal);
+        }
+      },
+
+      show: function(elem) {
+        console.log('show overlay ' + elem.id);
+        elem.setAttribute('active', true);
+        this.active = true;
+      },
+
+      zindexChanged: function() {
+        this.style.zindex = this.zindex;
+      },
+    });
+  </script>
+</polymer-element>

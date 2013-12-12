@@ -758,9 +758,21 @@ dungeon.Power.prototype = {
 
   // Getters -------------------------------------------
 
-  getActionType: function() {
+  getValue: function(key) {
     if (this.details_)
-      return this.details_['Action Type'];
+      return this.details_[key];
+  },
+
+  getActionType: function() {
+    return this.getValue('Action Type');
+  },
+
+  getAttackType: function() {
+    return this.getValue('Attack Type');
+  },
+
+  getDescription: function() {
+    return this.getValue('Flavor');
   },
 
   /**
@@ -815,16 +827,14 @@ dungeon.Power.prototype = {
    * Range of the attack.
    */
   getRange: function() {
-    if (this.details_)
-      return this.details_['Range'];
+    return this.getValue('Range');
   },
 
   /**
    * Threshold value for recharging a power.
    */
   getRecharge: function() {
-    if (this.details_)
-      return this.details_['Recharge'];
+    return this.getValue('Recharge');
   },
 
   /**
@@ -843,7 +853,7 @@ dungeon.Power.prototype = {
    */
   getTargets: function() {
     if (this.details_)
-      return this.details_['Targets'];
+      return this.details_['Targets'] || this.details_['Target'];
   },
 
   /**

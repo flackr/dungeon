@@ -1,0 +1,157 @@
+<polymer-element name="menu-item" on-pointerup="{{onPointerUp}}"
+  on-pointerover="{{onPointerOver}}" on-pointerout="{{onPointerOut}}"
+  attributes="label callback restricted">
+  <template>
+    <style>
+      :host {
+        -webkit-box-align: center;
+        padding: 0 5px;
+        display: -webkit-box;
+        height: 28px;
+      }
+
+      :host.active {
+        background-color: #777;
+        color: #FFF;
+      }
+
+    </style>
+    <content>{{label}}</content>
+  </template>
+  <script>
+    Polymer('menu-item', {
+      /**
+       * Action to trigger on selecting the menu item.
+       * @type {Function}
+       */
+      callback: undefined,
+
+      /**
+       * Indicates if the menu item is accessible only by the DM.
+       * @type {boolean}
+       */
+      restricted: false,
+
+      onPointerUp: function(e) {
+        if (this.callback)
+          this.callback();
+      },
+
+      onPointerOver: function(e) {
+        if (this.isRelevantEvent(this, e))
+          this.classList.add('active');
+      },
+
+      onPointerOut: function(e) {
+        if (this.isRelevantEvent(this, e))
+          this.classList.remove('active');
+      },
+
+      isRelevantEvent: function(node, event) {
+        return !(node.compareDocumentPosition(event.relatedTarget)
+            & Node.DOCUMENT_POSITION_CONTAINED_BY);
+      }
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="context-menu" on-pointermove="{{onPointerMove}}"
+  on-pointerup="{{onPointerUp}}" attributes="role">
+  <template>
+    <style>
+      :host {
+        -webkit-box-orient: vertical;
+        -webkit-box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.5);
+        background-color: #FFF;
+        cursor: default;
+        display: -webkit-box;
+        position: absolute;
+      }
+     
+      :host[role=player] *[restricted] {
+        display: none;
+      }
+    </style>
+    <content id="content">
+    </content>
+  </template>
+  <script>
+    Polymer('context-menu', {
+
+      /**
+       * @constructor
+       */
+      ready: function() {
+        var self = this;
+        var addMenuItem = function(label, callback, opt_restricted) {
+          var e = document.createElement('menu-item');
+          e.label = label;
+          e.callback = self[callback].bind(self);
+          if (opt_restricted)
+            e.restricted = true;
+          self.appendChild(e);
+        };
+        addMenuItem('Undo','onUndo', true /* restricted */);
+        addMenuItem('Save Map','onSave');
+        addMenuItem('Load Files', 'onLoadFiles');
+        addMenuItem('View Roster', 'onViewRoster');
+      },
+
+      /**
+       * Undoes the last change in the game state. Each game client replays
+       * the game to the previous state.
+       */
+      onUndo: function() {
+        this.fire('map-update', {type: 'undo'});
+      },
+
+      /**
+       * Triggers download of a json description of the map.
+       */
+      onSave: function() {
+        this.fire('save-map');
+      },
+
+      /**
+       * Loads one or more files form the file selector dialog.  Image files
+       * are loaded as map files, json files as maps, and XML files as
+       * character or monster descriptions.
+       */
+      onLoadFiles: function() {
+        if (!this.fileSelector) {
+          var self = this;
+          this.fileSelector = document.createElement('input');
+          this.fileSelector.setAttribute('type', 'file');
+          this.fileSelector.setAttribute('name', 'files[]');
+          this.fileSelector.setAttribute('multiple', true);
+          this.fileSelector.addEventListener('change', function(e) {
+            var files = e.target.files;
+            for (var i = 0; i < files.length; i++) {
+              console.log('load: ' + files[i].name);
+              $('combat-map').fire('load-file', {file: files[i]}); 
+            }
+          });
+        }
+        this.fileSelector.click();
+      },
+
+      onViewRoster: function() {
+        this.fire('show-popup', {popup: 'roster'});
+      },
+
+      /**
+       * Displays the context menu.
+       * @param {number} x The horizontal offset of the pointer event that
+       *     triggered the menu.
+       * @param {number} y The vertical offset of the pointer event that
+       *     triggered the menu.
+       */
+      show: function(x, y) {
+        // TODO: Add smarts to ensure the menu position is fully onscreen.
+        this.style.left = (x + 10) + 'px';
+        this.style.top = (y + 10) + 'px';
+        var parent = this.parentNode.show(this);
+      },
+    });
+  </script>
+</polymer-element>

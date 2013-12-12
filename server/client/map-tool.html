@@ -1,0 +1,105 @@
+<polymer-element name="map-tool" on-pointerdown="{{onPointerDown}}"
+  attributes="position orientation">
+  <template>
+    <style>
+      :host {
+        overflow: auto;
+        position: absolute;
+      }
+
+      :host > * {
+        width: 25px;
+        height: 25px;
+        background-color: white;
+        border: 1px solid #ccc;
+      }
+
+      :host > *[selected] {
+        border-color: red;
+      }
+    </style>
+    <content id="content">
+    </content>
+  </template>
+  <script>
+    var Position = {
+      NW: 'top-left',
+      SW: 'bottom-left',
+      // Add more positions as required.
+    };
+
+    var Alignment = {
+      HORIZONTAL: 'horizontal',
+      VERTICAL: 'vertical',
+    };
+
+    var MARGIN = '5px';
+
+    Polymer('map-tool', {
+
+      alignment: Alignment.HORIZONTAL,
+
+      position: undefined,
+
+      /**
+       * Update tool selection.
+       * @param {Event} e The pointer event.
+       */
+      onPointerDown: function(e) {
+        e.stopPropagation();
+        var target = e.target;
+        var selected = this.querySelector('[selected]');
+        if (selected) 
+          selected.removeAttribute('selected');
+        if (target != selected)
+          target.setAttribute('selected', true);
+      },
+
+      /**
+       * The currently selected tool.
+       * @type {?Element}
+       */
+      get selected() {
+        return this.querySelector('[selected]');
+      },
+
+      /**
+       * Index of the currently selected tool, or -1 if no tool is active.
+       * @type {number}
+       */
+      get selectedIndex() {
+        var selected = this.selected;
+        if (!selected)
+          return -1;
+        var index = 0;
+        var node = selected;
+        while (node.previousSibling) {
+          index++;
+          node = node.previousSibling;
+        }
+        return index;
+      },
+
+      /**
+       * Observer for changes to the position attribute. 
+       */
+      positionChanged: function() {
+        switch(this.position) {
+          case Position.NW:
+            this.style.top = MARGIN;
+            this.style.left = MARGIN;
+            break;
+          case Position.SW:
+            this.style.bottom = MARGIN;
+            this.style.left = MARGIN;
+            break;
+          default:
+            console.error('Invalid position: ' + this.position);
+        }
+      },
+
+    });
+  </script>
+
+</polymer-element>
+

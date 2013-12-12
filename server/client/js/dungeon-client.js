@@ -3,6 +3,9 @@ dungeon.Client = function() {
   this.initialize();
 }
 
+// temporary hack to enable rendering of dungeon.
+function load() {};
+
 dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   initialize: function() {
     var self = this;
@@ -12,38 +15,30 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     // Repository of powers.
     this.powers = new dungeon.Powers(this);
 
-    this.combatTracker = new dungeon.CombatTracker(this);
-    this.characterDetailsPage = new dungeon.CharacterDetailsPage(this);
-    this.combatOverviewPage = new dungeon.CombatOverviewPage(this); 
-    dungeon.initializeDialogs(this);
 
-    this.canvas = $('game-canvas');
     this.socket = io.connect('http://' + location.host);
 
     this.socket.on('e', this.receiveEvent.bind(this));
+
+    this.registerHandler('map-update', 'onMapUpdate');
+    this.registerHandler('load-file', 'onLoadFile');
+    this.registerHandler('save-map', 'saveMap');
+
+    this.addEventListener('character-added', this.update.bind(this));
+    this.addEventListener('tile-added', this.rebuildTiles.bind(this));
+
+
+/*
     this.canvas.addEventListener('touchstart', this.onTouchStart.bind(this));
     this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
     this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
     this.canvas.addEventListener('mousewheel', this.onMouseWheel.bind(this));
+*/
     document.body.addEventListener('keyup', this.onKeyUp.bind(this));
 
+/*
     $('attack-button').addEventListener('click', this.attackSelectedTargets.bind(this));
     $('cancel-button').addEventListener('click', this.cancelSelectedTarget.bind(this));
-
-    // Switching between views.
-    $('character-selector').addEventListener(
-        'click', this.onSelectView.bind(this, 'page', 'character'));
-    $('map-selector').addEventListener(
-        'click', this.onSelectView.bind(this,'page', 'map'));
-    $('combat-overview-selector').addEventListener(
-        'click', this.onSelectView.bind(this,'page', 'combat-overview'));
-    $('character-import-selector').addEventListener(
-        'click', this.onSelectView.bind(this, 'sidebar-page', 'character-import'));
-    $('combat-tracker-selector').addEventListener(
-        'click', this.onSelectView.bind(this, 'sidebar-page', 'combat-tracker'));
-
-    $('undo-button').addEventListener('click', this.sendEvent.bind(this, {'type': 'undo'}));
-    $('save-button').addEventListener('click', this.saveMap.bind(this));
 
     // Status of combat.
     this.combatState = 'stopped';
@@ -64,16 +59,10 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     var dropZone = $('sidebar');
     dropZone.addEventListener('dragover', this.onFileDragOver.bind(this));
     dropZone.addEventListener('drop', this.onFileDrop.bind(this));
-    // Character file chooser
-    $('files').addEventListener('change', this.onFileSelect.bind(this));
-
-    // Drag-n-drop of a character from the sidebar onto the map.
-    this.canvas.addEventListener('dragover', this.onCharacterDragOver.bind(this));
-    this.canvas.addEventListener('drop', this.onCharacterDrop.bind(this));
-
-    window.addEventListener('resize', this.resize.bind(this));
-    this.addEventListener('tile-added', this.rebuildTiles.bind(this));
+*/
+    
     this.addEventListener('character-loaded', this.updateCharacterRegistry.bind(this));
+/*
     this.addEventListener('log', this.logMessage.bind(this));
     this.addEventListener('banner-message', this.displayBannerMessage.bind(this));
     this.addEventListener('character-updated', function(c) {
@@ -93,15 +82,12 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.addEventListener('combat-add-target', this.addCombatTarget.bind(this));
     this.addEventListener('dm-attack-result', this.onDmAttackResultMsg.bind(this));
     this.combatTracker.addEventListener('use-power', this.onUsePower.bind(this));
-    this.viewport = {
-      x: 30,
-      y: 30,
-      tileSize: 32,
-      tileSizeFloat: 32,
-    };
-
+    */
     dungeon.Game.prototype.initialize.call(this);
-    this.resize();
+
+    dungeon.getClient = function() {
+      return self;
+    }
   },
 
   processHash: function() {
@@ -124,6 +110,32 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       role = 'dm';
     document.body.parentNode.setAttribute('role', role);
     document.body.parentNode.setAttribute('ui', ui);
+    $('combat-map').setAttribute('role', role);
+  },
+
+  registerHandler: function(eventName, handlerName) {
+    console.log('registering handler ' + handlerName + ' for event ' +
+        eventName); 
+    document.body.addEventListener(eventName, this[handlerName].bind(this));
+  },
+
+  /**
+   * Dispatch map updates.
+   * @param {Event} event Map update event.
+   */
+  onMapUpdate: function(event) {
+    this.sendEvent(event.detail);
+  },
+
+  /**
+   * Loads one or more files.
+   * @param {Event} event File load event.
+   */
+  onLoadFile: function(event) {
+    console.log('in onLoadFile');
+    var file = event.detail.file;
+    console.log('loading file: ' + file);
+    this.loadFile(file, this.loadFile.bind(this));
   },
 
   addCombatTarget: function(index) {
@@ -254,25 +266,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     };
 
     this.characterList = {};
-    var characters = $('sidebar-character-list').getElementsByClassName('character-button');
-    for (var i = characters.length - 1; i >= 0; i--) {
-      if (characters[i].getAttribute('id') != 'character-template')
-        characters[i].parentNode.removeChild(characters[i]);
-    }
-    var messageArea = document.getElementById('combat-message-area');
-    if (messageArea)
-      messageArea.textContent = '';
-    this.dispatchEvent('log', 'Welcome to dungeon.');
 
     // Map related.
     this.rebuildTiles();
-  },
-
-  resize: function() {
-    var element = this.canvas.parentNode;
-    this.canvas.setAttribute('width', element.clientWidth);
-    this.canvas.setAttribute('height', element.clientHeight);
-    this.update();
   },
 
   /**
@@ -470,27 +466,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     } 
   },
 
-  onSelectView: function(category, view) {
-    // Check if page is already active
-    var isActive = !!$(view + '-selector').getAttribute('active');
-    var isVisible = !$(view + '-page').hidden;
-    if (isActive == isVisible)
-      return;
-
-    var selectors = document.getElementsByClassName(category + '-selector');
-    for (var i = 0; i < selectors.length; i++)
-      selectors[i].setAttribute('active', false);
-    var pages = document.getElementsByClassName(category);
-    for (var i = 0; i < pages.length; i++) {
-      pages[i].hidden = true;
-    }
-    $(view + '-selector').setAttribute('active', true);
-    $(view + '-page').hidden = false;
-
-    if (view == 'combat-tracker')
-      this.onSelectView('page', 'map');
-  },
-
   onTouchStart: function(e) {
     e.preventDefault();
     function convertSingleTouchEvent(e) {
@@ -664,83 +639,12 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
   },
 
   onPointerUp: function(e) {
-    for (var i in this.pointer.listeners)
-      this.canvas.removeEventListener(i, this.pointer.listeners[i]);
-    if (this.pointer.dragStarted) {
-      this.pointer = null;
-      return;
-    }
-    this.pointer = null;
-    var evt = this.computeMapCoordinates(e);
-    if (evt.x < 0 || evt.y < 0 || evt.x >= this.map[0].length || evt.y >= this.map.length)
-      return;
-
-    if (dungeon.MapEditor.selectedSize() == 0) {
-      // Object selection mode.
-      for (var i = this.objects.length - 1; i >= 0; i--) {
-        if (this.objects[i].x <= evt.x && evt.x <= this.objects[i].x + this.objects[i].w &&
-            this.objects[i].y <= evt.y && evt.y <= this.objects[i].y + this.objects[i].h) {
-          this.ui.selectedObject = i;
-          return;
-        }
-      }
-      delete this.ui.selectedObject;
-      return;
-    }
-
-    if (this.ui.activePower) {
-      // Update target selection if power is selected.
-      var power = this.ui.activePower;
-      if(power.getPhase() == dungeon.Power.Phase.TARGET_SELECTION) {
-        this.selectTargets(evt);
-      }
-      return;
-    } else {
-      // If target square is occupied, select the character.
-      // For creature size large and up, the placement index marks the top left corner.
-      for (var i in this.characterPlacement) {
-        var width = this.getCharacterWidthInTiles(i);
-        var char = this.characterPlacement[i];        
-        if (evt.x >= char.x && evt.x < char.x + width &&
-            evt.y >= char.y && evt.y < char.y + width) {
-          if (this.ui.selected == i && width > 1) {
-            // Hack to allow large creatures to shift 1 square to the right or
-            // down. Should really keep track of where on the critter we
-            // initiated the selection so that we can track the delta.
-            break;
-          }
-          this.ui.selected = i;
-          this.ui.path = null;
-          this.dispatchEvent('character-selected', this.characterPlacement[i]);
-          this.update();
-          return;
-        }
-      }
-    }
-    // If no power is active and target square is empty, then move the selected character.
-    if (this.ui.selected !== undefined) {
-      evt.type = 'move';
-      evt.index = this.ui.selected;
-      this.ui.selected = undefined;
-      this.update();
-      this.sendEvent(evt);
-      return;
-    }
-  },
-  
-  onMouseWheel: function(e) {
-    var delta = e.wheelDelta/120;
-    var mouse = this.computeMapCoordinatesDouble(e);
-    this.zoom(delta, mouse);
+    // ported
   },
   
   onKeyUp: function(e) {
     var key = e.keyCode;
-    if (key == 187 || key == 107) // = or numpad +
-      this.zoom(1);
-    else if (key == 189 || key == 109) // - or numpad -
-      this.zoom(-1);
-    else if (key == 32 || key == 13) {
+    if (key == 32 || key == 13) {
       this.attackSelectedTargets();
     } else if (key == 27) {
       this.cancelSelectedTarget();
@@ -758,27 +662,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         this.ui.targets.pop();
         this.update();
       }
-  },
-  
-  /*
-  @param {number} delta Number of zoom steps.  Negative for zooming out and positive for zooming in.
-  @param {{x:number, y:number}} mouse Float tile x and y on the map.
-  */
-  zoom: function(delta, mouse) {
-    var oldTileSize = this.viewport.tileSizeFloat;
-    var newTileSize = Math.max(1, oldTileSize * Math.pow(1.1, Math.floor(delta)));
-    this.viewport.tileSizeFloat = newTileSize;
-    newTileSize = Math.round(newTileSize);
-    var zoomRatio = (newTileSize - Math.round(oldTileSize)) / newTileSize;
-    if (zoomRatio != 1) {
-      if (mouse) {
-        this.viewport.x += ((mouse.x - this.viewport.x) * zoomRatio);
-        this.viewport.y += ((mouse.y - this.viewport.y) * zoomRatio);
-      }
-      this.viewport.tileSize = newTileSize;
-      this.update();
-    }
-    
   },
 
   attackResult: function(attacker, attackees, power, tohits, dmg) {
@@ -847,70 +730,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
   },
 
-  computeMapCoordinatesDouble: function(e) {
-    var x = e.clientX;
-    var y = e.clientY;
-    var element = this.canvas;
-    while (element != document.body.parentNode) {
-      x -= element.offsetLeft - element.scrollLeft;
-      y -= element.offsetTop - element.scrollTop;
-      element = element.parentNode;
-    }
-    var w = parseInt(this.canvas.getAttribute('width'));
-    var h = parseInt(this.canvas.getAttribute('height'));
-    var coords = {
-      x: (x - w/2)/this.viewport.tileSize + this.viewport.x,
-      y: (y - h/2)/this.viewport.tileSize + this.viewport.y
-    };
-    return coords;
-  },
-
-  computeMapCoordinates: function(e) {
-    var coords = this.computeMapCoordinatesDouble(e);
-    coords.x = Math.floor(coords.x);
-    coords.y = Math.floor(coords.y);
-    return coords;
-  },
-
-  onCharacterDragOver: function(e) {
-    e.stopPropagation();
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-  },
-
-  onCharacterDrop: function(e) {
-    var coords = this.computeMapCoordinates(e);
-    //TODO(kevers): Ability to remove characters from sidebar and map.
-    var xml = e.dataTransfer.getData('text/xml');
-    var parser=new DOMParser();
-    var xmlDoc = parser.parseFromString(xml, "text/xml");
-    var node = xmlDoc.getElementsByTagName('character')[0];
-    if (!node)
-      return;
-    var name = node.getAttribute('name');
-    if (name) {
-      var found = false;
-      for (var i = 0; i < this.characterRegistry.length; i++) {
-        if (this.characterRegistry[i].name == name) {
-          found = true;
-          break;
-        }
-      }
-      if (!found)
-        return;
-      var characterData = {
-        name: name,
-        x: coords.x,
-        y: coords.y
-      }
-      var evt = {
-        type: 'add-character-instance',
-        character: characterData
-      }
-      this.sendEvent(evt);
-    }
-  },
-
   onFileDragOver: function(e) {
     e.stopPropagation();
     e.preventDefault();
@@ -944,11 +763,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
   onFileDrop: function(e) {
     var files = e.dataTransfer.files;
-    this.loadFiles(files, this.loadFile.bind(this));
-  },
-
-  onFileSelect: function(e) {
-    var files = e.target.files;
     this.loadFiles(files, this.loadFile.bind(this));
   },
 
@@ -1004,42 +818,14 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
   updateCharacterRegistry: function(character) {
     var name = character.name;
-    // Update in character list.
-    if (name in this.characterList)
-       this.updateCharacter(character);
-    else
-       this.addCharacter(character);
-  },
-
-  addCharacter: function(characterData) {
-    var element = new dungeon.CharacterButton(this, characterData); 
-    this.characterList[characterData.name] = element;
-    var list = $('sidebar-character-list');
-    var nodes = list.getElementsByClassName('character-button');
-    var insertIndex = -1;
-    for (var i = 0; i < nodes.length; i++) {
-      var name = nodes[i].getElementsByClassName('character-button-title')[0].textContent.trim();
-      if (name > characterData.name) {
-        insertIndex = i;
-        break;
-      }
-    }
-    if (insertIndex >= 0)
-      list.insertBefore(element, nodes[insertIndex]);
-    else
-      list.appendChild(element);
-  },
-
-  updateCharacter: function(characterData) {
-     //TODO(kellis): Implement me.
+    this.characterList[name] = character;
+    this.dispatchEvent('character-registry-update', name);
   },
 
   update: function() {
-    // If the UI is marked stale already then a redraw should have already
-    // been queued.
-    if (!this.ui.stale) {
-      this.ui.stale = true;
-      requestAnimFrame(this.redraw.bind(this));
+    var map = $('combat-map');
+    if (map && map.update) {
+      map.update();
     }
   },
 
@@ -1128,158 +914,9 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     return null;
   },
 
-  drawHealthBar: function(ctx, hx, hy, hw, hh, character, isMonster, role) {
-    // Health bars
-    // Black border
-    ctx.fillStyle = '#000';
-    ctx.fillRect(hx - 1, hy - 1, hw + 2, hh + 2);
-    // Interior
-    var curHp = Number(character.condition.stats['Hit Points']);
-    var maxHp = Number(character.source.stats['Hit Points']);
-    var hpFraction = curHp / maxHp;
-    var bloodyHp = Number(character.source.stats['Bloodied']);
-    var isBloodied = (curHp <= bloodyHp);
-    var isDying = (curHp <= 0);
-    var temps = parseInt(character.condition.stats['Temps'] || 0);
-    if (isMonster) {
-      ctx.fillStyle = isBloodied ? '#f80' : '#0f0';
-      if (role == 'dm') {
-        if (hpFraction > 0)
-          ctx.fillRect(hx, hy, Math.min(1, hpFraction) * hw, hh);
-      } else {
-        ctx.fillRect(hx, hy, isBloodied ? hw / 2 : hw, hh);
-      }
-      ctx.fillStyle = '#000';
-      ctx.fillRect(Math.round(hx + hw / 2), hy, 1, hh);
-    } else {
-      ctx.fillStyle = isDying ? '#f00' : (isBloodied ? '#f80' : '#0f0');
-      var total = bloodyHp + maxHp + temps;
-      var healthRatio = (bloodyHp + curHp) / total;
-      var healthWidth = Math.round(healthRatio * hw);
-      ctx.fillRect(hx, hy, healthWidth, hh);
-      if (temps > 0) {
-        var tempRatio = temps / total;
-        var tempWidth = Math.round(tempRatio * hw);
-        if (healthWidth + tempWidth > hw)
-          tempWidth = hw - healthWidth;
-        ctx.fillStyle = '#ff0';
-        ctx.fillRect(hx + healthWidth, hy, tempWidth, hh);
-      }
-      ctx.fillStyle = '#000';
-      var bloodyRatio = bloodyHp / total;
-      var DyingMarker = Math.round(bloodyRatio * hw);
-      ctx.fillRect(hx + DyingMarker, hy, 1, hh);
-      var BloodyMarker = Math.round(2 * bloodyRatio * hw);
-      ctx.fillRect(hx + BloodyMarker, hy, 1, hh);
-    }
-  },
-
-  drawTextInBounds: function(ctx, x_center, y, text, x_left, x_right, textColor, textHeight) {
-    var maxWidth = Math.round(x_right - x_left);
-    var textWidth;
-    while ((textWidth = ctx.measureText(text).width) > maxWidth)
-      text = text.substring(0, text.length - 1);
-    var x = Math.round(Math.min(x_right - textWidth,
-                                Math.max(x_left, x_center - textWidth / 2)));
-    ctx.fillStyle = 'white';
-    ctx.globalAlpha = 0.6;
-    ctx.fillRect(x, y - textHeight - 1, textWidth, textHeight + 2);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = textColor;
-    ctx.fillText(text, x, y);
-  },
-
+  
   redraw: function() {
-    this.ui.stale = false;
-    var ctx = this.canvas.getContext('2d');
-    var w = parseInt(this.canvas.getAttribute('width'));
-    var h = parseInt(this.canvas.getAttribute('height'));
-    var view = {
-      x1: Math.max(0, Math.floor(this.viewport.x - w / this.viewport.tileSize / 2)),
-      y1: Math.max(0, Math.floor(this.viewport.y - h / this.viewport.tileSize / 2)),
-      x2: Math.min(this.map[0].length, Math.ceil(this.viewport.x + w / this.viewport.tileSize / 2)),
-      y2: Math.min(this.map.length, Math.ceil(this.viewport.y + h / this.viewport.tileSize / 2)),
-    };
-    var baseX = Math.floor(w / 2 - (this.viewport.x - view.x1) * this.viewport.tileSize);
-    var baseY = Math.floor(h / 2 - (this.viewport.y - view.y1) * this.viewport.tileSize);
-    var tw = this.viewport.tileSize;
-
-    // Draw a black background
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, w, h);
-
-    for (var i = view.y1; i < view.y2; i++) {
-      for (var j = view.x1; j < view.x2; j++) {
-        ctx.drawImage(this.ui.mapImages[this.map[i][j]],
-                      baseX + (j - view.x1) * this.viewport.tileSize,
-                      baseY + (i - view.y1) * this.viewport.tileSize, 
-                      this.viewport.tileSize, this.viewport.tileSize);
-      }
-    }
-
-    for (var i = 0; i < this.objects.length; i++) {
-      var object = this.objects[i];
-      if (object.x + object.w <= view.x1 || object.y + object.h <= view.y1 ||
-          object.x >= view.x2 || object.y >= view.y2)
-        continue;
-      ctx.drawImage(this.ui.mapImages[object.tile],
-                    baseX + (object.x - view.x1) * this.viewport.tileSize,
-                    baseY + (object.y - view.y1) * this.viewport.tileSize,
-                    this.viewport.tileSize * object.w,
-                    this.viewport.tileSize * object.h);
-    }
-    
-    // Draw grid.
-    ctx.beginPath();
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-    for (var i = view.y1; i < view.y2; i++) {
-    	var y = baseY + (i - view.y1) * this.viewport.tileSize;
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
-    }
-    
-    for (var i = view.x1; i < view.x2; i++) {
-      var x = baseX + (i - view.x1) * this.viewport.tileSize;
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
-    }
-    ctx.stroke();
-
-    // Mark selected character and indicate movement range.
-    if (this.ui.selected != undefined) {
-      this.drawCharacter(this.ui.selected, 'selection', view, baseX, baseY);
-        
-      // Movement overlay
-      ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
-      var character = this.characterPlacement[this.ui.selected];
-      var speed = parseInt(character.condition.stats['Speed'] || 0);
-      // Check if creature is prone, immobalized, or slowed.
-      var effects = character.condition.effects;
-      if (effects) {
-        for (var j = 0; j < effects.length; j++) {
-          var effect = effects[j];
-          if (effect == 'prone' || effect == 'immobalized' || effect == 'grabbed') {
-            speed = 0;
-            break;
-          }
-          if (effect == 'slowed')
-            speed = 2;
-        }
-      }
-      var width = this.getCharacterWidthInTiles(this.ui.selected);
-      for (var j = -speed; j < speed + width; j++) {
-        for (var k = -speed; k < speed + width; k++) {
-          var dx = j < 0 ? j : j >= width ? j - width + 1 : 0;
-          var dy = k < 0 ? k : k >= width ? k - width + 1 : 0;
-          if (Math.sqrt(dx * dx + dy * dy) <= (speed + 0.8))
-            ctx.fillRect(baseX + (character.x + j - view.x1) * tw,
-                         baseY + (character.y + k - view.y1) * tw,
-                         tw,
-                         tw);
-        }
-      }
-    }
+    return;
 
     // Draw target indicators.  Critters may be targetted multiple times.
     if (this.ui.targets) {
@@ -1325,148 +962,10 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       }
       ctx.stroke();
     }
-
-    var self = this;
-    var mapX = function(x) {
-      return baseX + (x - view.x1) * self.viewport.tileSize;
-    };
-    var mapY = function(y) {
-      return baseY + (y - view.y1) * self.viewport.tileSize;
-    };
-
-    // Draw critter indicators including names and health bars.
-    var role = document.body.parentNode.getAttribute('role');
-    for (var i = 0; i < this.characterPlacement.length; i++) {
-      var character = this.characterPlacement[i];
-      if (character.x < view.x1 || character.x >= view.x2 ||
-          character.y < view.y1 || character.y >= view.y2)
-        continue;
-
-      var name = character.name;
-      var isMonster = character.source.charClass == 'Monster';
-      if (i != this.ui.selected)
-        this.drawCharacter(i, 'type', view, baseX, baseY);
-      this.drawCharacter(i, 'effects', view, baseX, baseY);
-
-      var width = this.getCharacterWidthInTiles(i);
-      var x = baseX + (character.x - view.x1) * tw + tw * width / 2;
-      var y = baseY + (character.y - view.y1) * tw + tw / 2; 
-      this.drawHealthBar(ctx,
-                         Math.round(x - tw / 2 + 1 + 1 / 32 * tw),
-                         Math.round(y - tw / 2 + 1 + 1 / 32 * tw),
-                         Math.max(10, Math.round(tw - 2 - 2 / 32 * 2)),
-                         Math.max(1, Math.round(2 / 32 * tw)),
-                         character,
-                         isMonster,
-                         role);
-
-      // Name
-      var textHeight = Math.max(10, tw/3);
-      ctx.font = textHeight + "px Arial";
-      var x_bounds = [0, w - 1];
-      for (var j = 0; j < this.characterPlacement.length; j++) {
-        if (this.characterPlacement[i].x != this.characterPlacement[j].x && this.characterPlacement[j].y == this.characterPlacement[i].y) {
-          if (this.characterPlacement[j].x < this.characterPlacement[i].x) {
-            x_bounds[0] = Math.max(x_bounds[0], mapX((this.characterPlacement[j].x + character.x) / 2 + 0.5));
-          } else {
-            x_bounds[1] = Math.min(x_bounds[1], mapX((this.characterPlacement[j].x + character.x) / 2 + 0.5));
-          }
-        }
-      }
-      this.drawTextInBounds(ctx, x, Math.round(y - tw / 2 - tw / 32), name, x_bounds[0], x_bounds[1], isMonster ? '#f00' : '#00f', textHeight);
-    }
   },
-
-  /**
-   * Returns the width of a critter in tiles, which is dependent on its size
-   * category and ranges from 1 to 4.  Multiple tiny critters can fit into the
-   * same square. Support for tiny fellas is currently not implemented.
-   */
-  getCharacterWidthInTiles: function(index) {
-    var character = this.characterPlacement[index];
-    if (!character)
-      return 0;
-    var size = character.source.stats['Size'];
-    switch(size) {
-      case 'Tiny': // Actually two critters per square is allowed for tiny.
-      case 'Small':
-      case 'Medium':
-        return 1;
-      case 'Large':
-        return 2;
-      case 'Huge':
-        return 3;
-      case 'Gargantuan':
-        return 4;
-      default:
-        return 1;
-    }
-  },
-
-  /**
-   * Draws a character on the map.
-   * @param {number} index The character placement index.
-   * @param {string} state The state for displaying the character, which may be
-   *     one of the following: 'selection', 'type', or 'effects'.
-   */
-  drawCharacter: function(index, state, view, baseX, baseY) {
-    var ctx = this.canvas.getContext('2d');
-    var character = this.characterPlacement[index];
-    var tw = this.viewport.tileSize;
-    var tileWidth = this.getCharacterWidthInTiles(index);
-    var radius = tw * tileWidth / 2;
-    var x = baseX + (character.x - view.x1) * tw + radius;
-    var y = baseY + (character.y - view.y1) * tw + radius;
-
-    var drawStroke = false, drawFill = false;
-    ctx.lineWidth = 1;
-    switch(state) {
-      case 'selection':
-        drawStroke = true;
-        ctx.strokeStyle = '#ff0';
-        ctx.lineWidth = tw/32;
-        // Deliberate fall-through.
-      case 'type':
-        var isMonster = character.source.charClass == 'Monster';
-        var effects = character.condition.effects;
-        if (effects) {
-          for (var j = 0; j < effects.length; j++) {
-            var effect = effects[j];
-            if (effect == 'pet' || effect == 'dominated')
-              isMonster = false;
-          }
-        }
-        drawFill = true;
-        ctx.fillStyle = isMonster ? '#f00' : '#00f';
-        break;
-      case 'effects':
-        var hasEffects = character.condition.effects &&
-            character.condition.effects.length > 0;
-        if (hasEffects) {
-          drawStroke = drawFill = true;
-          ctx.strokeStyle = '#000';
-          ctx.fillStyle = '#ff0';
-          x += radius / 2;
-          y += radius / 2;
-          radius = 0.4 * tw;
-        }
-        break;
-    }
-    if (drawStroke || drawFill) {
-      ctx.beginPath();
-      ctx.arc(x, y, radius - tw/4, 0, 2*Math.PI, true);
-      if (drawFill)
-        ctx.fill();
-      if (drawStroke)
-        ctx.stroke();
-    }
-  },
-
 
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-  load(document.body, function() {
-    new dungeon.Client();
-  });
+  new dungeon.Client();
 });

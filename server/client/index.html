@@ -4,112 +4,33 @@
   <title>Dungeon!</title>
   <link rel="stylesheet" type="text/css" href="dungeon.css">
   <link rel="stylesheet" type="text/css" href="dialog.css">
-  <script type="text/javascript" src="js/dungeon-common.js"></script>
+  <link rel="import" href="combat-map.html">
+  <script>
+    // Hack to force Polymer to use a shim for custom elements.
+    // Polymer does not support having native custom elements without also
+    // having native shadow-DOM support.
+    document.register = undefined;
+  </script>
+  <script src="third_party/Polymer/polymer.min.js"></script>
+
+  <script src="js/dungeon-common.js"></script>
+
   <!-- util.js defines client-side utility functions and as such is purposely
        loaded after dungeon-common.js which must run both client side and
        server side. -->
-  <script type="text/javascript" src="js/util.js"></script>
-  <script type="text/javascript" src="js/priority-queue.js"></script>
-  <script type="text/javascript" src="js/html-include.js"></script>
-  <script type="text/javascript" src="js/socket.io.js"></script>
-  <script type="text/javascript" src="js/import-parser.js"></script>
-  <script type="text/javascript" src="js/character-parser.js"></script>
-  <script type="text/javascript" src="js/monster-parser.js"></script>
-  <script type="text/javascript" src="js/character-button.js"></script>
-  <script type="text/javascript" src="js/character-details-page.js"></script>
-  <script type="text/javascript" src="js/combat-overview-page.js"></script>
-  <script type="text/javascript" src="js/map-editor.js"></script>
-  <script type="text/javascript" src="js/combat-tracker.js"></script>
-  <script type="text/javascript" src="js/dialog.js"></script>
-  <script type="text/javascript" src="js/add-effect-dialog.js"></script>
-  <script type="text/javascript" src="js/info-dialog.js"></script>
-  <script type="text/javascript" src="js/language-parser.js"></script>
-  <script type="text/javascript" src="js/power-editor-dialog.js"></script>
-  <script type="text/javascript" src="js/custom-scripts-dialog.js"></script>
-  <script type="text/javascript" src="js/use-power-dialog.js"></script>
-  <script type="text/javascript" src="js/powers.js"></script>
-  <script type="text/javascript" src="js/dungeon-client.js"></script>
+  <script src="js/util.js"></script>
+
+  <script src="js/priority-queue.js"></script>
+  <script src="js/socket.io.js"></script>
+  <script src="js/map-editor.js"></script>
+  <script src="js/import-parser.js"></script>
+  <script src="js/character-parser.js"></script>
+  <script src="js/monster-parser.js"></script>
+  <script src="js/language-parser.js"></script>
+  <script src="js/powers.js"></script>
+  <script src="js/dungeon-client.js"></script>
 </head>
 <body>
-  <div class="left-sidebar-layout">
-    <div id="sidebar" class="top-navbar-layout">
-      <div id="sidebar-tab-switcher">
-        <div id="combat-tracker-selector" class="sidebar-page-selector" active="true">
-        </div>
-        <div id="character-import-selector" class="sidebar-page-selector"active="false">
-        </div>
-      </div>
-      <div id="sidebar-tabs">
-        <div id="character-import-page" class="sidebar-page" hidden>
-          <div id="sidebar-character-list">
-            <div id="character-template" class="character-button" draggable="true">
-              <div class="character-button-title">
-                <div class="character-button-name"></div>
-              </div>
-              <div class="character-button-subtitle">
-                <span>Level:</span>
-                <span class="character-button-level"></span>
-                <span>Class:</span>
-                <span class="character-button-class"></span>
-              </div>
-            </div>
-          </div>
-          <div id="sidebar-controls">
-            <div class="section-title">File Import</div>
-            <input id="files" type="file" name="files[]" multiple></input>
-          </div>
-        </div>
-        <include id="combat-tracker-page" class="sidebar-page" src="combat-tracker-page.html">
-        </include>
-      </div>
-    </div>
-    <div class="top-navbar-layout">
-      <div id="nav-bar">
-        <div id="character-selector" class="page-selector" active="false"></div>
-        <div id="map-selector" class="page-selector" active="true"></div>
-        <div id="combat-overview-selector" class="page-selector" active="false"></div>
-        <div id="save-button" active="false"></div>
-        <div id="undo-button" active="false"></div>
-        <div id="combat-start-button" active="false" disabled="false"></div>
-        <div id="combat-pause-button" active="false" disabled="true"></div>
-        <div id="combat-stop-button" active="false" disabled="true"></div>
-        <button id="attack-button">Attack</button>
-        <button id="cancel-button">Cancel</button>
-      </div>
-      <div id="content-area">
-        <div id="map-page" class="page">
-          <canvas width="800" height="600" id="game-canvas"></canvas>
-          <div id="map-functions">
-            <div>0</div>
-            <div>1</div>
-            <div>3</div>
-            <div>5</div>
-          </div>
-          <div id="map-tiles"></div>
-          <div id="map-banner-message"></div>
-        </div>
-        <include id="combat-overview-page" class="page" 
-          src="combat-overview-page.html" hidden>
-        </include>
-        <include id="character-page" class="page top-navbar-layout"
-          src="character-page.html" hidden>
-        </include>
-      </div>
-    </div>
-  </div>
-  <div id="dialogs" class="dialogs" hidden>
-    <include id="power-editor-dialog" class="dialog" src="power-editor-dialog.html" hidden>
-    </include>
-    <include id="use-power-dialog" class="dialog" src="use-power-dialog.html" hidden>
-    </include>
-  </div>
-  <div id="dialogs-tier2" class="dialogs" hidden>
-    <include id="info-dialog" class="dialog" src="info-dialog.html" hidden>
-    </include>
-    <include id="add-effect-dialog" class="dialog" src="add-effect-dialog.html" hidden>
-    </include>
-    <include id="custom-scripts-dialog" class="dialog" src="custom-scripts-dialog.html" hidden>
-    </include>
-  </div>
+  <combat-map id="combat-map"></combat-map>
 </body>
 </html>
