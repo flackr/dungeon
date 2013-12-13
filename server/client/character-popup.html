@@ -1,4 +1,5 @@
 <link rel="import" href="popup.html">
+<link rel="import" href="action-button.html">
 
 <!-- An element for tracking hit points -->
 <polymer-element name="hp-tracker">
@@ -345,7 +346,7 @@
 
 <polymer-element name="power-summary" attributes=
     "active power label type usage tooltip melee ranged burst blast personal"
-    on-pointerdown="{{onPointerDown}}">
+    on-pointerdown="{{onPointerDown}}" on-pointerup="{{onPointerUp}}">
   <template>
     <style>
      :host ::part(button)  {
@@ -454,10 +455,28 @@
       onPointerDown: function(event) {
         var client = dungeon.getClient();
         client.dispatchEvent('select-power', this.details);
+        var self = this;
+        this.longPressTimer = this.asyncMethod(function() {
+          if (self.longPressTimer) {
+            self.resetLongPressTimer();
+            client.dispatchEvent('show-power-details', this.details);
+          }
+        }, null, LONGPRESS_DELAY_MSEC); 
         var selected = this.parentElement.querySelector('[active]');
         if (selected && selected != this)
           selected.active = false;
         this.active = true;
+      },
+
+      onPointerUp: function(event) {
+        this.resetLongPressTimer();
+      },
+
+      resetLongPressTimer: function() {
+        if (this.longPressTimer) {
+          clearTimeout(this.longPressTimer);
+          this.longPressTimer = undefined;
+        }
       },
     });
   </script>
@@ -517,13 +536,25 @@
   </script>
 </polymer-element>
 
-
 <!-- An element for listing character powers -->
-<polymer-element name="character-powers">
+<polymer-element name="character-powers" on-action="{{onAction}}">
   <template>
     <style>
+      #button-group {
+        -webkit-box-orient: horizontal;
+        -webkit-box-align: baseline;
+        -webkit-box-pack: end;
+        display: -webkit-box;
+        padding-top: 5px;
+      }
     </style>
     <content select="#list"></content>
+    <div id="button-group">
+     <action-button id="use-power" label="OK" action="onUsePower">
+     </action-button>
+     <action-button id="reset-power" label="Reset" action="onResetPower">
+     </action-button>
+    </div>
   </template>
   <script>
     Polymer('character-powers', {
@@ -533,6 +564,11 @@
        * of powers (eg. resolve stat dependent modifiers).
        */
       activeCharacter: null,
+
+      ready: function() {
+        var client = dungeon.getClient();
+        client.addEventListener('select-power', this.onSelectPower.bind(this));
+      },
 
       update: function(character) {
         this.activeCharacter = character;
@@ -562,6 +598,8 @@
         while(this.firstChild) {
           this.removeChild(this.firstChild);
         }
+        this.$['use-power'].active = false;
+        this.$['reset-power'].active = false;
       },
 
       insert: function(list, power) {
@@ -591,6 +629,7 @@
         }
         list.appendChild(el);
       },
+
       simplifyUsage: function(usage) {
         // TODO(kellis): Add other filters here as required.
         return usage.replace('(Special)', '').trim();
@@ -601,6 +640,32 @@
         return name.replace('[Movement Technique]', '(move)');
       },
 
+      onSelectPower: function() {
+        this.$['use-power'].active = true;
+        this.$['reset-power'].active = true;
+      },
+
+      onAction: function(event) {
+        this[event.detail.action]();
+      },
+
+      onUsePower: function() {
+        var selected = this.querySelector('[active]');
+        if (selected)
+          this.fire('use-power');
+      },
+
+      onResetPower: function() {
+        console.log('onReset');
+        var selected = this.querySelector('[active]');
+        if (selected) {
+          selected.active = false;
+          this.$['use-power'].active = false;
+          this.$['reset-power'].active = false;
+          var client = dungeon.getClient();
+          client.dispatchEvent('select-power', null);
+        }
+      },
     });
   </script>
 </polymer-element>
@@ -633,6 +698,12 @@
         this.character = character;
         this.setHeader(character.name);
         this.update();
+        this.super();
+      },
+
+      close: function() {
+        var client = dungeon.getClient();
+        client.dispatchEvent('select-power', null);
         this.super();
       },
 

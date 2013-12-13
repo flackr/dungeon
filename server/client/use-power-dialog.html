@@ -1,71 +1,590 @@
-<div class="dialog-container">
-  <div class="dialog-title">
-    <div id="use-power-title"></div>
-    <div class="close-icon cancel-button"></div>
-  </div>
-  <div id="use-power-dialog-content" class="dialog-content">
-    <div id="power-results"></div>
-    <div id="power-script"></div>
-  </div>
-  <div class="button-bar">
-    <button class="close-button">OK</button>
-    <!-- <button class="cancel-button">Cancel</button> -->
-  </div>
-  <!-- Templates for populating the dialog -->
-  <!-- Powers dealing damage -->
-  <table id = "damage-template" class="damage-table">
-    <tr><th>Damage</th><th>Crit</th><th>Type</th><th>Roll</th><th>Mod</th></tr>
-  </table>
-  <table hidden>
-    <tr id="damage-roll-template" class = "damage-roll">
-      <td class="damage-string"></td>
-      <td class="crit-damage-string"</td>
-      <td class="damage-type"></td>
-      <td class="damage-roll"</td>
-      <td>
-        <input class="damage-modifier" type="number" min="-100" max="100" value="0">
-      </td>
-    </tr>
-  </table>
-  <!-- Standard attack requiring a to-hit roll -->
-  <table id="attack-table-template" class = "attack-table">
-    <tr>
-      <th>Target</th>
-      <th>Attack</th>
-      <th>Defense</th>
-      <th>Adjustments</th>
-      <th>Results</th>
-    </tr>
-  </table>
-  <table hidden>
-    <tr id="attack-target-template" class="attack-target">
-      <td class="target-name"></td>
-      <td class="attack-roll"></td>
-      <td class="target-defense"></td>
-      <td>
+<link rel="import" href="popup.html">
+<link rel="import" href="action-button.html">
+
+<polymer-element name="damage-roll">
+  <template>
+    <style>
+      :host {
+        display: table-row;
+      }
+      :host div {
+        display: table-cell;
+        padding: 3px;
+        text-align: center;
+      }
+    </style>
+    <content>
+      <div id="damage"></div>
+      <div id="crit"></div>
+      <div id="type"></div>
+      <div id="roll"></div>
+      <div><input id="modifier" value="0" size="5"></div>
+    </content>
+  </template>
+  <script>
+    Polymer('damage-roll', {
+      update: function(roll) {
+        this.$.damage.textContent = roll.damageString;
+        this.$.crit.textContent = roll.critString;
+        this.$.type.textContent = roll.damageType;
+        this.$.roll.textContent = roll.rollString;
+        var self = this;
+        this.$.modifier.onchange = function() {
+            roll.tweak = parseInt(self.$.modifier.value);
+            self.fire('roll-adjustment');
+        };
+      },
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="damage-table">
+  <template>
+    <style>
+      #table {
+        display: table;
+        width: 100%;
+      }
+
+      #header {
+        display: table-row;
+        font-weight: bold;
+      }
+
+      #header div {
+        display: table-cell;
+        padding: 3px;
+        text-align: center;
+      }
+    </style>
+    <div id="table">
+      <div id="header">
+        <div>Damage</div>
+        <div>Crit</div>
+        <div>Type</div>
+        <div>Roll</div>
+        <div>Mod</div>
+      </div>
+    </div>
+  </template>
+  <script>
+    Polymer('damage-table', {      
+      addDamageRoll: function(roll) {
+        var entry = document.createElement('damage-roll');
+        entry.update(roll);
+        this.$.table.appendChild(entry);
+      },
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="attack-roll" attributes="format">
+  <template>
+    <style>
+      :host {
+        display: table-row;
+      }
+      :host div {
+        display: table-cell;
+        padding: 3px;
+        text-align: center;
+      }
+      :host[format='basic'] div.full {
+        display: none;
+      }
+    </style>
+    <content>
+      <div id="target"></div>
+      <div id="attack"></div>
+      <div id="defense"></div>
+      <div id="mod">
         <table class="attack-mod-table">
           <tr>
-            <td><input class="attack-mod" type="number" min="-100" max="100" value="0"></td>
+            <td><input id="attack-mod" value="0" size="5"></td>
             <td>to hit</td>
           </tr>
           <tr>
-            <td><input class="damage-mod"  type="number" min="-100" max="100" value="0"></td>
+            <td><input id="damage-mod" value="0" size="5"></td>
             <td>damage</td>
           </tr>
         </table>
-      </td>
-      <td class="attack-results"></td>
-    </tr>
-  </table>
-  <!-- Powers that do not require a to-hit roll -->
-  <table id="simple-table-template" class = "simple-table">
-      <th>Target</th>
-      <th>Results</th>
-  </table>
-  <table hidden>
-    <tr id="simple-target-template" class="simple-target">
-      <td class="target-name"></td>
-      <td class="attack-results"></td>
-    </tr>
-  </table>
-</div>
+      </div>
+      <div id="results"></div>
+    </content>
+  </template>
+  <script>
+    Polymer('attack-roll', {
+      format: 'full',
+
+      update: function(target, roll) {
+        this.$.target.textContent = target.name;
+        if (!roll) {
+          var self = this;
+          ['attack', 'defense', 'mod'].forEach(function(key) {
+             self.$[key].style.display = 'none';
+          });
+          return;
+        }
+        // Attack roll with adjustments
+        var total = roll.attack.roll + roll.attack.adjusted;
+        var rollStr = roll.attack.roll;
+        if (rollStr == 1 || rollStr == 20) {
+          // FIXME: Hunter's instinct crits on a 19.
+          rollStr = '<u>' + rollStr + '</u>';
+        }
+        var attackStr = '(' + rollStr + ') + ' +
+            roll.attack.adjusted + ' = ' + total;
+        if (roll.attack.adjusted != roll.attack.base) {
+          // Itemize bonuses and penalties.
+          var mods = [];
+          for (var j = 0; j < roll.attack.adjustments.length; j++) {
+            var adjustment = roll.attack.adjustments[j];
+            var add = adjustment.add;
+            if (add > 0)
+              add = '+' + add;
+            mods.push(add + adjustment.reason); 
+          }
+          attackStr += '<br>' + mods.join('<br>');
+        }
+        this.$.attack.innerHTML = attackStr;
+
+        // Defense with adjustments
+        var defenseStr = roll.defense.adjusted;
+        if (roll.defense.adjusted != roll.defense.base) {
+          // Itemize bonuses and penalties.
+          var mods = [];
+          for (var j = 0; j < roll.defense.adjustments.length; j++) {
+            var adjustment = roll.defense.adjustments[j];
+            var add = adjustment.add;
+            if (add > 0)
+              add = '+' + add;
+            mods.push(add + adjustment.reason); 
+          }
+          defenseStr += '<br>' + mods.join('<br>');
+        }
+        this.$.defense.innerHTML = defenseStr;
+
+        // Callbacks for tweaking toHit and damage.
+        var self = this;
+        var toHitMod = self.$['attack-mod'];
+        toHitMod.onchange = function() {
+          roll.tweak = parseInt(toHitMod.value);
+          self.fire('roll-adjustment');
+        };
+        var damageMod = self.$['damage-mod'];
+        damageMod.onchange = function() {
+          roll.damageTweak = parseInt(damageMod.value);
+          self.fire('roll-adjustment');
+        };
+      },
+
+      setResults: function(html) {
+        this.$.results.innerHTML = html;
+      },
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="attack-table">
+  <template>
+    <style>
+      #table {
+        display: table;
+        width: 100%;
+      }
+
+      #header {
+        display: table-row;
+        font-weight: bold;
+      }
+
+      #header div {
+        display: table-cell;
+        padding: 3px;
+        text-align: center;
+      }
+
+      :host[format="basic"] div[.full] {
+        display: none;
+      }
+    </style>
+    <div id="table">
+      <div id="header">
+        <div>Target</div>
+        <div class="full">Attack</div>
+        <div class="full">Defense</div>
+        <div class="full">Adjustments</div>
+        <div>Results</div>
+      </div>
+    </div>
+  </template>
+  <script>
+    Polymer('attack-table', {
+      displayToHit: true,
+
+      addAttackRoll: function(target, roll) {
+        var entry = document.createElement('attack-roll');
+        entry.update(target, roll);
+        this.$.table.appendChild(entry);
+      },
+
+      suppressToHit: function() {
+        displayToHit = false;
+        var nodes = this.$.header.querySelectorAll('.full');
+        for (var i = 0; i < nodes.length; i++) {
+          nodes[i].style.display = 'none';
+        }
+      },
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="ok-cancel">
+  <template>
+    <style>
+      :host {
+        -webkit-box-orient: horizontal;
+        -webkit-box-pack: end;
+        display: -webkit-box;
+      }
+      :host input {
+        padding: 3px;
+      }
+    </style>
+    <content>
+      <action-button id="ok" label="OK" action="onOK"></action-button>
+      <action-button id="cancel" label="Cancel" action="onCancel">
+      </action-button>
+    </content>
+  </template>
+  <script>
+    Polymer('ok-cancel', {});
+  </script>
+</polymer-element>
+
+<polymer-element name="use-power-dialog" extends="popup-window"
+    on-roll-adjustment="{{onRollAdjustment}}" on-action="{{onAction}}">
+  <script>
+    /* @const @enum */ 
+    var HitType =  {
+      CRIT_MISS: 0,
+      MISS: 1,
+      HIT: 2,
+      CRIT_HIT: 3
+    };
+
+    Polymer('use-power-dialog', {
+
+      ready: function() {
+        var el = document.createElement('div');
+        el.id = 'tables';
+        this.addContent(el);
+        var buttons = document.createElement('ok-cancel');
+        buttons.id = 'buttons';
+        this.addContent(buttons);
+      },
+
+      get tables() {
+        return this.$.content.querySelector('#tables');
+      },
+
+      /**
+       * Display attack results.  DM may modify conditions as needed before the
+       * power is resolved.
+       * @param {source: number, 
+       *         targets: Array.<number>,
+       *         power: string}
+       */
+      show: function(info) {
+
+        this.info = info;
+        this.results = [];
+        var client = dungeon.getClient();
+        this.user = client.getCharacter(info.source);
+        this.setHeader(this.user.name + ' uses ' + info.power);
+
+        // TODO: Fetch from character since power names are likely not
+        // unique for monsters.
+        this.power = client.powers.get(info.power);
+        this.power.useBy(this.user);
+
+
+        this.resetContent();
+        this.damageRolls = this.displayDamageTable();
+        this.toHitRolls = this.displayToHitTable();
+        if (!this.toHitRolls) {
+          this.displaySimpleTargetTable();
+        }
+        this.updateResults();
+
+        // Position in top-left until after shown. Center afterwards once we
+        // know the dimensions of the dialog.
+        this.style.left = '0px';
+        this.style.top = '0px';
+        this.super();
+
+        var self = this;
+        setTimeout(function() {
+          var w = self.clientWidth;
+          var h = self.clientHeight;
+          var parentNode = self.parentNode;
+          var maxWidth = parentNode.clientWidth;
+          var maxHeight = parentNode.clientHeight;
+          var left = Math.max(0, Math.floor((maxWidth - w) / 2));
+          var top = Math.max(0, Math.floor((maxHeight - h) / 2));
+          self.style.left = left + 'px';
+          self.style.top = top + 'px';
+        }, 0);
+      },
+
+      resetContent: function() {
+        var el = this.tables;
+        while (el.firstChild) {
+          el.removeChild(el.firstChild);
+        }
+      },
+
+      /**
+       * Displays table of damage calculations, with field to tweak values.
+       */
+      displayDamageTable: function() {
+        // Resolve damage roll for each immediate damage effect in the power.
+        var damageRolls = null;
+        if (this.power.powerDealsDamage()) {
+          damageRolls = this.power.rollDamage();
+          if (damageRolls.length) {
+            var damageTable = document.createElement('damage-table');
+            this.tables.appendChild(damageTable);
+            for (var i = 0; i < damageRolls.length; i++) {
+              damageTable.addDamageRoll(damageRolls[i]);
+            }
+          }
+        }
+        return damageRolls;
+      },
+
+      /**
+       * Displays table of hit results with fields to tweak results.
+       */
+      displayToHitTable: function() {
+        var hitRolls = null;
+        var client = dungeon.getClient();
+        if (this.power.requiresToHitRoll()) {
+          var baseToHit = this.power.getToHit();
+          if (baseToHit > 0)
+            baseToHit = '+' + baseToHit;
+          var toHitStr = 'Attack: ' +  baseToHit + ' versus ' +
+              this.power.getAttackedStat();
+          var header = document.createElement('section');
+          header.textContent = toHitStr;
+          this.tables.appendChild(header);
+          hitRolls = this.power.rollToHit(this.info.targets);
+          var attackResults = document.createElement('attack-table');
+          this.tables.appendChild(attackResults);
+          var targets = this.info.targets;
+          for (var i = 0; i < targets.length; i++) {
+            var target = client.getCharacter(targets[i]);
+            attackResults.addAttackRoll(target, hitRolls[i]);
+          }
+        }
+        return hitRolls;
+      },
+
+      /**
+       * Table used when effects to not require a to-hit role (e.g. Healing an ally).
+       */
+      displaySimpleTargetTable: function() {
+        var client = dungeon.getClient();
+        var attackResults = document.createElement('attack-table');
+        attackResults.suppressToHit();
+        this.tables.appendChild(attackResults);
+        var targets = this.info.targets;
+        for (var i = 0; i < targets.length; i++) {
+          var target = client.getCharacter(targets[i]);
+          attackResults.addAttackRoll(target, null);
+        }
+      },
+
+      onRollAdjustment: function() {
+        this.updateResults();
+      },
+
+      /**
+       * Recompute results based in modifications to to-hit and damage.
+       */
+      updateResults: function() {
+        var client = dungeon.getClient();
+        var entries = [];
+        var tables = this.tables.querySelectorAll('attack-table');
+        for (var i = 0; i < tables.length; i++) {
+          var results = tables[i].$.table.querySelectorAll('attack-roll');
+          for (var j = 0; j < results.length; j++) {
+            entries.push(results[j]);
+          }
+        }
+
+        //var entries = this.toHitRolls ?
+        //  contentArea.getElementsByClassName('attack-target') :
+        //  contentArea.getElementsByClassName('simple-target');
+
+        // Track total damage applied to each target to properly cumulate the
+        // effect of multi-attacks.
+        var totalDamage = [];
+
+        for (var i = 0; i < this.info.targets.length; i++) {
+          var resultsElement = entries[i]; 
+          var targetIndex = this.info.targets[i];
+          if(totalDamage[targetIndex] == undefined)
+            totalDamage[targetIndex] = 0;
+          var targetInfo = client.getCharacter(targetIndex);
+          var totalDamageFromAttack = 0;
+          this.results[targetIndex] = {};
+          var hitType = HitType.HIT; // Automatic hit if roll not required.
+          if (this.toHitRolls) {
+            var roll = this.toHitRolls[i];
+            var tweak = roll.tweak | 0;
+            var attackTotal = roll.attack.roll + roll.attack.adjusted + tweak;
+            var attackTarget = roll.defense.adjusted;
+            if (roll.attack.roll == 1) {
+              hitType = HitType.CRIT_FAIL;
+            } else if (roll.attack.roll == 20) {
+              // A 20 always hits, but only a crit if it would otherwise hit.
+              hitType = (attackTotal >= attackTarget)  ? HitType.CRIT_HIT :
+                  HitType.HIT;
+            } else if (attackTotal >= attackTarget) {
+              hitType = roll.attack.roll > this.getCritThreshold() ?
+                  HitType.CRIT_HIT : HitType.HIT;
+            } else {
+              hitType = HitType.MISS;
+            }
+          }
+          var messages = [];
+          switch(hitType) {
+          case HitType.CRIT_FAIL:
+             messages.push('EPIC FAIL');
+             break;
+          case HitType.CRIT_HIT:
+          case HitType.HIT:
+            if (this.damageRolls) {           
+              for (var j = 0; j < this.damageRolls.length; j++) {
+                var damageRoll = this.damageRolls[j];
+                var damage = damageRoll.value;
+                var damageTweak = (damageRoll.tweak | 0) +
+                    (roll.damageTweak | 0);
+                if (hitType == HitType.CRIT_HIT) {
+                  var critRoll = this.power.rollDice(
+                      damageRoll.critString + '');
+                  damage = critRoll.value;
+                }
+                damage = parseInt(damage) + damageTweak;
+                var damageType = damageRoll.damageType;
+                damageType = (damageType == 'untyped') ? '' : ' ' + damageType;
+                var hitTypeStr = (hitType == HitType.CRIT_HIT) ?
+                    'CRITICAL HIT' : 'HIT';
+                messages.push(hitTypeStr + ' for ' + damage + ' ' +
+                    damageRoll. damageType + ' damage');
+
+                totalDamage[targetIndex] += damage;
+                totalDamageFromAttack += damage;
+              }
+            }
+            // Apply non-damage effects.
+            this.power.applyOnHitEffects(targetIndex, messages, 
+                this.results[targetIndex]);
+            break;
+          case HitType.MISS:
+            messages.push('MISS');
+            // Handle case of half damage on miss, and other miss effects.
+            this.results[targetIndex]['Log'] = this.user.name + ' misses ' +
+                targetInfo.name;
+            this.power.applyOnMissEffects(targetIndex, messages,
+                this.results[targetIndex]);
+            break;
+          }
+
+          // Tally up all damage sources and report how messed up the target
+          // becomes.
+          if (totalDamageFromAttack > 0) {
+            // Message for logging.
+            this.results[targetIndex]['Log'] =
+                this.user.name + ' inflicts ' + totalDamageFromAttack +
+                ' damage to ' +  targetInfo.name;
+
+            var tempStr = targetInfo.condition.stats['Temps'];
+            var temps = tempStr ? parseInt(tempStr) : 0;
+            var newHp = parseInt(targetInfo.condition.stats['Hit Points']);
+            var maxHp = parseInt(targetInfo.source.stats['Hit Points']);
+
+            // Cumulative damage, potentially across multiple attacks on same
+            // target. e.g. Twin Strike.
+            temps -= totalDamage[targetIndex];
+            if (temps < 0) {
+              newHp += temps;
+              temps = 0;
+            }
+            this.results[targetIndex]['Hit Points'] = newHp;
+            this.results[targetIndex]['Temps'] = temps;
+            messages.push(newHp + '/' + maxHp + 'HP + ' + temps + ' temps');
+          }
+          this.power.applyGeneralEffects(targetIndex, messages,
+              this.results[targetIndex]);
+          if (resultsElement)
+            resultsElement.setResults(messages.join('<br>'));
+        }
+      },
+
+      /**
+       * Determines target roll for a critical.  Usually a 20, but may be reduced
+       * by certain effects.
+       */
+      getCritThreshold: function() {
+        // TODO: Implement me.
+        // Hunter's Instinct crits on a 19 or 20, but only if using a ranged attack
+        // against a target within 2 squares.
+        var critTarget = 20;
+        return critTarget;            
+      },
+
+      onAction: function(event) {
+        console.log('use-power-dialog: onAction');
+        var client = dungeon.getClient();
+        if (event.detail.action="onOK") {
+          var log = [];
+          // Log use of the power.
+          var targetNames = [];
+          for (var i = 0; i < this.info.targets.length; i++) {
+            var targetIndex = this.info.targets[i];
+            var targetInfo = client.getCharacter(targetIndex);
+            targetNames.push(targetInfo.name);
+          }
+          var message = this.user.name + ' uses "' + this.power.getName() +
+              '" on ' + targetNames.join(', ') + '.\n';
+          client.sendEvent({type: 'log', text: message});
+
+          var result = {
+            type: 'attack-result',
+            characters: [],
+            log: '',
+          };
+          for (var i in this.results) {
+            var update = this.results[i];
+            if (update['Log']) {
+              log.push(update['Log']);
+              delete update['Log'];
+            }
+            var empty = true;
+            for (var key in update) {
+              empty = false;
+              break;
+            }
+            if (!empty)
+              result.characters.push([i, update]);
+          }
+          result.log = log.join('\n');
+          client.sendEvent(result);
+        }
+        this.close();
+      },
+    });
+  </script>
+</polymer-element>

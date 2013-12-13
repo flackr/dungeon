@@ -65,15 +65,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 /*
     this.addEventListener('log', this.logMessage.bind(this));
     this.addEventListener('banner-message', this.displayBannerMessage.bind(this));
-    this.addEventListener('character-updated', function(c) {
-      var name = self.characterPlacement[c].name;
-      var displayed = self.combatTracker.displayedCharacterName();
-      if (name == displayed)
-        self.dispatchEvent('character-selected', self.characterPlacement[c]);
-    });
-
-    this.combatTracker.addEventListener('power-selected', 
-                                        this.selectPower.bind(this));
 
     this.addEventListener('character-selected', function() {
       self.ui.targets = [];
@@ -227,33 +218,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       }
     }
     return success;
-  },
-
-  /**
-   * Updates target selection.  For generic powers, each target needs to be
-   * selected separately, and there is constraints on range or allegience.
-   * Multiple selection of the same target is also possible. Well defined,
-   * powers, indicate if the selection is cummulative, and may impose any
-   * constriants.
-   * param{{x: integer, y:integer}} position Map coordinates to use as a
-   *    reference for selection.  The position may mark the target critter,
-   *    burst center, or blast direction.
-   */
-  selectTargets: function(position) {
-    if (this.ui.selected != undefined && this.ui.activePower) {
-      var power = this.ui.activePower;
-      // Burst, blast, and single target powers are reset so that the new
-      // selection replaces the former.  Generic and mutli-target powers
-      // are cummulative.
-      if (power.resetSelectionOnUpdate())
-        this.ui.targets = [];
-      for (var i = 0; i < this.characterPlacement.length; i++) {
-        if (power.selectionMatch(position, this.characterPlacement[i])) {
-          this.ui.targets.push(i);
-        }
-      }
-    }
-    this.update();
   },
 
   reset: function() {

@@ -113,9 +113,15 @@
         this.addContent(el);
         var client = dungeon.getClient();
         client.addEventListener('select-power', this.onSelectPower.bind(this));
+        client.addEventListener('show-power-details', 
+                                this.onShowPowerDetails.bind(this));
       },
 
-      update: function(power, character) {
+      update: function(power) {
+        if (!power) {
+          this.close();
+          return;
+        }
         this.setHeader(power.getName());
         var self = this;
         var details = self.$.content.querySelector('#details');
@@ -162,31 +168,7 @@
         }
       },
 
-      update_: function(power, character) {
-        if (power.weapons && power.weapons.length > 0) {
-          this.$.content.querySelector('#to-hit').hidden = false;
-          this.setValue(power, 'Critical', 'critical');
-          this.setValue(power, 'Effect', 'effect');
-          this.setValue(power, 'Miss', 'miss');
-          this.setValue(power, 'Augment1', 'augment-1');
-          this.setValue(power, 'Augment2', 'augment-2');
-          this.setValue(power, 'Conditions', 'conditions');
-        }
-      },
-
       setValue: function(value, section) {
-/*
-        var value;
-        if (typeof key == 'string') {
-          value = power[key];
-        } else {
-          value = [];
-          for (j = 0; j < key.length; j++) {
-            value.push(power[key[j]]);
-          }
-          value = value.join('\n');
-        }
-*/
         var details = this.$.content.querySelector('#details');
         var sectionElement = details.$[section];
         if (!sectionElement) {
@@ -206,8 +188,12 @@
         }
       },
 
-      onSelectPower: function(power, character) {
-        this.update(power, character);
+      onSelectPower: function(power) {
+        this.update(power);
+      },
+
+      onShowPowerDetails: function(power) {
+        this.update(power);
         // TODO - only show on a long press or right click.
         this.show();
 

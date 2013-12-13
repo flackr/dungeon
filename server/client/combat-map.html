@@ -4,11 +4,13 @@
 <link rel="import" href="roster-popup.html">
 <link rel="import" href="character-popup.html">
 <link rel="import" href="power-card-popup.html">
+<link rel="import" href="use-power-dialog.html">
 
 <polymer-element name="combat-map" on-mousewheel="{{onMouseWheel}}"
     on-pointerdown="{{onPointerDown}}" on-pointermove="{{onPointerMove}}"
     on-pointerup="{{onPointerUp}}" on-contextmenu="{{onContextMenu}}"
-    on-show-popup="{{onShowPopup}}" attributes="role">
+    on-show-popup="{{onShowPopup}}" on-use-power="{{onUsePower}}" 
+    attributes="role selectedCharacter">
   <template>
     <style>
       :host {
@@ -25,6 +27,15 @@
       :host[role="player"] map-tool{
         display: none !important;
       }
+
+      #dialog-overlay {
+        z-index: 10000;
+      }
+
+      #context-menu-overlay {
+        z-index: 10000;
+      }
+
     </style>
     <content>
       <canvas width="{{width}}" height="{{height}}" id="canvas"></canvas>
@@ -38,11 +49,13 @@
       <map-overlay id="popups-overlay" modal="false">
         <roster-popup id="roster"></roster-popup>
         <character-popup id="character-summary"></character-popup>
-        <power-card-popup id="power-card"></power-card-poup>
+        <power-card-popup id="power-card" style="right: 220px; top: 10px;">
+        </power-card-poup>
       </map-overlay>
-      <map-overlay id="dialog-overlay" modal="true"></map-overlay>
-      <map-overlay id="context-menu-overlay" modal="auto-release"
-        style="z-index: 10000;">
+      <map-overlay id="dialog-overlay" modal="true">
+        <use-power-dialog id="use-power-dialog"></use-power-dialog>
+      </map-overlay>
+      <map-overlay id="context-menu-overlay" modal="auto-release">
         <context-menu id="context-menu"></context-menu>
       </map-overlay>
     </content>
@@ -128,6 +141,11 @@
                                      this.$['map-tiles']);
         this.pointer = {mode: PointerMode.HOVER};
         this.resize();
+
+        var client = dungeon.getClient();
+        client.addEventListener('select-power', this.onSelectPower.bind(this));
+        client.addEventListener('dm-attack-result', 
+                                this.onDmAttackResultMsg.bind(this));
       },
 
       /**
@@ -187,7 +205,7 @@
         this.drawSelectedCharacter(ctx);
 
         // Mark targets.
-        // this.drawTargetIndicators(ctx);
+        this.drawTargetIndicators(ctx);
 
         // Draw remaining charcters.
         this.drawCharacters(ctx);
@@ -218,8 +236,11 @@
         for (var i = this.view.y1; i < this.view.y2; i++) {
           for (var j = this.view.x1; j < this.view.x2; j++) {
             var bounds = this.getTileBounds(i, j);
-            ctx.drawImage(client.ui.mapImages[client.map[i][j]],
-                          bounds.left, bounds.top, bounds.width, bounds.height);
+            var im = client.ui.mapImages[client.map[i][j]];
+            if (im) {
+              ctx.drawImage(im, bounds.left, bounds.top, bounds.width,
+                            bounds.height);
+            }
           }
         }
       },
@@ -302,6 +323,35 @@
                              tw,
                              tw);
             }
+          }
+        }
+      },
+
+      drawTargetIndicators: function(ctx) {
+        var client = dungeon.getClient();
+        if (!this.targets)
+          return;
+        var targetFreq = {};
+        for (var j = 0; j < this.targets.length; j++) {
+          var index = this.targets[j];
+          if (index in targetFreq)
+            targetFreq[index]++;
+          else
+            targetFreq[index] = 1;
+        }
+        ctx.strokeStyle = '#f00';
+        var tw = this.viewport.tileSize;
+        for (var index in targetFreq) {
+          var character = client.characterPlacement[index];
+          var width = tw * this.getCharacterWidthInTiles(index);
+          var baseRadius = width / 2 - tw / 4 + 3;
+          var x = this.baseX + (character.x - this.view.x1) * tw + width / 2;
+          var y = this.baseY + (character.y - this.view.y1) * tw + width / 2;
+          for (var j = 0; j < targetFreq[index]; j++) {
+            ctx.beginPath();
+            ctx.lineWidth = 2;
+            ctx.arc(x, y, baseRadius + j * 3, 0, 2*Math.PI, true);
+            ctx.stroke();
           }
         }
       },
@@ -658,8 +708,8 @@
               }
               this.selectedCharacter = i;
               this.path = null;
-              this.$['character-summary'].show(client.characterPlacement[i]);
-              this.update();
+              //this.$['character-summary'].show(client.characterPlacement[i]);
+              //this.update();
               return;
             }
           }
@@ -675,8 +725,85 @@
             index: this.selectedCharacter
           });
           this.selectedCharacter = undefined;
-          return;
         }
+      },
+
+      // Attribute watchers ---------------
+
+      selectedCharacterChanged: function() {
+        if (this.selectedCharacter) {
+          var client = dungeon.getClient();
+          var character = client.characterPlacement[this.selectedCharacter];
+          this.$['character-summary'].show(character);
+        } else {
+          this.$['character-summary'].close();
+        }
+        this.targets = [];
+        this.activePower = undefined;
+        this.update();
+      },
+
+      // Combat ---------------------------
+
+      onSelectPower: function(power) {
+        this.activePower = power;
+        this.targets = [];
+        if (!power)
+          this.selectedCharacter = undefined;
+        this.update();
+      },
+
+      selectTargets: function(pos) {
+        console.log('selectTargets: pos = ' + pos.x + ', ' + pos.y);
+        var client = dungeon.getClient();
+        if (this.selectedCharacter != undefined && this.activePower) {
+          var power = this.activePower;
+          // Burst, blast, and single target powers are reset so that the new
+          // selection replaces the former.  Generic and mutli-target powers
+          // are cummulative.
+          if (power.resetSelectionOnUpdate() || ! this.targets)
+            this.targets = [];
+          for (var i = 0; i < client.characterPlacement.length; i++) {
+            if (power.selectionMatch(pos, client.characterPlacement[i]))
+              this.targets.push(i);
+          }
+        }
+        this.update();
+      },
+
+      onUsePower: function() {
+        var client = dungeon.getClient();
+        if (this.activePower && this.targets &&
+            this.selectedCharacter !== undefined && this.targets.length) {
+          this.dmAttackResult({
+            source: this.selectedCharacter,
+            targets: this.targets,
+            power: this.activePower.getName()
+          });
+          this.selectedCharacter = undefined;
+        }
+      },
+
+      dmAttackResult: function(result) {
+        if (this.role == 'dm') {
+          this.$['use-power-dialog'].show(result);
+        } else {
+          client.sendEvent({
+            type: 'dm-attack-result',
+            result: result
+          });
+        }
+      },
+
+      /**
+       * Show attack results to DM for final blessing.
+       * @param {Object} message Message containing the attack details.
+       *    See dmAttackResult for a full description of the message.
+       */
+      onDmAttackResultMsg: function(message) {
+        var role = document.body.parentNode.getAttribute('role');
+        if (role == 'dm')
+          this.dmAttackResult(message.result);
       },
 
       // Map drawing ----------------------

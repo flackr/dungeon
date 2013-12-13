@@ -56,7 +56,7 @@
       hide: function(elem) {
         elem.removeAttribute('active');
         var visible = this.querySelectorAll('[active]');
-        this.active = visible.length;
+        this.active = !!visible.length;
       },
 
       hideAll: function() {

@@ -1,0 +1,27 @@
+<polymer-element name="action-button" attributes="action label active"
+  on-pointerdown="{{onPointerDown}}">
+  <template>
+    <style>
+    </style>
+     <input id="button" type="button"></input>
+  </template>
+  <script>
+    Polymer('action-button', {
+      action: '',
+      active: true,
+      label: '',
+
+      onPointerDown: function(event) {
+        this.fire('action', {action: this.action});
+      },
+
+      labelChanged: function() {
+        this.$.button.value = this.label;
+      },
+
+      activeChanged: function() {
+        this.$.button.disabled = !this.active;
+      }
+    });
+  </script>
+</polymer-element>
