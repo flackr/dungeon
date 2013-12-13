@@ -152,6 +152,8 @@
       },
 
       onMovePopup: function(event) {
+        if (!this.active)
+          return;
         this.dragFrom = event.detail;
         var overlay = this.parentNode;
         var self = this;
