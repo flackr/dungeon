@@ -601,6 +601,7 @@ dungeon.Power.prototype = {
           if (maxHp > 1 && this.damageRolls_ && this.damageRolls_.length > 0) {
             var roll = this.damageRolls_[0];
             var hp = Math.floor(roll.value / 2);
+            damage += hp;
             log.push(hp + ' ' + roll.damageType + ' damage on miss');
           }
           break;
