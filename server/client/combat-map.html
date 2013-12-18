@@ -263,6 +263,27 @@
         var client = dungeon.getClient();
         if (!client.ui.mapImages || !client.objects)
           return;
+
+        var self = this;
+        var drawObject = function(object, addMask) {
+          var bounds = self.getTileBounds(object.y, object.x);
+          bounds.width *= object.w;
+          bounds.height *= object.h;
+          if (object.xOffset)
+            bounds.left += object.xOffset * self.viewport.tileSize;
+          if (object.yOffset)
+            bounds.top += object.yOffset * self.viewport.tileSize;
+          ctx.save();
+          self.applyTransform(ctx, object, bounds);
+          ctx.drawImage(client.ui.mapImages[object.tile],
+                        bounds.left, bounds.top, bounds.width, bounds.height);
+          if (addMask) {
+            ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+            ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
+          }
+          ctx.restore();
+        };
+
         for (var i = 0; i < client.objects.length; i++) {
           var object = client.objects[i];
           if (object.x + object.w <= this.view.x1 ||
@@ -271,37 +292,11 @@
             continue;
           if (i == this.selectedObject)
             continue;
-          var bounds = this.getTileBounds(object.y, object.x);
-          bounds.width *= object.w;
-          bounds.height *= object.h;
-          if (object.xOffset)
-            bounds.left += object.xOffset * this.viewport.tileSize;
-          if (object.yOffset)
-            bounds.top += object.yOffset * this.viewport.tileSize;
-          ctx.save();
-          this.applyTransform(ctx, object, bounds);
-          ctx.drawImage(client.ui.mapImages[object.tile],
-                        bounds.left, bounds.top, bounds.width, bounds.height);
-          ctx.restore();
+          drawObject(object, false);
         }
         var activeObject = this.pendingMap || this.selectedObject;
-        if (activeObject) {
-          var bounds = this.getTileBounds(activeObject.y,
-                                          activeObject.x);
-          bounds.width *= activeObject.w;
-          bounds.height *= activeObject.h;
-          if (object.xOffset)
-            bounds.left += object.xOffset * this.viewport.tileSize;
-          if (object.yOffset)
-            bounds.top += object.yOffset * this.viewport.tileSize;
-          ctx.save();
-          this.applyTransform(ctx, activeObject, bounds);
-          ctx.drawImage(client.ui.mapImages[activeObject.tile],
-                        bounds.left, bounds.top, bounds.width, bounds.height);
-          ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
-          ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
-          ctx.restore();
-        }
+        if (activeObject)
+          drawObject(activeObject, true);
       },
 
       /**
