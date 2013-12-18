@@ -1,0 +1,12 @@
+Name: jsfeat
+URL: http://inspirit.github.io/jsfeat/
+Revision: ab56868280ae12c735243a569e907580e9697fe3
+License: MIT
+License File: LICENSE
+
+Description:
+This directory contains a copy of jsfeat-min.js, a minified version of the
+Javascript library jsfeat containing state-of-the-art computer vision
+algorithms.
+
+This is downloaded from https://github.com/inspirit/jsfeat.

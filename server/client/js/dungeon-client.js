@@ -777,7 +777,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       this.ui.mapImages[i].onload = this.update.bind(this);
     }
     this.ui.mapImages.splice(this.mapTiles.length, this.ui.mapImages.length);
-    dungeon.MapEditor.loadTiles(this.mapTiles);
+    this.dispatchEvent('update-tiles');
   },
 
   updateCharacterRegistry: function(character) {

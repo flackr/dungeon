@@ -110,13 +110,16 @@
       resetPointerEvent: function(type) {
         switch(type) {
           case 'down':
-            this.onPointerDownAction = this.onPointerDownAction.onReset;
+            this.onPointerDownAction = !!this.onPointerDownAction ?
+                this.onPointerDownAction.onReset : null;
             break;
           case 'move':
-            this.onPointerMoveAction = this.onPointerMoveAction.onReset;
+            this.onPointerMoveAction = !!this.onPointerMoveAction ?
+                this.onPointerMoveAction.onReset : null;
             break;
           case 'up':
-            this.onPointerUpAction = this.onPointerUpAction.onReset;
+            this.onPointerUpAction = !!this.onPointerUpAction ?
+                this.onPointerUpAction.onReset : null;
             break;
           default:
             console.error('Unsupported event type: ' + type);

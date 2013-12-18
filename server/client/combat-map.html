@@ -4,13 +4,14 @@
 <link rel="import" href="roster-popup.html">
 <link rel="import" href="character-popup.html">
 <link rel="import" href="power-card-popup.html">
+<link rel="import" href="map-editor-popup.html">
 <link rel="import" href="use-power-dialog.html">
 
 <polymer-element name="combat-map" on-mousewheel="{{onMouseWheel}}"
     on-pointerdown="{{onPointerDown}}" on-pointermove="{{onPointerMove}}"
     on-pointerup="{{onPointerUp}}" on-contextmenu="{{onContextMenu}}"
-    on-show-popup="{{onShowPopup}}" on-use-power="{{onUsePower}}" 
-    attributes="role selectedCharacter">
+    on-show-popup="{{onShowPopup}}" on-use-power="{{onUsePower}}"
+    on-map-drag="{{onMapDrag}}" attributes="role selectedCharacter">
   <template>
     <style>
       :host {
@@ -39,18 +40,12 @@
     </style>
     <content>
       <canvas width="{{width}}" height="{{height}}" id="canvas"></canvas>
-      <map-tool position="top-left" id="map-functions">
-        <div>0</div>
-        <div>1</div>
-        <div>3</div>
-        <div>5</div>
-      </map-tool>
-      <map-tool position="bottom-left" id="map-tiles"></map-tool>
       <map-overlay id="popups-overlay" modal="false">
         <roster-popup id="roster"></roster-popup>
         <character-popup id="character-summary"></character-popup>
         <power-card-popup id="power-card" style="right: 220px; top: 10px;">
-        </power-card-poup>
+        </power-card-popup>
+        <map-editor-popup id="map-editor"></map-editor-popup>
       </map-overlay>
       <map-overlay id="dialog-overlay" modal="true">
         <use-power-dialog id="use-power-dialog"></use-power-dialog>
@@ -127,6 +122,12 @@
       targets: null,
 
       /**
+       * Details of map being added.
+       * @type {?Object}
+       */
+      pendingMap: null,
+
+      /**
        * @constructor
        */
       ready: function() {
@@ -137,8 +138,6 @@
           tileSizeFloat: 32,
         };
         window.addEventListener('resize', this.resize.bind(this));
-        dungeon.MapEditor.initialize(this.$['map-functions'],
-                                     this.$['map-tiles']);
         this.pointer = {mode: PointerMode.HOVER};
         this.resize();
 
@@ -236,6 +235,10 @@
         for (var i = this.view.y1; i < this.view.y2; i++) {
           for (var j = this.view.x1; j < this.view.x2; j++) {
             var bounds = this.getTileBounds(i, j);
+            if (i < 0 || i >= client.map.length || j < 0 ||
+                j >= client.map[i].length) {
+              continue;
+            }
             var im = client.ui.mapImages[client.map[i][j]];
             if (im) {
               ctx.drawImage(im, bounds.left, bounds.top, bounds.width,
@@ -260,9 +263,78 @@
               object.x >= this.view.x2 || object.y >= this.view.y2)
             continue;
           var bounds = this.getTileBounds(object.y, object.x);
+          bounds.width *= object.w;
+          bounds.height *= object.h;
+          ctx.save();
+          this.applyTransform(ctx, object, bounds);
           ctx.drawImage(client.ui.mapImages[object.tile],
                         bounds.left, bounds.top, bounds.width, bounds.height);
+          ctx.restore();
         }
+        if (this.pendingMap) {
+          var bounds = this.getTileBounds(this.pendingMap.y,
+                                          this.pendingMap.x);
+          bounds.width *= this.pendingMap.w;
+          bounds.height *= this.pendingMap.h;
+          ctx.drawImage(client.ui.mapImages[this.pendingMap.tile],
+                        bounds.left, bounds.top, bounds.width, bounds.height);
+          ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+          ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
+        }
+      },
+
+      /**
+       * Adjusts graphics context to render an transformed object.
+       */
+      applyTransform: function(ctx, object, bounds) {
+        var translate = function(tx, ty, transform) {
+          transform[4] += tx;
+          transform[5] += ty;
+        };
+        var hFlip = function(transform) {
+          transform[0] *= -1;
+          transform[1] *= -1;
+          transform[4] *= -1;
+        }
+        var vFlip = function(transform) {
+          transform[2] *= -1;
+          transform[3] *= -1;
+          transform[5] *= -1;
+        }
+        var rotate = function(degrees, transform) {
+          var theta = degrees * Math.PI / 180;
+          var s = Math.sin(theta);
+          var c = Math.cos(theta);
+          var rotated = [
+            transform[0]*c - transform[2]*s,
+            transform[0]*s + transform[2]*c,
+            transform[1]*c - transform[3]*s,
+            transform[1]*s + transform[3]*c,
+            transform[4]*c - transform[5]*s,
+            transform[4]*s + transform[5]*c
+          ];
+          for (var i = 0; i < 6; i++) {
+            transform[i] = rotated[i];
+          }
+        }
+        if (!object.hFlip && !object.vFlip && !object.rotation)
+          return;
+        var cx = bounds.left + bounds.width / 2;
+        var cy = bounds.top + bounds.height / 2;
+        var trans = [1, 0, 0, 1, 0, 0];
+        translate(-cx, -cy, trans);
+        if (object.hFlip)
+          hFlip(trans);
+        if (object.vFlip)
+          vFlip(trans);
+        if (object.rotation)
+          rotate(object.rotation, trans);
+        translate(cx, cy, trans);
+        ctx.transform.apply(ctx, trans);
+
+        var theta = object.rotation * Math.PI / 180;
+        var s = Math.sin(theta);
+        var c = Math.cos(theta);
       },
 
       /**
@@ -597,8 +669,8 @@
           return;
 
         // Handle map updates.
-        var selectedTile = dungeon.MapEditor.selectedTile();
-        if (selectedTile != -1) {
+        var mapEditor = dungeon.getMapEditor();
+        if (mapEditor.selectedTile != -1 && mapEditor.toolSize > 0) {
           this.pointer.mode = PointerMode.DRAW;
           this.lastTilePos = {};
           this.updateMap(e);
@@ -669,18 +741,72 @@
           return;
         }
 
-        if (dungeon.MapEditor.selectedSize() == 0) {
-          // Object selection mode.
+        var editorTool = dungeon.getMapEditor().selectedTool;
+        if (editorTool) {
+          // Object editing mode.
+          var objectIndex = -1;
           for (var i = client.objects.length - 1; i >= 0; i--) {
             if (client.objects[i].x <= pos.x &&
                 pos.x <= client.objects[i].x + client.objects[i].w &&
                 client.objects[i].y <= pos.y &&
                 pos.y <= client.objects[i].y + client.objects[i].h) {
-              this.selectedObject = i;
-              return;
+              objectIndex = i;
+              break;
              }
           }
-          delete this.selectedObject;
+          if (objectIndex >= 0) {
+            switch(editorTool) {
+              case 'delete':
+                client.sendEvent({
+                  index: objectIndex,
+                  type: 'remove-object'
+                });
+                break;
+              case 'flip-h':
+                var hFlip = !client.objects[objectIndex].hFlip;
+                client .sendEvent({
+                  details: {hFlip: hFlip},
+                  index: objectIndex,
+                  type: 'update-object'
+                });
+                break;
+              case 'flip-v':
+                var vFlip = !client.objects[objectIndex].vFlip;
+                client .sendEvent({
+                  details: {vFlip: vFlip},
+                  index: objectIndex,
+                  type: 'update-object'
+                });
+                break;
+              case 'rotate-cw':
+                var rotation = client.objects[objectIndex].rotation;
+                if (rotation == undefined)
+                  rotation = 0;
+                rotation += 90;
+                if (rotation > 360)
+                  rotation -= 360;
+                client .sendEvent({
+                  details: {rotation: rotation},
+                  index: objectIndex,
+                  type: 'update-object'
+                });
+                break;
+              case 'rotate-ccw':
+                var rotation = client.objects[objectIndex].rotation;
+                if (rotation == undefined)
+                  rotation = 0;
+                rotation -= 90;
+                if (rotation < 0)
+                  rotation += 360;
+                client .sendEvent({
+                  details: {rotation: rotation},
+                  index: objectIndex,
+                  type: 'update-object'
+                });
+                break;
+            }
+          }
+          //delete this.selectedObject;
           return;
         }
 
@@ -784,6 +910,22 @@
         }
       },
 
+      onMapDrag: function(event) {
+        if (!this.pendingMap || !event.detail ||
+            this.pendingMap.x != event.detail.x ||
+            this.pendingMap.y != event.detail.y) {
+          if (event.detail) {
+            this.pendingMap = {};
+            for (var key in event.detail) {
+              this.pendingMap[key] = event.detail[key];
+            }
+          } else {
+            this.pendingMap = null;
+          }
+          this.update();
+        }
+      },
+
       dmAttackResult: function(result) {
         if (this.role == 'dm') {
           this.$['use-power-dialog'].show(result);
@@ -814,8 +956,8 @@
         if (pos.y == this.lastTilePos.y && pos.x == this.lastTilePos.x)
           return;
         this.lastTilePos = pos;
-        var selectedTile = dungeon.MapEditor.selectedTile();
-        var selectedSize = dungeon.MapEditor.selectedSize();
+        var selectedTile = dungeon.getMapEditor().selectedTile;
+        var selectedSize = dungeon.getMapEditor().toolSize;
         if (client.map.length > pos.y && client.map[pos.y].length > pos.x) {
           if (selectedSize == 0) {
             var obj = {x: pos.x, y: pos.y, tile: selectedTile, w: 2, h: 2};

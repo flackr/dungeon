@@ -94,7 +94,8 @@
         addMenuItem('Undo','onUndo', true /* restricted */);
         addMenuItem('Save Map','onSave');
         addMenuItem('Load Files', 'onLoadFiles');
-        addMenuItem('View Roster', 'onViewRoster');
+        addMenuItem('View Combat Roster', 'onViewRoster');
+        addMenuItem('View Map Editor', 'onViewMaps');
       },
 
       /**
@@ -137,6 +138,10 @@
 
       onViewRoster: function() {
         this.fire('show-popup', {popup: 'roster'});
+      },
+
+      onViewMaps: function() {
+        this.fire('show-popup', {popup: 'map-editor'});
       },
 
       /**

@@ -1,0 +1,696 @@
+<link rel="import" href="popup.html">
+
+<polymer-element name="map-tile" attributes="active index scale src"
+  on-pointerdown="{{onPointerDown}}">
+  <template>
+    <style>
+      #image {
+         border: 1px solid white;
+         display: inline-block;
+         margin: 0;
+         padding: 1px;
+         vertical-align: middle;
+      }
+
+      :host[scale="small"] #image {
+        height: 32px;
+        width: 32px;
+      }
+
+      :host[scale="small"][active] #image {
+        border: 1px solid #555;
+      }
+
+      :host[scale="large"] #image {
+        height: auto;
+        max-height: 64px;
+        max-width: 64px;
+        width: auto;
+      }     
+    </style>
+    <content>
+      <img id="image">
+    </content>
+  </template>
+  <script>
+    Polymer('map-tile', {
+      srcChanged: function() {
+        if (this.src)
+          this.$.image.src = this.src;
+      },
+
+      onPointerDown: function(event) {
+        if (this.scale == 'large')
+          this.fire('enable-drag-insert-map', {index: this.index});
+        this.fire('select-tile', {index: this.index});
+        // Allow event propagation to popup window.
+      },
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="map-editor-control"
+    attributes="active action label imageUrl scale"
+  on-pointerdown="{{onPointerDown}}">
+  <template>
+    <style>
+      ::part(control) {
+        border: 1px solid #ccc;
+        height: 32px;
+        width: 32px;
+      }
+
+      :host[active] ::part(control) {
+        background: #eee;
+        border: 1px solid black;
+      }
+
+      #label {
+        font-size: 14px;
+        text-align: center;
+        margin-top: 7px;
+      }
+    </style>
+    <content>
+      <div part="control"><div id="label">{{label}}</div></div>
+    </content>
+  </template>
+  <script>
+    Polymer('map-editor-control', {
+      action: '',
+      active: false,
+      iconUrl: '',
+      label: '',
+      scale: 1,
+      toggleControl: false,
+
+      onPointerDown: function(event) {
+        this.fire('select-tool', {tool: this.action});
+      },
+
+      imageUrlChanged: function() {
+        this.style.backgroundImage = this.imageUrl;
+      },
+
+      scaleChanged: function() {
+        var scale = parseFloat(this.scale);
+        this.$.label.style.webkitTransform = 'scale(' + scale + ')';
+      },
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="map-editor-control-group">
+  <template>
+    <style>
+    :host {
+      -webkit-box-align: center;
+      -webkit-box-orient: vertical;
+      -webkit-box-pack: start;
+      display: -webkit-box;
+    }
+    </style>
+    <content select="map-editor-control">
+    <content>
+  </template>
+  <script>
+    Polymer('map-editor-control-group', {
+      addControl: function(details) {
+        var el = document.createElement('map-editor-control');
+        el.action = details.action;
+        if (details.imageUrl)
+          el.imageUrl = details.imageUrl;
+        if (details.label)
+          el.label = details.label;
+        if (details.active)
+          el.active = details.active;
+        if (details.scale)
+          el.scale = details.scale;
+        this.appendChild(el);
+      },
+    }); 
+  </script>
+</polymer-element>
+
+<polymer-element name="map-tile-group" attributes="label scale">
+  <template>
+    <style>
+      :host {
+        margin: 5px;
+      }
+
+      #group {
+        -webkit-box-align: top;
+        -webkit-box-orient: horizontal;
+        -webkit-box-pack: justify;
+        display: -webkit-box;
+      }
+
+      #controls {
+        -webkit-box-flex: 0;
+        border-right: 1px solid #999;
+        margin-right: 3px;
+        padding-right: 3px;
+      }
+
+      #stack {
+        -webkit-box-flex: 1;
+      }
+
+      #group-title {
+        font-size: 14px;
+        font-weight: bold;
+        text-align: center;
+      }
+
+      #instructions {
+        color: #777;
+        font-size: 12px;
+        font-family: serif;
+        font-style: italic;
+        max-width: 280px;
+        text-align: center;
+      }
+
+      #tiles {
+        max-width: 280px;
+        max-height: 300px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        text-align: center;
+      }
+    </style>
+    <content>
+      <div id="group">
+        <map-editor-control-group id="controls"></map-editor-control-group>
+        <div id="stack">
+          <div id="group-title">{{label}}</div>
+          <div id="instructions"></div>
+          <div id="tiles"></div>
+        </div>
+      </div>
+    </content>
+  </template>
+  <script>
+    Polymer('map-tile-group', {
+      scale: '',
+
+      /**
+       *
+       * @param {Array.<Object>} controls List of configuration details for
+       *     creating controls.
+       */
+      setControls: function(controls) {
+        for (var i = 0; i < controls.length; i++) {
+          this.$.controls.addControl(controls[i]);
+        }
+      },
+
+      append: function(tileIndex, opt_thumbnail) {
+        var client = dungeon.getClient();
+        var el = document.createElement('map-tile');
+        var image = opt_thumbnail || client.ui.mapImages[tileIndex].src;
+        el.index = tileIndex;
+        el.src = image;
+        el.scale = this.scale;
+        this.$.tiles.appendChild(el);
+      },
+
+      reset: function() {
+        var contents = this.$.tiles;
+        while (contents.firstChild) {
+          contents.removeChild(contents.firstChild);
+        }
+      },
+
+      selectTool: function(tool, active) {
+        var control = this.$.controls.querySelector('[action="' + tool + '"]');
+        if (control)
+          control.active = active;
+      },
+
+      selectTile: function(index, active) {
+        var tile = this.$.tiles.querySelector('[index="' + index + '"]');
+        if (tile)
+          tile.active = active;
+      },
+
+      set instructions(text) {
+        this.$.instructions.textContent = text;
+      }
+    });
+  </script>
+</polymer-element>
+
+
+
+<polymer-element name="map-editor-popup" extends="popup-window"
+    on-enable-drag-insert-map="{{onEnableDragInsertMap}}"
+    on-select-tool="{{onSelectTool}}" on-select-tile="{{onSelectTile}}"
+    on-pointerup="{{onPointerUp}}" on-pointermove="{{onPointerMove}}">
+  <script>
+
+    /**
+     * Minimum spacing between grid lines.
+     * @const {number}
+     */
+    var MIN_GRID_SPACING = 6;
+
+    /**
+     * Scale factor for the standard error on the correlogram using in determing
+     * if an autocorrelation is statistically significant.  Each lag that has a
+     * significant autocorrelation is a candidate for the grid spacing. This
+     * value corresponds to a confidence level of 0.9999 assuming a normally
+     * distributed sample.
+     */
+    var SIGMA = 3.9;
+
+    /**
+     * Maps image src to details.
+     * @type {Object.<string, {index: number, image: Image}>}
+     */
+    var imageMap = {};
+
+    (function() {
+      Polymer('map-editor-popup', {
+
+        blockPointerEventPropagation: false,
+        dragImage: null,
+        activeTool: null,
+        activeTile: -1,
+
+        ready: function() {
+          this.setHeader('Map Editor');
+          var self = this;
+          var addGroup = function(title, id, scale) {
+            var el = document.createElement('map-tile-group');
+            el.label = title;
+            el.id = id;
+            el.scale = scale;
+            self.addContent(el);
+            return el;
+          };
+          var small = addGroup('Single tile', 'single-tile', 'small');
+          small.setControls([
+           {action: 'size-1', label: '\u25aa', scale: 0.333},
+            {action: 'size-3', label: '\u25aa', scale: 1},
+            {action: 'size-5', label: '\u25aa', scale: 1.667}
+          ]);
+          small.instructions = 'A collection of rudimentary tiles for rough ' +
+              'rendering of a map.  Select a paint brush thickness and a ' +
+              'fill tile, and free form scribble on the map.';
+
+          var large = addGroup('Multi-tile', 'multi-tile', 'large');
+          large.setControls([
+            {action: 'move', label: '\u2629'},
+            {action: 'rotate-cw', label: '\u21bb'},
+            {action: 'rotate-ccw', label: '\u21ba'},
+            {action: 'flip-h', label: '\u2194'},
+            {action: 'flip-v', label: '\u2195'},
+            {action: 'resize-nw', label: '\u21f1'},
+            {action: 'resize-se', label: '\u21f2'},
+            {action: 'delete', label: '\u2715'}
+          ]);
+          large.instructions = 'Load additional tiles via the context menu. ' +
+              'Tiles may be dragged onto the map.  To edit a tile, first ' +
+              'select an editing tool, and then click on the tile.';
+
+          dungeon.getClient().addEventListener('update-tiles', 
+                                               this.show.bind(this));
+          dungeon.getMapEditor = function() {
+            return self;
+          }
+        },
+
+        show: function() {
+          this.update();
+          this.super();
+        },
+
+        update: function() {
+          var client = dungeon.getClient();
+          var tiles = client.mapTiles;
+          var groups = this.$.content.querySelectorAll('map-tile-group');
+          groups.array().forEach(function(g) {
+            g.reset();
+          });
+          for (var i = 0; i < tiles.length; i++) {
+            var src = tiles[i].src;
+            if (src in imageMap) {
+              this.insert(imageMap[src]);
+            } else {
+              var image = new Image();
+              var self = this;
+              var onLoadCallback = function(key, index, image) {
+                return function() {
+                  imageMap[key] = {index: index, image: image};
+                  self.insert(imageMap[key]);
+                };
+              }
+              image.onload = onLoadCallback(src, i, image);
+              image.src = src;
+            }
+          }
+        },
+
+        // --- Mapping tools -----------------------------------------
+
+        onEnableDragInsertMap: function(event) {
+          this.blockPointerEventPropagation = true;
+          var overlay = this.parentNode;
+          var self = this;
+          var selectedTile = event.detail.index;
+
+          var client = dungeon.getClient();
+          var pos = $('combat-map').computeMapCoordinates(event);
+          var obj = null;
+          var imageDetails = null;
+          for (var key in imageMap) {
+            if (imageMap[key].index == selectedTile) {
+              imageDetails = imageMap[key];
+              var scale = imageDetails.scale;
+              var im = imageDetails.image;
+              var w = Math.round(im.width * imageDetails.scale / 32);
+              var h = Math.round(im.height * imageDetails.scale / 32);
+              obj = {x: pos.x, y: pos.y, tile: selectedTile, w: w, h: h};
+              break;
+            }
+          }
+          if (!obj) {
+            this.blockPointerEventPropagation = true;
+            return;
+          }
+
+          overlay.overridePointerEvent('move', function(event) {
+            var client = dungeon.getClient();
+            var pos = $('combat-map').computeMapCoordinates(event);
+            var pos = $('combat-map').computeMapCoordinates(event);
+            obj.x = pos.x - Math.floor(w / 2);
+            obj.y = pos.y - Math.floor(h / 2);
+            self.fire('map-drag', obj);
+            event.stopPropagation();
+          });
+          overlay.overridePointerEvent('up', function(event) {
+            var client = dungeon.getClient();
+            var pos = $('combat-map').computeMapCoordinates(event);
+            obj.x = pos.x - Math.floor(w / 2);
+            obj.y = pos.y - Math.floor(h / 2);
+            var im = imageDetails.image;
+
+            console.log('add-object: w = ' + obj.w + ', h = ' + obj.h +
+              ', scale = ' + scale + ', gridSpacing = ' + 
+              imageDetails.gridSpacing + ', image = ' + im.width + 'x' +
+              im.height + ", offset = " + imageDetails.xOffset + 'x' +
+              imageDetails.yOffset);
+
+            self.fire('map-drag', null);
+            client.sendEvent({type: 'add-object', details: obj});
+            overlay.resetPointerEvent('move');
+            overlay.resetPointerEvent('up');
+            self.fire('select-tool', {tool: null});
+            self.blockPointerEventPropagation = false;
+          });
+        },
+
+        onPointerUp: function(event) {
+          if (this.blockPointerEventPropagation) {
+            event.stopPropagation();
+            var overlay = this.parentNode;
+            overlay.resetPointerEvent('move');
+            overlay.resetPointerEvent('up');
+            overlay.style.cursor = '';
+            self.blockPointerEventPropagation = false;
+          }
+        },
+
+        /**
+         * Prevent dropping a map behind the editor popup.
+         * @param {Event} event The pointer move event.
+         */
+        onPointerMove: function(event) {
+          this.fire('map-drag', null);
+          event.stopPropagation();
+        },
+
+        onSelectTile: function(event) {
+          this.blockPointerEventPropagation = true;
+          var tile = event.detail.index;
+          var tileGroups = this.$.content.querySelectorAll('map-tile-group');
+          if (this.activeTile >= 0) {
+             var reset = this.activeTile;
+             tileGroups.array().forEach(function(g) {
+               g.selectTile(reset, false);
+             });
+          }
+          if (this.activeTile != tile) {
+             tileGroups.array().forEach(function(g) {
+               g.selectTile(tile, true);
+             });
+             this.activeTile = tile;
+          } else {
+            this.activeTile = -1;
+          }
+        },
+
+        onSelectTool: function(event) {
+          this.blockPointerEventPropagation = true;
+          var tool = event.detail.tool;
+          var tileGroups = this.$.content.querySelectorAll('map-tile-group');
+          if (this.activeTool) {
+             var reset = this.activeTool;
+             tileGroups.array().forEach(function(g) {
+               g.selectTool(reset, false);
+             });
+          }
+          if (this.activeTool != tool) {
+             tileGroups.array().forEach(function(g) {
+               g.selectTool(tool, true);
+             });
+             this.activeTool = tool;
+          } else {
+            this.activeTool = null;
+          }
+        },
+
+        get selectedTile() {
+          return this.activeTile;
+        },
+
+        get toolSize() {
+          switch(this.activeTool) {
+            case 'size-1':
+              return 1;
+            case 'size-3':
+              return 3;
+            case 'size-5':
+              return 5;
+          }
+          return -1;
+        },
+
+       get selectedTool() {
+         return this.activeTool;
+       },
+
+        // --- Image analysis ----------------------------------------
+
+        insert: function(entry) {
+          var self = this;
+          // Avoid stalling the UI as images are analyzed.
+          setTimeout(function() {
+            if (!entry.type) {
+              var hasGrid = self.findGrid(entry);
+              var im = entry.image;
+              if (hasGrid) {
+                entry.type = 'map';
+              } else if (im.width <= 64 && im.height <= 64) {
+                entry.type = 'tile';
+              } else {
+                // Without grid-lines, we need to make a guess at a suitable
+                // scale.
+                entry.type = 'map';
+                entry.scale = 1;
+                entry.gridSpacing = 32;
+                self.createThumbnail(entry);
+              }
+            }
+            // entry.type = self.findGrid(entry) ? 'map' : 'tile';
+            var groups = self.$.content.querySelectorAll('map-tile-group');
+            var tileGroup = groups[0];
+            var mapGroup = groups[1];
+            var group = (entry.type == 'map') ? mapGroup : tileGroup;
+            group.append(entry.index, entry.thumbnail);
+            Platform.flush();
+          }, 0);
+        },
+
+        findGrid: function(entry) {
+          var im = entry.image;
+          if (im.width <= 64 && im.height <= 64)
+            return false;
+
+          // Edge-detection. 
+          var canvas = document.createElement('canvas');
+          canvas.width = im.width;
+          canvas.height = im.height;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(im, 0, 0, im.width, im.height);
+          var color = ctx.getImageData(0, 0, im.width, im.height);
+          var grayscale = new jsfeat.matrix_t(im.width, im.height, 
+              jsfeat.U8C1_t);
+          var sobel  = new jsfeat.matrix_t(im.width, im.height, jsfeat.S32C2_t);
+          jsfeat.imgproc.grayscale(color.data, grayscale.data);
+          jsfeat.imgproc.sobel_derivatives(grayscale, sobel);
+
+          // Simplified Hough transform to identify offsets of candidate lines.
+          var rowSums = new Uint32Array(im.height);
+          var colSums = new Uint32Array(im.width);
+          var gx, gy;
+          for(var row = 0, i = 0; row < im.height; row++) {
+            for(var col = 0; col < im.width; col++, i++) {
+              gx = Math.abs(sobel.data[i<<1]);
+              gy = Math.abs(sobel.data[(i<<1) + 1]);
+              colSums[col] += Math.max(gx - gy, 0);
+              rowSums[row] += Math.max(gy - gx, 0);
+            }
+          }
+
+          // Detect common periodic spacing of lines for rows and columns.
+          var rowCandidates = this.extractGridCandidates(rowSums);
+          var colCandidates = this.extractGridCandidates(colSums);
+
+          if (rowCandidates.length == 0 || colCandidates.length == 0)
+            return false;
+          var candidates = {};
+          rowCandidates.forEach(function(c) {
+            candidates[c.gap] = {row: c.autoCorrelation};
+          });
+          colCandidates.forEach(function(c) {
+            if (candidates[c.gap])
+              candidates[c.gap].col = c.autoCorrelation;
+          });
+          var gridSpacing = -1;
+          for (key in candidates) {
+            var candidate  = candidates[key];
+            if (!!candidate.row && !!candidate.col) {
+              // TODO: Need better voting algorithm for determining the spacing.
+              // Strongest autocorrelation may be multiple of true spacing.
+              // The lowest common spacing is often correct, but not guaranteed.
+              gridSpacing = parseInt(key);
+              break;
+            }
+          }
+          if (gridSpacing < 0)
+            return false;
+
+          // TODO: Correct for off by one errors due to fractional grid spacing.
+          entry.gridSpacing = gridSpacing;
+          entry.scale = 32 / entry.gridSpacing;
+          entry.xOffset = this.computeOffset(colSums, entry.gridSpacing);
+          entry.yOffset =  this.computeOffset(rowSums, entry.gridSpacing);
+
+          this.createThumbnail(entry);
+          return true;
+        },
+
+        /**
+         * Creates a thumbnail image.
+         * @param {!Object} entry Image details.
+         */
+        createThumbnail: function(entry) {
+          var im = entry.image;
+          var maxDimension = Math.max(im.height, im.width);
+          var thumbnailScale = 64 / maxDimension;
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.floor(im.width * thumbnailScale);
+          canvas.height = Math.floor(im.height * thumbnailScale);
+          var context = canvas.getContext('2d');
+          context.drawImage(im, 0, 0, canvas.width, canvas.height);
+          entry.thumbnail = canvas.toDataURL();
+        },
+
+        /**
+         * Apply median filtering to a signal. The rationale for applying this
+         * filter is to remove the effect of thick grid-lines showing up as line
+         * pairs separated by a narrow gap.
+         * @param {Uint32Array} signal The raw signal.
+         * @return {Uint32Array} Filtered signal.
+         */
+        medianFilter: function(signal) {
+          var filtered = new Uint32Array(signal.length);
+          var limit = signal.length - 1;
+          for (var i = 1; i < limit; i++) {
+            var a = signal[i - 1];
+            var b = signal[i];
+            var c = signal[i + 1];
+            var min = Math.min(a, b, c);
+            var max = Math.max(a, b, c);
+            filtered[i] = a + b + c - min - max;
+          }
+          return filtered;
+        },
+
+        /**
+         * Computes the autocorrelation of a single.
+         * @param {Uint32Array} signal The raw signal.
+         * @param {number} maxDelay Cutoff for the sample delay.
+         * @return {Float32Aray} The autocorrelation.
+         */
+        autoCorrelation: function(signal, maxDelay) {
+          var autoCorr = new Float32Array(maxDelay + 1);
+          var avg = 0;
+          for (var i = 0; i < signal.length; i++) {
+            avg += signal[i];
+          }
+          avg /= signal.length;
+          for (var delay = 0; delay <= maxDelay; delay++) {
+            var samples = 0, sum = 0;
+            for (var i = delay; i < signal.length; i++) {
+              sum += (signal[i] - avg) * (signal[i - delay] - avg);
+            }
+            autoCorr[delay] = sum / (signal.length - delay);
+          }
+          for (var delta = maxDelay; delta >= 0; delta--) {
+            autoCorr[delta] /= autoCorr[0];
+          }
+          return autoCorr;
+        },
+
+        extractGridCandidates: function(sums) {
+          var median = this.medianFilter(sums);
+          var maxLag = Math.floor(sums.length / 3);
+          var autoCorr = this.autoCorrelation(median, maxLag);
+          var maxima = [];
+          var sse = 1;
+          for (var i = 1; i < MIN_GRID_SPACING; i++) {
+            sse += 2*autoCorr[i]*autoCorr[i];
+          }
+          for (var i = MIN_GRID_SPACING; 
+              i < autoCorr.length - 1; i++) {
+            if (autoCorr[i] > SIGMA * Math.sqrt(sse / sums.length) &&
+                autoCorr[i] >= autoCorr[i - 1] &&
+                autoCorr[i] >= autoCorr[i + 1]) {
+              maxima.push({gap: i, autoCorrelation: autoCorr[i]});
+              sse += 2*autoCorr[i]*autoCorr[i];
+            }
+          }
+          return maxima;
+        },
+
+        computeOffset: function(sums, spacing) {
+          var maxSum = -1;
+          var index = -1;
+          for (var i = 2 * spacing; i < sums.length - 2 * spacing; i++) {
+            var sum = sums[i] + sums[i - spacing] + sums[i + spacing];
+            if (sum > maxSum) {
+              maxSum = sum;
+              index = i;
+            }
+          }
+          var nTiles = Math.floor(index / spacing);
+          return index - nTiles * spacing;
+        }
+      });
+    })();
+  </script>
+</polymer-element>

@@ -74,7 +74,7 @@
       blockPointerEventPropagation: false,
 
       ready: function() {
-        this.setHeader('Roster');
+        this.setHeader('Combat Roster');
         this.setInstructions(
             'Select a character and drag it onto the combat map.  Addtional ' +
             'characters may be loaded via the context menu.');
@@ -173,12 +173,6 @@
         else
           this.addContent(el);
       },
-
-/*
-      onPointerDown: function(event) {
-        event.stopPropagation();
-      },
-*/
 
       onPointerUp: function(event) {
         if (this.blockPointerEventPropagation) {

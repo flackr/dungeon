@@ -110,7 +110,8 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
             this.map[y][x] = eventData.value;
         }
       }
-    } else if (eventData.type == 'add-object' || eventData.type == 'update-object') {
+    } else if (eventData.type == 'add-object' || 
+        eventData.type == 'update-object') {
       var index;
       if (eventData.type == 'add-object') {
         index = this.objects.length;
@@ -127,6 +128,8 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
       for (field in eventData.details) {
         this.objects[index][field] = eventData.details[field];
       }
+    } else if (eventData.type == 'remove-object') {
+       this.objects.splice(eventData.index, 1);
     } else if (eventData.type == 'move') {
       if (this.characterPlacement[eventData.index]) {
         this.characterPlacement[eventData.index].x = eventData.x;

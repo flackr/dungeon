@@ -9,8 +9,6 @@ dungeon.MapEditor = (function() {
   function initialize(toolsDiv, tilesDiv) {
     tools = toolsDiv;
     tiles = tilesDiv;
-    //tiles.addEventListener('click', selectTile);
-    //tools.addEventListener('click', selectTool);
     if (tiles && pendingMapTiles.length) {
       loadTiles(pendingMapTiles);     
       pendingMapTiles = [];
@@ -79,9 +77,3 @@ dungeon.MapEditor = (function() {
   };
 
 })();
-
-/*
-document.addEventListener('DOMContentLoaded', function() {
-  dungeon.MapEditor.initialize($('map-functions'), $('map-tiles'));
-});
-*/
