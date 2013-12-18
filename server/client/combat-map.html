@@ -77,6 +77,7 @@
       CONTEXT_MENU: 'context-menu', // Showing the context menu.
       DRAG_OR_LONGPRESS: 'drag', // Start of a drag or longpress gesture.
       DRAW: 'draw', // Update map tiles.
+      EDIT_OBJECT: 'edit-object', // Updates the position or size of an object. 
       HOVER: 'hover', // Mouse press or touch is not active.
       MOVE: 'move', // Move selected object or character.
       PAN: 'pan', // A specialized drag operation for panning the viewport.
@@ -114,6 +115,12 @@
        * @type {string}
        */
       selectedPower: null,
+
+      /**
+       * Object actively being edited during a drag operation.
+       * @type {?Object}
+       */
+      selectedObject: undefined,
 
       /**
        * Indices of selected targets.
@@ -262,24 +269,38 @@
               object.y + object.h <= this.view.y1 ||
               object.x >= this.view.x2 || object.y >= this.view.y2)
             continue;
+          if (i == this.selectedObject)
+            continue;
           var bounds = this.getTileBounds(object.y, object.x);
           bounds.width *= object.w;
           bounds.height *= object.h;
+          if (object.xOffset)
+            bounds.left += object.xOffset * this.viewport.tileSize;
+          if (object.yOffset)
+            bounds.top += object.yOffset * this.viewport.tileSize;
           ctx.save();
           this.applyTransform(ctx, object, bounds);
           ctx.drawImage(client.ui.mapImages[object.tile],
                         bounds.left, bounds.top, bounds.width, bounds.height);
           ctx.restore();
         }
-        if (this.pendingMap) {
-          var bounds = this.getTileBounds(this.pendingMap.y,
-                                          this.pendingMap.x);
-          bounds.width *= this.pendingMap.w;
-          bounds.height *= this.pendingMap.h;
-          ctx.drawImage(client.ui.mapImages[this.pendingMap.tile],
+        var activeObject = this.pendingMap || this.selectedObject;
+        if (activeObject) {
+          var bounds = this.getTileBounds(activeObject.y,
+                                          activeObject.x);
+          bounds.width *= activeObject.w;
+          bounds.height *= activeObject.h;
+          if (object.xOffset)
+            bounds.left += object.xOffset * this.viewport.tileSize;
+          if (object.yOffset)
+            bounds.top += object.yOffset * this.viewport.tileSize;
+          ctx.save();
+          this.applyTransform(ctx, activeObject, bounds);
+          ctx.drawImage(client.ui.mapImages[activeObject.tile],
                         bounds.left, bounds.top, bounds.width, bounds.height);
           ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
           ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
+          ctx.restore();
         }
       },
 
@@ -668,28 +689,27 @@
         if (e.buttons == 2)
           return;
 
-        // Handle map updates.
+        // Drawing primities for background map tiles.
         var mapEditor = dungeon.getMapEditor();
         if (mapEditor.selectedTile != -1 && mapEditor.toolSize > 0) {
           this.pointer.mode = PointerMode.DRAW;
           this.lastTilePos = {};
           this.updateMap(e);
-          return;
+          return true;
         }
+
+        // Editing foreground objects.
+        if (this.updateObject(e))
+          return;
 
         this.pointer.mode = PointerMode.DRAG_OR_LONGPRESS;
-
-        // TODO add object selection and move / resize mode here.
-
-        if (this.pointer.mode == PointerMode.DRAG_OR_LONGPRESS) {
-          var self = this;
-          this.longPressTimer = this.asyncMethod(function() {
-            if (self.longPressTimer) {
-              self.resetLongPressTimer();
-              this.fire('contextmenu');
-            }
-          }, null, LONGPRESS_DELAY_MSEC);
-        }
+        var self = this;
+        this.longPressTimer = this.asyncMethod(function() {
+          if (self.longPressTimer) {
+            self.resetLongPressTimer();
+            this.fire('contextmenu');
+          }
+        }, null, LONGPRESS_DELAY_MSEC);
       },
 
       /**
@@ -700,6 +720,10 @@
           this.updateMap(e);
           return;
         }
+
+        if (this.updateObject(e))
+          return;
+
         var deltaX = e.clientX - this.pointer.x1;
         var deltaY = e.clientY - this.pointer.y1;
         if (this.pointer.mode == PointerMode.DRAG_OR_LONGPRESS) {
@@ -741,74 +765,8 @@
           return;
         }
 
-        var editorTool = dungeon.getMapEditor().selectedTool;
-        if (editorTool) {
-          // Object editing mode.
-          var objectIndex = -1;
-          for (var i = client.objects.length - 1; i >= 0; i--) {
-            if (client.objects[i].x <= pos.x &&
-                pos.x <= client.objects[i].x + client.objects[i].w &&
-                client.objects[i].y <= pos.y &&
-                pos.y <= client.objects[i].y + client.objects[i].h) {
-              objectIndex = i;
-              break;
-             }
-          }
-          if (objectIndex >= 0) {
-            switch(editorTool) {
-              case 'delete':
-                client.sendEvent({
-                  index: objectIndex,
-                  type: 'remove-object'
-                });
-                break;
-              case 'flip-h':
-                var hFlip = !client.objects[objectIndex].hFlip;
-                client .sendEvent({
-                  details: {hFlip: hFlip},
-                  index: objectIndex,
-                  type: 'update-object'
-                });
-                break;
-              case 'flip-v':
-                var vFlip = !client.objects[objectIndex].vFlip;
-                client .sendEvent({
-                  details: {vFlip: vFlip},
-                  index: objectIndex,
-                  type: 'update-object'
-                });
-                break;
-              case 'rotate-cw':
-                var rotation = client.objects[objectIndex].rotation;
-                if (rotation == undefined)
-                  rotation = 0;
-                rotation += 90;
-                if (rotation > 360)
-                  rotation -= 360;
-                client .sendEvent({
-                  details: {rotation: rotation},
-                  index: objectIndex,
-                  type: 'update-object'
-                });
-                break;
-              case 'rotate-ccw':
-                var rotation = client.objects[objectIndex].rotation;
-                if (rotation == undefined)
-                  rotation = 0;
-                rotation -= 90;
-                if (rotation < 0)
-                  rotation += 360;
-                client .sendEvent({
-                  details: {rotation: rotation},
-                  index: objectIndex,
-                  type: 'update-object'
-                });
-                break;
-            }
-          }
-          //delete this.selectedObject;
+        if (this.updateObject(e))
           return;
-        }
 
         if (this.activePower) {
           // Update target selection if power is selected.
@@ -834,8 +792,6 @@
               }
               this.selectedCharacter = i;
               this.path = null;
-              //this.$['character-summary'].show(client.characterPlacement[i]);
-              //this.update();
               return;
             }
           }
@@ -969,6 +925,153 @@
             this.fire('map-update', pos);
           }
         }
+      },
+
+      /**
+       * Applies an editing operation on an object.
+       * @param {Event} event The pointer event.
+       * @param {string} operation Name of the editing operation.
+       * @return {boolean} True if an edit was performed successfully.
+       */
+      updateObject: function(event) {
+        var client = dungeon.getClient();
+        var pos = this.computeMapCoordinates(event);
+        var deltaX = event.clientX - this.pointer.x1;
+        var deltaY = event.clientY - this.pointer.y1;
+        var objectIndex = -1;
+        var details = {};
+        var editorTool = dungeon.getMapEditor().selectedTool;
+        if (!editorTool)
+          return false;
+
+        if (this.selectedObject) {
+          for (var i = 0; i < client.objects.length; i++) {
+            if (client.objects[i] == this.selectedObject) {
+              objectIndex = i;
+              break;
+            }
+          }
+        } else if (event.type == 'pointerup' || (event.type == 'pointerdown' && 
+            (editorTool == 'move' || 
+            editorTool == 'resize-nw' ||
+            editorTool == 'resize-se'))) {
+          // Auto-select object at map position.
+          for (var i = client.objects.length - 1; i >= 0; i--) {
+            if (client.objects[i].x <= pos.x &&
+                pos.x <= client.objects[i].x + client.objects[i].w &&
+                client.objects[i].y <= pos.y &&
+                pos.y <= client.objects[i].y + client.objects[i].h) {
+              objectIndex = i;
+              break;
+             }
+          }
+        }
+        if (objectIndex >= 0) {
+          if (!this.selectedObject) {
+            this.pointer.mode = PointerMode.EDIT_OBJECT;
+            this.selectedObject = client.objects[objectIndex];
+          }
+          var w = this.selectedObject.w;
+          var h = this.selectedObject.h;
+          switch(editorTool) {
+            case 'move':
+              details = {
+                x: Math.floor(pos.x - w / 2),
+                y: Math.floor(pos.y - h / 2)
+              };
+              break;
+            case 'resize-nw':
+              var tw = this.viewport.tileSize;
+              var x = this.selectedObject.x;
+              var y = this.selectedObject.y;
+              var xOffset = this.selectedObject.xOffset;
+              var yOffset = this.selectedObject.yOffset;
+              if (xOffset == undefined)
+                xOffset = 0;
+              if (yOffset == undefined)
+                yOffset = 0;
+              xOffset += deltaX / tw;
+              yOffset += deltaY / tw;
+              if (Math.abs(xOffset) > 1) {
+                x += Math.floor(xOffset);
+                xOffset -= Math.floor(xOffset);
+              }
+              if (Math.abs(yOffset) > 1) {
+                y += Math.floor(yOffset);
+                yOffset -= Math.floor(yOffset);
+              }
+              details = {
+                x: x,
+                y: y,
+                xOffset: xOffset,
+                yOffset: yOffset
+              }
+              this.pointer.x1 = event.clientX;
+              this.pointer.y1 = event.clientY;
+              break;
+            case 'resize-se':
+              var tw = this.viewport.tileSize;
+              details = {
+                w: w + deltaX / tw,
+                h: h + deltaY / tw
+              };
+              this.pointer.x1 = event.clientX;
+              this.pointer.y1 = event.clientY;
+              break;
+            case 'flip-h':
+              var hFlip = !client.objects[objectIndex].hFlip;
+              details = {hFlip: hFlip};
+              break;
+            case 'flip-v':
+              var vFlip = !client.objects[objectIndex].vFlip;
+              details = {vFlip: vFlip};
+              break;
+            case 'rotate-cw':
+              var rotation = client.objects[objectIndex].rotation;
+              if (rotation == undefined)
+                rotation = 0;
+              rotation += 90;
+              if (rotation > 360)
+                rotation -= 360;
+              details = {rotation: rotation};
+              break;
+            case 'rotate-ccw':
+              var rotation = client.objects[objectIndex].rotation;
+              if (rotation == undefined)
+                rotation = 0;
+              rotation -= 90;
+              if (rotation < 0)
+                rotation += 360;
+              details = {rotation: rotation};
+              break;
+          }
+        } else {
+          this.selectedObject = undefined;
+          this.update();
+          return false;
+        }
+        var commit = (event.type == 'pointerup');
+        if (commit) {
+          if (editorTool == 'delete') {
+            client.sendEvent({
+              index: objectIndex,
+              type: 'remove-object'
+            });
+          } else {
+            client.sendEvent({
+              details: details,
+              index: objectIndex,
+              type: 'update-object'
+            });
+          }
+          this.selectedObject = undefined;
+        } else {
+          for (var key in details) {
+            this.selectedObject[key] = details[key];
+          }
+          this.update();
+        }
+        return true;
       },
 
       // Context menu ---------------------
