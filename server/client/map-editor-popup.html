@@ -543,15 +543,15 @@
           jsfeat.imgproc.sobel_derivatives(grayscale, sobel);
 
           // Simplified Hough transform to identify offsets of candidate lines.
-          var rowSums = new Uint32Array(im.height);
-          var colSums = new Uint32Array(im.width);
+          var rowSums = new Int32Array(im.height);
+          var colSums = new Int32Array(im.width);
           var gx, gy;
           for(var row = 0, i = 0; row < im.height; row++) {
             for(var col = 0; col < im.width; col++, i++) {
-              gx = Math.abs(sobel.data[i<<1]);
-              gy = Math.abs(sobel.data[(i<<1) + 1]);
-              colSums[col] += Math.max(gx - gy, 0);
-              rowSums[row] += Math.max(gy - gx, 0);
+              gx = sobel.data[i<<1];
+              gy = sobel.data[(i<<1) + 1];
+              colSums[col] += gx;
+              rowSums[row] += gy;
             }
           }
 
@@ -613,11 +613,11 @@
          * Apply median filtering to a signal. The rationale for applying this
          * filter is to remove the effect of thick grid-lines showing up as line
          * pairs separated by a narrow gap.
-         * @param {Uint32Array} signal The raw signal.
-         * @return {Uint32Array} Filtered signal.
+         * @param {Int32Array} signal The raw signal.
+         * @return {Int32Array} Filtered signal.
          */
         medianFilter: function(signal) {
-          var filtered = new Uint32Array(signal.length);
+          var filtered = new Int32Array(signal.length);
           var limit = signal.length - 1;
           for (var i = 1; i < limit; i++) {
             var a = signal[i - 1];
@@ -632,7 +632,7 @@
 
         /**
          * Computes the autocorrelation of a single.
-         * @param {Uint32Array} signal The raw signal.
+         * @param {Int32Array} signal The raw signal.
          * @param {number} maxDelay Cutoff for the sample delay.
          * @return {Float32Aray} The autocorrelation.
          */
@@ -657,9 +657,9 @@
         },
 
         extractGridCandidates: function(sums) {
-          var median = this.medianFilter(sums);
+          //var median = this.medianFilter(sums);
           var maxLag = Math.floor(sums.length / 3);
-          var autoCorr = this.autoCorrelation(median, maxLag);
+          var autoCorr = this.autoCorrelation(sums, maxLag);
           var maxima = [];
           var sse = 1;
           for (var i = 1; i < MIN_GRID_SPACING; i++) {

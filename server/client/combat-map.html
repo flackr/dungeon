@@ -957,6 +957,10 @@
                 client.objects[i].y <= pos.y &&
                 pos.y <= client.objects[i].y + client.objects[i].h) {
               objectIndex = i;
+              this.tileAnchor = {
+                x: client.objects[i].x,
+                y: client.objects[i].y
+              }; 
               break;
              }
           }
@@ -970,9 +974,10 @@
           var h = this.selectedObject.h;
           switch(editorTool) {
             case 'move':
+              var tw = this.viewport.tileSize;
               details = {
-                x: Math.floor(pos.x - w / 2),
-                y: Math.floor(pos.y - h / 2)
+                x: this.tileAnchor.x + Math.floor(deltaX / tw),
+                y: this.tileAnchor.y + Math.floor(deltaY / tw)
               };
               break;
             case 'resize-nw':
