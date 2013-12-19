@@ -368,11 +368,20 @@
           for (var key in imageMap) {
             if (imageMap[key].index == selectedTile) {
               imageDetails = imageMap[key];
-              var scale = imageDetails.scale;
+              var scale = imageDetails.scale / 32;
               var im = imageDetails.image;
-              var w = Math.round(im.width * imageDetails.scale / 32);
-              var h = Math.round(im.height * imageDetails.scale / 32);
-              obj = {x: pos.x, y: pos.y, tile: selectedTile, w: w, h: h};
+              var w = im.width * scale;
+              var h = im.height * scale;
+              var xOffset = imageDetails.xOffset * scale;
+              var yOffset = imageDetails.yOffset * scale;
+
+              obj = {x: pos.x,
+                     y: pos.y,
+                     tile: selectedTile,
+                     w: w,
+                     h: h,
+                     xOffset: xOffset,
+                     yOffset: yOffset};
               break;
             }
           }
@@ -610,27 +619,6 @@
         },
 
         /**
-         * Apply median filtering to a signal. The rationale for applying this
-         * filter is to remove the effect of thick grid-lines showing up as line
-         * pairs separated by a narrow gap.
-         * @param {Int32Array} signal The raw signal.
-         * @return {Int32Array} Filtered signal.
-         */
-        medianFilter: function(signal) {
-          var filtered = new Int32Array(signal.length);
-          var limit = signal.length - 1;
-          for (var i = 1; i < limit; i++) {
-            var a = signal[i - 1];
-            var b = signal[i];
-            var c = signal[i + 1];
-            var min = Math.min(a, b, c);
-            var max = Math.max(a, b, c);
-            filtered[i] = a + b + c - min - max;
-          }
-          return filtered;
-        },
-
-        /**
          * Computes the autocorrelation of a single.
          * @param {Int32Array} signal The raw signal.
          * @param {number} maxDelay Cutoff for the sample delay.
@@ -657,7 +645,6 @@
         },
 
         extractGridCandidates: function(sums) {
-          //var median = this.medianFilter(sums);
           var maxLag = Math.floor(sums.length / 3);
           var autoCorr = this.autoCorrelation(sums, maxLag);
           var maxima = [];
@@ -688,7 +675,7 @@
             }
           }
           var nTiles = Math.floor(index / spacing);
-          return index - nTiles * spacing;
+          return spacing - (index - nTiles * spacing);
         }
       });
     })();
