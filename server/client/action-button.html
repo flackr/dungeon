@@ -1,5 +1,5 @@
 <polymer-element name="action-button" attributes="action label active"
-  on-pointerdown="{{onPointerDown}}">
+  on-pointerup="{{onPointerUp}}">
   <template>
     <style>
     </style>
@@ -11,7 +11,7 @@
       active: true,
       label: '',
 
-      onPointerDown: function(event) {
+      onPointerUp: function(event) {
         this.fire('action', {action: this.action});
       },
 

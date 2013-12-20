@@ -79,6 +79,129 @@
   </script>
 </polymer-element>
 
+
+<polymer-element name="condition-button" attributes="label removable">
+  <template>
+    <style>
+      :host {
+        display: inline-block;
+        margin: 2px;
+      }
+
+      ::part(button) {
+        -webkit-box-align: center;
+        -webkit-box-orient: horizontal;
+        -webkit-box-pack: start;
+        background: #eee;
+        border: 1px solid #777;
+        border-radius: 4px;
+        display: -webkit-box;
+        padding: 2px;
+      }
+
+      ::part(label) {
+        -webkit-margin-end: 3px;
+      }
+
+      ::part(remove-button) {
+        display: none;
+      }
+
+      :host[removable] ::part(remove-button) {
+        display: -webkit-box;
+      }
+    </style>
+    <content>
+      <div part="button">
+        <div part="label">{{label}}</div>
+        <div id="remove" part="remove-button">&#x24e7;</div>
+      </div>
+    </content>
+  </template>
+  <script>
+    Polymer('condition-button', {
+      ready: function() {
+        this.$.remove.addEventListener('pointerdown',
+                                       this.onRemoveCondition.bind(this));
+      },
+
+      onRemoveCondition: function(event) {
+        this.fire('remove-condition', {id: this.id, name: this.label});
+      },
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="condition-tracker"
+    on-remove-condition="{{onRemoveCondition}}">
+  <template>
+    <style>
+    </style>
+    <content select="condition-button">
+    </content>
+  </template>
+  <script>
+    (function() {
+      var nextConditionId = 0;
+
+      Polymer('condition-tracker', {
+
+        ready: function() {
+          var el = document.createElement('condition-button');
+          el.label = '+ condition';
+          this.appendChild(el);
+          var self = this;
+          var client = dungeon.getClient();
+          el.addEventListener('pointerdown', function() {
+            self.fire('show-popup', {
+              popup: 'add-effect-dialog',
+              args: {characterIndex: client.getCharacterIndex(self.characterName)}
+            });
+          });
+        },
+
+        addCondition: function(name) {
+          var el = document.createElement('condition-button');
+          el.id = 'c' + nextConditionId++;
+          el.label = name;
+          el.removable = true;
+          this.appendChild(el);
+        },
+
+        onRemoveCondition: function(event) {
+          this.removeChild(this.querySelector('#' + event.detail.id));
+          var client = dungeon.getClient();
+          var characterIndex = client.getCharacterIndex(this.characterName);
+          client.sendEvent({
+            character: characterIndex,
+            effect: event.detail.name,
+            type: 'remove-effect'
+          });
+        },
+
+        update: function(character) {
+          this.characterName = character.name;
+          var condition = this.firstChild;
+          while(condition) {
+            var next = condition.nextSibling;
+            if (condition.removable)
+              this.removeChild(condition);
+            condition = next;
+          }
+          var effects = character.condition.effects;
+          if (effects) {
+            var self = this;
+            effects.forEach(function(e) {
+              self.addCondition(e);
+            });
+          }
+        },
+      });
+    })();
+  </script>
+</polymer-element>
+
+
 <!-- An element for displaying tabbed content -->
 <polymer-element name="tabbed-content" attributes="activeTab">
   <template>
@@ -684,6 +807,8 @@
       ready: function() {
         var hpTracker = document.createElement('hp-tracker');
         this.addContent(hpTracker);
+        var conditionTracker = document.createElement('condition-tracker');
+        this.addContent(conditionTracker);
         var tabbedContent = document.createElement('tabbed-content');
         this.addContent(tabbedContent);
         tabbedContent.addTab('Stats', 'character-stats'); 
@@ -695,6 +820,11 @@
       },
 
       show: function(character) {
+        var client = dungeon.getClient();
+        this.characterUpdateListener = this.onCharacterUpdated.bind(this);
+        client.addEventListener('character-updated',
+                                this.characterUpdateListener);
+        // Register for character update notifications.
         this.character = character;
         this.setHeader(character.name);
         this.update();
@@ -702,9 +832,19 @@
       },
 
       close: function() {
+        // Unregister for character update notifications.
+        var client = dungeon.getClient();
+        client.removeEventListener('character-updated',
+                                   this.characterUpdateListener);
         var client = dungeon.getClient();
         client.dispatchEvent('select-power', null);
         this.super();
+      },
+
+      onCharacterUpdated: function(characterIndex) {
+        var client = dungeon.getClient();
+        if (characterIndex == client.getCharacterIndex(this.character.name))
+          this.update();
       },
 
       update: function() {
@@ -713,6 +853,9 @@
         hpTracker.hp = this.character.condition.stats['Hit Points'];
         hpTracker.max = this.character.source.stats['Hit Points'];
         hpTracker.temps = this.character.condition.stats['Temps'] || 0;
+        var conditionTracker =
+            this.$.content.querySelector('condition-tracker');
+        conditionTracker.update(this.character);
         var charStats = this.$.content.querySelector('character-stats');
         charStats.update(this.character);
         var charSkills = this.$.content.querySelector('character-skills');

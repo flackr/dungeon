@@ -6,6 +6,7 @@
 <link rel="import" href="power-card-popup.html">
 <link rel="import" href="map-editor-popup.html">
 <link rel="import" href="use-power-dialog.html">
+<link rel="import" href="add-effect-dialog.html">
 
 <polymer-element name="combat-map" on-mousewheel="{{onMouseWheel}}"
     on-pointerdown="{{onPointerDown}}" on-pointermove="{{onPointerMove}}"
@@ -49,6 +50,7 @@
       </map-overlay>
       <map-overlay id="dialog-overlay" modal="true">
         <use-power-dialog id="use-power-dialog"></use-power-dialog>
+        <add-effect-dialog id="add-effect-dialog"></add-effect-dialog>
       </map-overlay>
       <map-overlay id="context-menu-overlay" modal="auto-release">
         <context-menu id="context-menu"></context-menu>
@@ -881,6 +883,7 @@
         if (this.role == 'dm') {
           this.$['use-power-dialog'].show(result);
         } else {
+          var client = dungeon.getClient();
           client.sendEvent({
             type: 'dm-attack-result',
             result: result
@@ -1094,16 +1097,16 @@
       // Popups ---------------------------
 
       onShowPopup: function(event) {
-        this.displayPopup(event.detail.popup);
+        this.displayPopup(event.detail.popup, event.detail.args);
       },
 
-      displayPopup: function(name) {
+      displayPopup: function(name, opt_args) {
         var popup = this.$[name];
         if (!popup) {
           console.error('Unable to find popup ' + name);
           return;
         }
-        popup.show();
+        popup.show(opt_args);
       },
 
       // Zoom controls --------------------

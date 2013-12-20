@@ -15,7 +15,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     // Repository of powers.
     this.powers = new dungeon.Powers(this);
 
-
     this.socket = io.connect('http://' + location.host);
 
     this.socket.on('e', this.receiveEvent.bind(this));
@@ -27,7 +26,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     this.addEventListener('character-added', this.update.bind(this));
     this.addEventListener('tile-added', this.rebuildTiles.bind(this));
 
-
 /*
     this.canvas.addEventListener('touchstart', this.onTouchStart.bind(this));
     this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
@@ -37,9 +35,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     document.body.addEventListener('keyup', this.onKeyUp.bind(this));
 
 /*
-    $('attack-button').addEventListener('click', this.attackSelectedTargets.bind(this));
-    $('cancel-button').addEventListener('click', this.cancelSelectedTarget.bind(this));
-
     // Status of combat.
     this.combatState = 'stopped';
     $('combat-start-button').addEventListener('click',
@@ -54,26 +49,13 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
         this.onInitiativeOrderChanged.bind(this));
     this.addEventListener('character-removed', 
         this.onRemoveCharacter.bind(this));
-
-    // Drag-n-drop of character files.
-    var dropZone = $('sidebar');
-    dropZone.addEventListener('dragover', this.onFileDragOver.bind(this));
-    dropZone.addEventListener('drop', this.onFileDrop.bind(this));
 */
     
     this.addEventListener('character-loaded', this.updateCharacterRegistry.bind(this));
 /*
     this.addEventListener('log', this.logMessage.bind(this));
     this.addEventListener('banner-message', this.displayBannerMessage.bind(this));
-
-    this.addEventListener('character-selected', function() {
-      self.ui.targets = [];
-      self.update();
-    });
-    this.addEventListener('combat-add-target', this.addCombatTarget.bind(this));
-    this.addEventListener('dm-attack-result', this.onDmAttackResultMsg.bind(this));
-    this.combatTracker.addEventListener('use-power', this.onUsePower.bind(this));
-    */
+*/
     dungeon.Game.prototype.initialize.call(this);
 
     dungeon.getClient = function() {

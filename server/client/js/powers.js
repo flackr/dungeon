@@ -915,6 +915,16 @@ dungeon.Power.prototype = {
       return this.details_['Power Usage'];
   },
 
+  getUrl: function() {
+    // Separate URL entries for each power for players, but single
+    // URL for a monster.
+    var url = null;
+    if (this.details_)
+      url = this.details_['url'];
+    if (!url && this.characterInfo_)
+      url = this.characterInfo_.source.stats.URL;
+    return url;
+  },
 
   updateScript: function(newContent) {
     if (this.details_)

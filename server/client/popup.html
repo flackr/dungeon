@@ -1,4 +1,4 @@
-<polymer-element name="popup-close-button" on-pointerdown="{{onPointerDown}}">
+<polymer-element name="popup-close-button" on-pointerup="{{onPointerUp}}">
   <template>
     <style>
       :host {
@@ -14,8 +14,9 @@
   </template>
   <script>
     Polymer('popup-close-button', {
-      onPointerDown: function(event) {
+      onPointerUp: function(event) {
         this.fire('close-popup');
+        event.stopPropagation();
       },
     });
   </script>
@@ -72,11 +73,16 @@
       }
 
       :host[active] {
+        -webkit-box-pack: center;
+        display: -webkit-box;
+        margin: 5px;
+        max-width: 200px;
+      }
+
+      :host span {
         color: #777;
         display: inline-block;
         font: 12px italic serif;
-        margin: 5px;
-        max-width: 200px;
         text-align: center;
       }
     </style>
@@ -148,6 +154,9 @@
       },
 
       onClosePopup: function(event) {
+        var overlay = this.parentNode;
+        overlay.resetPointerEvent('move');
+        overlay.resetPointerEvent('up');
         this.close();
       },
 
@@ -218,8 +227,11 @@
         this.$.titlebar.label  = name;
       },
 
-      setInstructions: function(text) {
+      setInstructions: function(text, opt_width) {
         this.$.instructions.value = text;
+        if (opt_width) {
+          this.$.instructions.style.maxWidth = opt_width;
+        }
       },
 
       clear: function() {

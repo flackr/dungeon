@@ -1,29 +1,237 @@
-<div class="dialog-container">
-  <div class="dialog-title">
-    <div>Add Effect</div>
-    <div class="close-icon cancel-button"></div>
-  </div>
-  <div class="dialog-content">
-    <div>
-      <label>
-        <input id="select-known-effect" type="radio" disabled>
-        Select a known effect
-      </label>
+<link rel="import" href="popup.html">
+<link rel="import" href="action-button.html">
+
+<polymer-element name="condition-block" 
+  attributes="category choices numeric repeats">
+  <template>
+    <style>
+      :host {
+        display: table-row;
+      }
+
+      :host > * {
+        display: table-cell;
+      }
+
+      ::part(category-selector) {
+        -webkit-padding-end: 5px;
+      }
+
+      ::part(selector) {
+        width: 150px;
+      }
+
+      ::part(modifier) {
+        display: none;
+      }
+
+      :host[numeric] ::part(modifier) {
+        display: table-cell;
+      }
+
+    </style>
+    <content>
+      <div part="category-selector">
+        <input id="category" type="checkbox">
+        <label for="category">{{category}}</label>
+      </div>
+      <select id="selector" part="selector"></select>
+      <input id="modifier" part="modifier" size="5">
+    </content>
+  </template>
+  <script>
+    Polymer('condition-block', {
+      prefix: undefined,
+      suffix: undefined,
+      repeats: false,
+      numeric: false,
+
+      choicesChanged: function() {
+        var selector = this.$.selector;
+        while (selector.firstChild) {
+          selector.removeChild(selector.firstChild);
+        }
+        this.choices.forEach(function(choice) {
+          var element = document.createElement('option');
+          element.value = choice;
+          element.textContent = choice;
+          selector.appendChild(element);
+        });
+      },
+
+      apply: function(list) {
+        if (this.$.category.checked) {
+          var value = this.$.selector.value;
+          if (this.numeric) {
+            var modifier = parseInt(this.$.modifier.value);
+            if (modifier > 0)
+              modifier = '+' + modifier;
+            value = value + ' ' + modifier;
+          }
+          if (this.prefix)
+            value = this.prefix + ' ' + value.toLowerCase();
+          if (this.suffix)
+            value = value + ' ' + this.suffix;
+          list.push(value);
+        }
+      },
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="effect-dialog-contents" on-action="{{onAction}}">
+  <template>
+    <style>
+      #effects {
+        display: table;
+      }
+      #button-group {
+        -webkit-box-orient: horizontal;
+        -webkit-box-align: baseline;
+        -webkit-box-pack: end;
+        display: -webkit-box;
+        padding-top: 5px;
+      }
+    </style>
+    <content id="effects" select="condition-block"></content>
+    <div id="button-group">
+      <action-button id="apply" label="OK" action="onApply">
+      </action-button>
+      <action-button id="cancel" label="Cancel" action="onCancel">
+      </action-button>
     </div>
-    <div>
-      <select id="known-effect-selection" list="effects" size=5 multiple disabled>
-      </select>
-    </div>
-    <div>
-      <label>
-        <input id="select-new-effect" type="radio" checked>
-        Add a new effect
-      </label>
-    </div>
-    <div>New: <input id="new-effect-name" type="text" maxlength="20"></div>
-  </div>
-  <div class="button-bar">
-    <button class="close-button">OK</button>
-    <button class="cancel-button">Cancel</button>
-  </div>
-</div>
+  </template>
+  <script>
+    (function() {
+
+      /**
+       * Model for building the dialog. Each category gets a checkbox and a
+       * select box. If the numeric option is set, and input field is provided
+       * to specify the magnitude of the adjustment. For some categories, 
+       * multiple options may apply, and the replicate option determines if an
+       * additional entry should be created once a condition for the category is
+       * set.
+       */
+      var builderData = [
+        {
+          category: 'Combat advantage',
+          suffix: 'combat advantage',
+          choices: ['Grants', 'Gains']
+        }, {
+          category: 'Defensive bonus or penalty', 
+          numeric: true,
+          replicate: true,
+          choices: ['All defenses', 'AC', 'Fort', 'Ref', 'Will']
+        }, {
+          category: 'Attack bonus or penalty',
+          numeric: true,
+          replicate: true,
+          choices: ['To hit', 'Damage']
+        }, {
+          category: 'Resistance or vulnerability',
+          numeric: true,
+          prefix: 'Resist',
+          replicate: true,
+          choices: ['All damage types', 'Fire', 'Cold', 'Lightning', 'Thunder', 
+                    'Radiant', 'Necrotic', 'Poison', 'Psychic']
+        }, {
+          category: 'Ongoing damage',
+          numeric: true,
+          prefix: 'Ongoing',
+          replicate: true,
+          choices: ['Untyped', 'Fire', 'Cold', 'Lightning', 'Thunder', 
+                    'Radiant', 'Necrotic', 'Poison', 'Psychic']
+        }, {
+          category: 'Action Impairment',
+          replicate: true,
+          choices: ['Prone', 'Slowed', 'Dazed', 'Grabbed', 'Immobalized',
+                    'Dominated', 'Fear', 'Blind', 'Pet']
+        }, {
+          category: 'Visibility',
+          choices: ['Invisible', 'Concealed', 'Partial Concealment']
+        }
+      ];
+
+      Polymer('effect-dialog-contents', {
+
+        characterIndex: undefined,
+
+        reset: function(characterIndex) {
+          this.characterIndex = characterIndex;
+          var self = this;
+          var blocks = this.querySelectorAll('condition-block');
+          blocks.array().forEach(function(b) {
+            self.removeChild(b);
+          });
+          builderData.forEach(function(d) {
+            var el = document.createElement('condition-block');
+            for (var key in d) {
+              el[key] = d[key];
+            }
+            self.appendChild(el);
+          });
+        },
+
+        onAction: function(event) {
+          if (event.detail.action == 'onApply') {
+            var effects = [];
+            var blocks = this.querySelectorAll('condition-block');
+            blocks.array().forEach(function(b) {
+              b.apply(effects);
+            }); 
+            if (effects.length > 0) {
+              var client = dungeon.getClient();
+              var evt = {
+                character: this.characterIndex,
+                effects: effects,
+                type: 'add-effects'
+              };
+              client.sendEvent(evt);
+            }
+          }
+          this.fire('close-popup');
+        },
+      });
+    })();
+  </script>
+</polymer-element>
+
+<polymer-element name="add-effect-dialog" extends="popup-window">
+  <script>
+    Polymer('add-effect-dialog', {
+      ready: function() {
+        var el = document.createElement('effect-dialog-contents');
+        el.id = 'dialog-content';
+        this.setHeader('Add Conditions');
+        this.setInstructions('Check all conditions that apply. For conditions' +
+            ' with numeric modiers, use a positive value for bonuses and a ' +
+            'negative value for penalties.', '390px');
+        this.addContent(el);
+      },
+
+      show: function(args) {
+        var content = this.$.content.querySelector('#dialog-content');
+        content.reset(args.characterIndex);
+
+        // Position in top-left until after shown. Center afterwards once we
+        // know the dimensions of the dialog.
+        this.style.left = '0px';
+        this.style.top = '0px';
+        this.super();
+
+        var self = this;
+        setTimeout(function() {
+          var w = self.clientWidth;
+          var h = self.clientHeight;
+          var parentNode = self.parentNode;
+          var maxWidth = parentNode.clientWidth;
+          var maxHeight = parentNode.clientHeight;
+          var left = Math.max(0, Math.floor((maxWidth - w) / 2));
+          var top = Math.max(0, Math.floor((maxHeight - h) / 2));
+          self.style.left = left + 'px';
+          self.style.top = top + 'px';
+        }, 0);
+      }
+    });
+  </script>
+</polymer-element>
