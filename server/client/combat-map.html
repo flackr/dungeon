@@ -7,12 +7,13 @@
 <link rel="import" href="map-editor-popup.html">
 <link rel="import" href="use-power-dialog.html">
 <link rel="import" href="add-effect-dialog.html">
+<link rel="import" href="zoom-control.html">
 
 <polymer-element name="combat-map" attributes="role selectedCharacter"
     on-pointerdown="{{onPointerDown}}" on-pointermove="{{onPointerMove}}"
     on-pointerup="{{onPointerUp}}" on-contextmenu="{{onContextMenu}}"
     on-show-popup="{{onShowPopup}}" on-use-power="{{onUsePower}}"
-    on-map-drag="{{onMapDrag}}">
+    on-map-drag="{{onMapDrag}}" on-scale-map="{{onScaleMap}}">
   <template>
     <style>
       :host {
@@ -37,18 +38,11 @@
       #context-menu-overlay {
         z-index: 10000;
       }
-
-      #zoom {
-        bottom: 5px;
-        left: 5px;
-        position: absolute;
-        width: 200px;
-      }
     </style>
     <content>
       <canvas width="{{width}}" height="{{height}}" id="canvas"></canvas>
-      <input id="zoom" type="range" min="0" max="100" value="50"> <!-- -->
       <map-overlay id="popups-overlay" modal="false">
+        <zoom-control id="zoom"></zoom-control>
         <roster-popup id="roster"></roster-popup>
         <character-popup id="character-summary"></character-popup>
         <power-card-popup id="power-card" style="right: 220px; top: 10px;">
@@ -162,19 +156,7 @@
         client.addEventListener('dm-attack-result', 
                                 this.onDmAttackResultMsg.bind(this));
 
-        var self = this;
-        this.$.zoom.addEventListener('change', function(event) {
-          var oldTileSize = self.viewport.tileSize;
-          var zoomLevel = self.$.zoom.value;
-          // Map from integer slider value in the range 0 to 100 to a scale
-          // factor from 1/4 to 4.
-          var scale = Math.exp(0.027*(zoomLevel - 50));
-          var newTileSize = self.viewport.tileSize = Math.round(scale * 32);
-          var zoomRatio = (newTileSize - Math.round(oldTileSize)) /
-              newTileSize;
-          if (zoomRatio != 1)
-            self.update();
-        });
+        this.displayPopup('zoom');
       },
 
       /**
@@ -698,9 +680,6 @@
        * on whether a character is selected.
        */
       onPointerDown: function(e) {
-        if (e.target == this.$.zoom)
-          return;
-
         this.pointer.x1 = e.clientX;
         this.pointer.y1 = e.clientY;
         this.pointer.mapX = this.viewport.x;
@@ -737,9 +716,6 @@
        *
        */
       onPointerMove: function(e) {
-        if (e.target == this.$.zoom)
-          return;
-
         if (this.pointer.mode == PointerMode.DRAW) {
           this.updateMap(e);
           return;
@@ -927,6 +903,22 @@
         var role = document.body.parentNode.getAttribute('role');
         if (role == 'dm')
           this.dmAttackResult(message.result);
+      },
+
+      // Zoom -----------------------------
+
+      /**
+       * Update the zoom level of the combat map.
+       * @param {Event} event The scale event.
+       */
+      onScaleMap: function(event) {
+        var scale = event.detail.scale;
+        var oldTileSize = this.viewport.tileSize;
+        var zoomLevel = this.$.zoom.value;
+        var newTileSize = this.viewport.tileSize = Math.round(scale * 32);
+        var zoomRatio = (newTileSize - Math.round(oldTileSize)) / newTileSize;
+        if (zoomRatio != 1)
+          this.update();
       },
 
       // Map drawing ----------------------

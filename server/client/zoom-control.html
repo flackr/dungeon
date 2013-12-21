@@ -1,0 +1,49 @@
+<polymer-element name="zoom-control" attributes="active"
+    on-pointerdown="{{onPointerDown}}" on-pointermove="{{onPointerMove}}">
+  <template>
+    <style>
+      :host {
+        bottom: 5px;
+        left: 5px;
+        position: absolute;
+      }
+
+      :host:not([active]) {
+        display: none;
+      }
+
+      ::part(slider) {
+        width: 200px;
+      }
+
+    </style>
+    <content>
+      <input id="zoom" part="slider" type="range" min="0" max="100" value="50">
+    </content>
+  </template>
+  <script>
+    Polymer('zoom-control', {
+      ready: function() {
+        var self = this;
+        this.$.zoom.addEventListener('change', function(event) {
+          var zoomLevel = self.$.zoom.value;
+          var scale = Math.exp(0.027*(zoomLevel - 50));
+          self.fire('scale-map', {scale: scale});
+        });
+      },
+
+      show: function() {
+        this.active = true;
+        this.parentNode.show(this);
+      },
+
+      onPointerDown: function(event) {
+        event.stopPropagation();
+      },
+
+      onPointerMove: function(event) {
+        event.stopPropagation();
+      },
+    });
+  </script>
+</polymer-element>
