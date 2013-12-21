@@ -8,11 +8,11 @@
 <link rel="import" href="use-power-dialog.html">
 <link rel="import" href="add-effect-dialog.html">
 
-<polymer-element name="combat-map" on-mousewheel="{{onMouseWheel}}"
+<polymer-element name="combat-map" attributes="role selectedCharacter"
     on-pointerdown="{{onPointerDown}}" on-pointermove="{{onPointerMove}}"
     on-pointerup="{{onPointerUp}}" on-contextmenu="{{onContextMenu}}"
     on-show-popup="{{onShowPopup}}" on-use-power="{{onUsePower}}"
-    on-map-drag="{{onMapDrag}}" attributes="role selectedCharacter">
+    on-map-drag="{{onMapDrag}}">
   <template>
     <style>
       :host {
@@ -38,9 +38,16 @@
         z-index: 10000;
       }
 
+      #zoom {
+        bottom: 5px;
+        left: 5px;
+        position: absolute;
+        width: 200px;
+      }
     </style>
     <content>
       <canvas width="{{width}}" height="{{height}}" id="canvas"></canvas>
+      <input id="zoom" type="range" min="0" max="100" value="50"> <!-- -->
       <map-overlay id="popups-overlay" modal="false">
         <roster-popup id="roster"></roster-popup>
         <character-popup id="character-summary"></character-popup>
@@ -154,6 +161,20 @@
         client.addEventListener('select-power', this.onSelectPower.bind(this));
         client.addEventListener('dm-attack-result', 
                                 this.onDmAttackResultMsg.bind(this));
+
+        var self = this;
+        this.$.zoom.addEventListener('change', function(event) {
+          var oldTileSize = self.viewport.tileSize;
+          var zoomLevel = self.$.zoom.value;
+          // Map from integer slider value in the range 0 to 100 to a scale
+          // factor from 1/4 to 4.
+          var scale = Math.exp(0.027*(zoomLevel - 50));
+          var newTileSize = self.viewport.tileSize = Math.round(scale * 32);
+          var zoomRatio = (newTileSize - Math.round(oldTileSize)) /
+              newTileSize;
+          if (zoomRatio != 1)
+            self.update();
+        });
       },
 
       /**
@@ -391,7 +412,7 @@
           if (effects) {
             for (var j = 0; j < effects.length; j++) {
               var effect = effects[j];
-              if (effect == 'prone' || effect == 'immobalized' ||
+              if (effect == 'prone' || effect == 'immobilized' ||
                   effect == 'grabbed') 
               {
                 speed = 0;
@@ -677,6 +698,9 @@
        * on whether a character is selected.
        */
       onPointerDown: function(e) {
+        if (e.target == this.$.zoom)
+          return;
+
         this.pointer.x1 = e.clientX;
         this.pointer.y1 = e.clientY;
         this.pointer.mapX = this.viewport.x;
@@ -713,6 +737,9 @@
        *
        */
       onPointerMove: function(e) {
+        if (e.target == this.$.zoom)
+          return;
+
         if (this.pointer.mode == PointerMode.DRAW) {
           this.updateMap(e);
           return;
@@ -1107,40 +1134,6 @@
           return;
         }
         popup.show(opt_args);
-      },
-
-      // Zoom controls --------------------
-
-      /**
-       * Mouse-wheel zoom.
-       * @param {!Event} e The mouse wheel event.
-       */
-      onMouseWheel: function(e) {
-        var delta = e.wheelDelta/120;
-        var mouse = this.computeMapCoordinatesDouble(e);
-        this.zoom(delta, mouse);
-      },
-
-      /**
-       * @param {number} delta Number of zoom steps.  Negative for zooming out
-       * and positive for zooming in.
-       * @param {{x:number, y:number}} mouse Float tile x and y on the map.
-       */
-      zoom: function(delta, mouse) {
-        var oldTileSize = this.viewport.tileSizeFloat;
-        var newTileSize = Math.max(1, oldTileSize *
-           Math.pow(1.1, Math.floor(delta)));
-        this.viewport.tileSizeFloat = newTileSize;
-        newTileSize = Math.round(newTileSize);
-        var zoomRatio = (newTileSize - Math.round(oldTileSize)) / newTileSize;
-        if (zoomRatio != 1) {
-          if (mouse) {
-            this.viewport.x += ((mouse.x - this.viewport.x) * zoomRatio);
-            this.viewport.y += ((mouse.y - this.viewport.y) * zoomRatio);
-          }
-          this.viewport.tileSize = newTileSize;
-          this.update();
-        }
       },
 
       // Coordinate Mapping --------------------

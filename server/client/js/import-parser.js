@@ -49,6 +49,7 @@ dungeon.ParseFile = function(client, file) {
         character: json
       };
       client.sendEvent(evt, true);
+      $('combat-map').displayPopup('roster');
       return;
     } else {
       alert('Futile attemp to load a file of type: ' + rootName);

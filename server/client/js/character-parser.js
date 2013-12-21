@@ -199,6 +199,12 @@ dungeon.ParseCharacter = (function() {
       powers.push(data);
     }
     extractRuleLinks_(node, powers);
+    // Powers common to all players
+    var addendum = dungeon.Powers.getGenericPowers();
+    addendum.forEach(function(p) {
+      powers.push(p);
+    });
+
     return powers;
   }
 

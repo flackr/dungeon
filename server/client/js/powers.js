@@ -128,6 +128,27 @@ dungeon.Powers.prototype = {
   }
 };
 
+dungeon.Powers.getGenericPowers = function() {
+  return [
+    {
+      'name': 'Second Wind',
+      'Action Type': 'Standard Action',
+      'Attack Type': 'Personal',
+      'Effect': 'Expend a healing surge and regain 1/4 of your total hitpoints.',
+      'Keywords': 'Healing',
+      'Power Usage': 'Encounter'
+    }, {
+      'name': 'Action Point',
+      'Action Type': 'Free Action',
+      'Attack Type': 'Personal',
+      'Effect': 'Gain a standard action this turn.',
+      'Special': 'You are reset to one action point when you take an extended '
+          + 'rest. You gain an action point each milestone.',
+      'Power Usage': 'Encounter'
+    }
+  ];
+};
+
 /**
  * Base class for D&D powers.  The base implementation is a generic
  * power, relying solely in information extracted from the character
