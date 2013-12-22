@@ -194,7 +194,8 @@
 
         set index(n) {
           this.activeIndex = n;
-          this.current = this.initiativeOrder[n].name;
+          this.current = this.initiativeOrder ?
+              this.initiativeOrder[n].name : '';
         },
 
         next: function() {

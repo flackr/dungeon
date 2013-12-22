@@ -991,7 +991,7 @@
         client.removeEventListener('character-updated',
                                    this.characterUpdateListener);
         var client = dungeon.getClient();
-        client.dispatchEvent('select-character', null);
+        client.dispatchEvent('select-character', undefined);
         this.super();
       },
 
