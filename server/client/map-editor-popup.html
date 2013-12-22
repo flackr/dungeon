@@ -314,9 +314,9 @@
           large.instructions = 'Load additional tiles via the context menu. ' +
               'Tiles may be dragged onto the map.  To edit a tile, first ' +
               'select an editing tool, and then click on the tile.';
-
-          dungeon.getClient().addEventListener('update-tiles', 
-                                               this.show.bind(this));
+          var client = dungeon.getClient();
+          client.addEventListener('load-tile', this.show.bind(this));
+          client.addEventListener('update-tiles', this.onTileUpdate.bind(this));
           dungeon.getMapEditor = function() {
             return self;
           }
@@ -351,6 +351,11 @@
               image.src = src;
             }
           }
+        },
+
+        onTileUpdate: function() {
+          if (this.active)
+            this.update();
         },
 
         // --- Mapping tools -----------------------------------------

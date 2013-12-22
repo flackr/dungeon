@@ -529,6 +529,7 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
       self.sendEvent(evt);
     }
     reader.readAsDataURL(file);
+    this.dispatchEvent('load-tile');
   },
 
   saveMap: function() {
