@@ -15,6 +15,10 @@
         color: #FFF;
       }
 
+      :host.disabled {
+        display: none;
+      }
+
     </style>
     <content>{{label}}</content>
   </template>
@@ -90,12 +94,26 @@
           if (opt_restricted)
             e.restricted = true;
           self.appendChild(e);
+          return e;
         };
-        addMenuItem('Undo','onUndo', true /* restricted */);
-        addMenuItem('Save Map','onSave');
+        addMenuItem('Undo', 'onUndo', true /* restricted */);
+        addMenuItem('Save Map', 'onSave');
         addMenuItem('Load Files', 'onLoadFiles');
-        addMenuItem('View Combat Roster', 'onViewRoster');
-        addMenuItem('View Map Editor', 'onViewMaps');
+        addMenuItem('View Combat Roster','onViewRoster');
+        addMenuItem('View Map Editor',  'onViewMaps');
+        var startCombat = addMenuItem('Start Combat', 'onStartCombat');
+        var stopCombat = addMenuItem('Stop Combat', 'onStopCombat');
+        stopCombat.classList.add('disabled');
+        var client = dungeon.getClient();
+        client.addEventListener('combat-state-changed', function(state) {
+          if (state == 'start') {
+            startCombat.classList.add('disabled');
+            stopCombat.classList.remove('disabled');
+          } else if (state == 'stop') {
+            startCombat.classList.remove('disabled');
+            stopCombat.classList.add('disabled');
+          }
+        });
       },
 
       /**
@@ -142,6 +160,14 @@
 
       onViewMaps: function() {
         this.fire('show-popup', {popup: 'map-editor'});
+      },
+
+      onStartCombat: function() {
+        dungeon.startCombat();
+      },
+
+      onStopCombat: function() {
+        dungeon.stopCombat();
       },
 
       /**

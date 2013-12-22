@@ -8,6 +8,7 @@
 <link rel="import" href="use-power-dialog.html">
 <link rel="import" href="add-effect-dialog.html">
 <link rel="import" href="zoom-control.html">
+<link rel="import" href="turn-tracker.html">
 
 <polymer-element name="combat-map" attributes="role selectedCharacter"
     on-pointerdown="{{onPointerDown}}" on-pointermove="{{onPointerMove}}"
@@ -43,6 +44,7 @@
       <canvas width="{{width}}" height="{{height}}" id="canvas"></canvas>
       <map-overlay id="popups-overlay" modal="false">
         <zoom-control id="zoom"></zoom-control>
+        <turn-tracker id="turn-tracker"></turn-tracker>
         <roster-popup id="roster"></roster-popup>
         <character-popup id="character-summary"></character-popup>
         <power-card-popup id="power-card" style="right: 220px; top: 10px;">
@@ -156,7 +158,13 @@
         client.addEventListener('dm-attack-result', 
                                 this.onDmAttackResultMsg.bind(this));
 
+        // Persistent controls
         this.displayPopup('zoom');
+      },
+
+      enteredView: function() {
+        var client = dungeon.getClient();
+        client.onCombatMapReady();
       },
 
       /**

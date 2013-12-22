@@ -1,0 +1,278 @@
+<polymer-element name="turn-tracker" attributes="current"
+  on-pointerdown="{{onPointerDown}}" on-pointerup="{{onPointerUp}}">
+  <template>
+    <style>
+      :host {
+        -webkit-box-align: center;
+        -webkit-box-pack: justify;
+        border: 1px solid black;
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.3);
+        bottom: 5px;
+        display: -webkit-box;
+        height: 2em;
+        position: absolute;
+        right: 5px;
+      }
+      ::part(label) {
+        -webkit-box-flex: 1;
+        -webkit-margin-end: 5px;
+        -webkit-margin-start: 5px;
+        color: white;
+        font: 16px sans;
+      }
+
+      ::part(end-turn-button) {
+        -wekbit-box-flex: 0;
+      }
+    </style>
+    <content>
+      <div part="label">{{current}}</div>
+      <input id="endturn" part="end-turn-button" type="button" value="End Turn">
+    </content>
+  </template>
+  <script>
+    (function() {
+      dungeon.startCombat = function() {
+        var client = dungeon.getClient();
+        client.sendEvent({type: 'combat-state-change', state: 'start'});
+
+        // Set initiative.
+        var msgLog = [];
+        var characterTypeMap = {};
+        var initiativeMap = {};
+        for (var i = 0; i < client.characterPlacement.length; i++) {
+          var character = client.characterPlacement[i];
+          var type = character.source.name;
+          var entry = characterTypeMap[type];
+          if (!entry) {
+            var score = rollInitiative(character, msgLog);
+            entry = characterTypeMap[type] = {initiative: score, list: []};
+            if (!initiativeMap[score])
+              initiativeMap[score] = [];
+            initiativeMap[score].push(character.source);
+          }
+          entry.list.push(character);
+        }
+        // Tie breaks.
+        while (true) {
+          foundCollision = false;
+          for (var entry in initiativeMap) {
+            var list = initiativeMap[entry];
+            if (list.length > 1) {
+              msgLog.push('Initiative tiebreak!');
+              foundCollision = true;
+              for (var i = 0; i < list.length; i++) {
+                var score = rollInitiative(list[i], msgLog);
+                var revisedScore = String(entry) + '.' + score;
+                msgLog.push('Revised initiative = ' + revisedScore);
+                if (!initiativeMap[revisedScore])
+                  initiativeMap[revisedScore] = [];
+                initiativeMap[revisedScore].push(character.source);
+                characterTypeMap[list[i].name].initiative = revisedScore;
+              }
+              initiativeMap[entry] = [];
+            }
+          }
+          if (!foundCollision)
+            break;
+        }
+        // Synchronize initiative order across clients.
+        var evt = {
+          type: 'set-initiative-order',
+          order: [],
+          log: msgLog
+        }
+        for (var i = 0; i < client.characterPlacement.length; i++) {
+           var character = client.characterPlacement[i];
+           var entry = characterTypeMap[character.source.name];
+           evt.order.push({name: character.name, initiative: entry.initiative});
+        }
+        client.sendEvent(evt);
+      };
+
+      dungeon.stopCombat = function() {
+        var client = dungeon.getClient();
+        client.sendEvent({type: 'combat-state-change', state: 'stop'});
+      };
+
+      function rollInitiative(characterData, msgLog) {
+        if (characterData.source)
+          characterData = characterData.source;
+        var name = name;
+        var initiative = parseInt(characterData.stats['Initiative']);
+        var score = Math.floor(Math.random() * 20 + 1);
+        var msg = characterData.name + ' rolls initiative.\n' +
+            'd20 + ' + initiative + ' = (' + score + ') ' + ' + ' + initiative +
+            ' = ' + (score += initiative) + '\n';
+        msgLog.push(msg);
+        score = String(score);
+        if (score.length == 1)
+          score = '0' + score;
+        return score;
+      }
+
+      Polymer('turn-tracker', {
+        current: '',
+
+        activeIndex: undefined,
+
+        initiativeOrder: undefined,
+
+        ready: function() {
+          var client = dungeon.getClient();
+          client.addEventListener('combat-state-changed',
+                                  this.onCombatStateChanged.bind(this));
+          client.addEventListener('initiative-order-changed',
+                                  this.onSetInitiativeOrder.bind(this));
+          client.addEventListener('character-removed',
+                                  this.onCharacterRemoved.bind(this));
+          client.addEventListener('character-added',
+                                  this.onCharacterAdded.bind(this));
+          client.addEventListener('set-character-turn',
+                                  this.onSetCharacterTurn.bind(this));
+
+          this.$.endturn.addEventListener('pointerup', this.next.bind(this));
+        },
+
+        show: function() {
+          this.active = true;
+          this.parentNode.show(this);
+        },
+
+        close: function() {
+          this.parentNode.hide(this);
+        },
+
+        /**
+         * Sorts characters into initiative order grouping monsters of the same
+         * type together.
+         */
+        onSetInitiativeOrder: function(list, log) {
+          var map = {};
+          var client = dungeon.getClient();
+          for (var i = 0; i < list.length; i++) {
+            var entry = list[i];
+            var index = client.getCharacterIndex(entry.name);
+            if (index != undefined) {
+              var characterData = client.characterPlacement[index];
+              characterData.initiative = entry.initiative;
+              var key = characterData.source.name;
+              if (!map[key]) {
+                map[key] = {
+                  name: key,
+                  initiative: entry.initiative,
+                  members: []
+                };
+              }
+              map[key].members.push(entry.name);
+              client.dispatchEvent('character-updated', index);
+            }
+          }
+          this.initiativeOrder = [];
+          for (var key in map) {
+            this.initiativeOrder.push({
+              name: key, 
+              initiative: map[key].initiative,
+              members: map[key].members
+            });
+          }
+          var comparator = function(a, b) {
+            var result = 0;
+            if (a.initiative != b.initiative)
+              result = String(b.initiative) > String(a.initiative) ? 1 : -1;
+            else 
+              result = a.name > b.name ? 1 : -1;
+            return result;
+          }
+          this.initiativeOrder.sort(comparator);
+
+          // TODO: Use logger popup.
+          console.log(log.join('\n'));
+          this.index = 0;
+        },
+
+        set index(n) {
+          this.activeIndex = n;
+          this.current = this.initiativeOrder[n].name;
+        },
+
+        next: function() {
+          // TODO: Roll saving throws.
+          //       Remove conditions that terminate on end of turn.
+          var length = this.initiativeOrder.length;
+          for (var retry = 0; retry < length; retry++) {
+            var n = (this.activeIndex + 1 + retry) % length;
+            if (this.initiativeOrder[n].members.length > 0) {
+              dungeon.getClient().sendEvent({
+                type: 'set-character-turn',
+                index: n
+              });
+              break;
+            }
+          }
+          // TODO: Apply ongoing damage.
+          //       Remove conditions that terminate at start of turn.
+        },
+
+        /**
+         * Automatically shows or hides the turn-tracker control in response to
+         * combat starting or stopping.
+         */
+        onCombatStateChanged: function(state) {
+           if (state == 'start')
+             this.show();
+           if (state == 'stop') {
+             this.initiativeOrder = undefined;
+             this.close();
+           }
+        },
+
+        onCharacterRemoved: function(name) {
+          if (!this.initiativeOrder)
+            return;
+          for (var i = 0; i < this.initiativeOrder.length; i++) {
+            var members = this.initiativeOrder[i].members;
+            for (var j = 0; j < members.length; j++) {
+              if (members[j] == name) {
+                members.splice(j, 1);
+                return;
+              }
+            }
+          }
+        },
+
+        onCharacterAdded: function(character) {
+          if (!this.initiativeOrder)
+            return;
+          var name = character.name;
+          var groupName = character.source.name;
+          for (var i = 0; i < this.initiativeOrder.length; i++) {
+            var group = this.initiativeOrder[i];
+            if (group.name == groupName) {
+               group.members.push(name);
+               return;
+            }
+          }
+          this.initiativeOrder.push({
+            name: groupName,
+            initiative: 0,
+            members: [name]
+          });
+        },
+
+        onSetCharacterTurn: function(n) {
+          this.index = n;
+        },
+
+        onPointerDown: function(event) {
+          event.stopPropagation();
+        },
+
+        onPointerUp: function(event) {
+          event.stopPropagation();
+        }
+      });
+    })();
+  </script>
+</polymer-element>

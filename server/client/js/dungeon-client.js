@@ -15,52 +15,33 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     // Repository of powers.
     this.powers = new dungeon.Powers(this);
 
-    this.socket = io.connect('http://' + location.host);
-
-    this.socket.on('e', this.receiveEvent.bind(this));
-
     this.registerHandler('map-update', 'onMapUpdate');
     this.registerHandler('load-file', 'onLoadFile');
     this.registerHandler('save-map', 'saveMap');
 
     this.addEventListener('character-added', this.update.bind(this));
     this.addEventListener('tile-added', this.rebuildTiles.bind(this));
-
-/*
-    this.canvas.addEventListener('touchstart', this.onTouchStart.bind(this));
-    this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
-    this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
-    this.canvas.addEventListener('mousewheel', this.onMouseWheel.bind(this));
-*/
-    document.body.addEventListener('keyup', this.onKeyUp.bind(this));
-
-/*
-    // Status of combat.
-    this.combatState = 'stopped';
-    $('combat-start-button').addEventListener('click',
-        this.setCombatState.bind(this, 'start'));
-    $('combat-pause-button').addEventListener('click',
-        this.setCombatState.bind(this, 'pause'));
-    $('combat-stop-button').addEventListener('click', 
-        this.setCombatState.bind(this, 'stop'));
-    this.addEventListener('combat-state-changed', 
-        this.onCombatStateChanged.bind(this));
-    this.addEventListener('initiative-order-changed',
-        this.onInitiativeOrderChanged.bind(this));
-    this.addEventListener('character-removed', 
-        this.onRemoveCharacter.bind(this));
-*/
-    
     this.addEventListener('character-loaded', this.updateCharacterRegistry.bind(this));
 /*
     this.addEventListener('log', this.logMessage.bind(this));
     this.addEventListener('banner-message', this.displayBannerMessage.bind(this));
 */
-    dungeon.Game.prototype.initialize.call(this);
 
     dungeon.getClient = function() {
       return self;
     }
+
+    // Do not complete game initialization until the combat map has finished
+    // loading in order to avoid loss of messages. 
+  },
+
+  /**
+   * Complete initialization, replaying all game events.
+   */
+  onCombatMapReady: function() {
+    this.socket = io.connect('http://' + location.host);
+    this.socket.on('e', this.receiveEvent.bind(this));
+    dungeon.Game.prototype.initialize.call(this);
   },
 
   processHash: function() {
@@ -275,132 +256,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
     }
   },
 
-  setCombatState: function(state) {
-    if (state == 'start' && this.combatState != 'stopped')
-      state = 'resume';
-    this.sendEvent({type: 'combat-state-change', state: state});
-    if (state == 'start') {
-      // TODO(kellis): Reset message log.
-
-      // Set initiative.
-      var msgLog = [];
-      var characterTypeMap = {};
-      var initiativeMap = {};
-      for (var i = 0; i < this.characterPlacement.length; i++) {
-        var character = this.characterPlacement[i];
-        var type = character.source.name;
-        var entry = characterTypeMap[type];
-        if (!entry) {
-          var score = this.rollInitiative(character, msgLog);
-          entry = characterTypeMap[type] = {initiative: score, list: []};
-          if (!initiativeMap[score])
-            initiativeMap[score] = [];
-          initiativeMap[score].push(character.source);
-        }
-        entry.list.push(character);
-      }
-      // Tie breaks.
-      while (true) {
-        foundCollision = false;
-        for (var entry in initiativeMap) {
-          var list = initiativeMap[entry];
-          if (list.length > 1) {
-            msgLog.push('Initiative tiebreak!');
-            foundCollision = true;
-            for (var i = 0; i < list.length; i++) {
-              var score = this.rollInitiative(list[i], msgLog);
-              var revisedScore = String(entry) + '.' + score;
-              msgLog.push('Revised initiative = ' + revisedScore);
-              if (!initiativeMap[revisedScore])
-                initiativeMap[revisedScore] = [];
-              initiativeMap[revisedScore].push(character.source);
-              characterTypeMap[list[i].name].initiative = revisedScore;
-            }
-            initiativeMap[entry] = [];
-          }
-        }
-        if (!foundCollision)
-          break;
-      }
-      // Synchronize initiative order across clients.
-      var evt = {
-        type: 'set-initiative-order',
-        order: [],
-        log: msgLog
-      }
-      for (var i = 0; i < this.characterPlacement.length; i++) {
-         var character = this.characterPlacement[i];
-         var entry = characterTypeMap[character.source.name];
-         evt.order.push({name: character.name, initiative: entry.initiative});
-      }
-      this.sendEvent(evt);
-
-    } else if (state == 'stop') {
-      // Restore encounter powers for players.
-    }
-  },
-
-  rollInitiative: function(characterData, msgLog) {
-    if (characterData.source)
-      characterData = characterData.source;
-    var name = name;
-    var initiative = parseInt(characterData.stats['Initiative']);
-    var score = Math.floor(Math.random() * 20 + 1);
-    var msg = characterData.name + ' rolls initiative.\n' +
-        'd20 + ' + initiative + ' = (' + score + ') ' + ' + ' + initiative +
-        ' = ' + (score += initiative) + '\n';
-    msgLog.push(msg);
-    score = String(score);
-    if (score.length == 1)
-      score = '0' + score;
-    return score;
-  },
-
-  onCombatStateChanged: function(state) {
-    switch(state) {
-    case 'start':
-      this.combatState = 'started';
-      break;
-    case 'resume':
-      this.combatState = 'resumed';
-      break;
-    case 'pause':
-      this.combatState = 'paused';
-      break;
-    case 'stop':
-      this.combatState = 'stopped';
-      break;
-    default:
-      console.log('Unknown combat state: ' + state);
-    }
-    // update disabled state of combat controls
-    $('combat-start-button').setAttribute('disabled', 
-        this.combatState == 'started' || this.combatState == 'resumed');
-    $('combat-pause-button').setAttribute('disabled', 
-        this.combatState  == 'paused' || this.combatState == 'stopped');
-    $('combat-stop-button').setAttribute('disabled', 
-        this.combatState  == 'stopped');
-    var msg = 'Combat ' + this.combatState + '.';
-    this.dispatchEvent('log',  msg); 
-    this.dispatchEvent('banner-message', msg);
-  },
-
-  onInitiativeOrderChanged: function(list, log) {
-    for (var i = 0; i < log.length; i++)
-      this.dispatchEvent('log', log[i]);
-    for (var i = 0; i < list.length; i++) {
-      var entry = list[i];
-      var index = this.getCharacterIndex(entry.name);
-      if (index != undefined) {
-        this.characterPlacement[index].initiative = entry.initiative;
-        this.dispatchEvent('character-updated', index);
-      }
-    }
-    // Update ordering in combat overview.
-    this.combatTracker.sortIntoInitiativeOrder();
-    this.combatOverviewPage.sortIntoInitiativeOrder();
-  },
-
   /**
    * Deselect character if removed from game.
    */
@@ -586,28 +441,6 @@ dungeon.Client.prototype = extend(dungeon.Game.prototype, {
 
   onPointerUp: function(e) {
     // ported
-  },
-  
-  onKeyUp: function(e) {
-    var key = e.keyCode;
-    if (key == 32 || key == 13) {
-      this.attackSelectedTargets();
-    } else if (key == 27) {
-      this.cancelSelectedTarget();
-    }
-  },
-
-  attackSelectedTargets: function() {
-    if (this.ui.targets) {
-      this.attackTargets();
-    }
-  },
-
-  cancelSelectedTarget: function() {
-      if (this.ui.targets) {
-        this.ui.targets.pop();
-        this.update();
-      }
   },
 
   attackResult: function(attacker, attackees, power, tohits, dmg) {
