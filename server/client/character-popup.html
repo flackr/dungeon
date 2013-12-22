@@ -291,9 +291,127 @@
   </script>
 </polymer-element>
 
+<polymer-element name="class-features">
+  <template>
+    <style>
+      .heading {
+        margin-bottom: 3px;
+        padding-top: 5px;
+      }
+      #class-features {
+        -webkit-margin-start: 5px;
+        line-height: 1.5em;
+        white-space: pre-wrap;
+      }
+    </style>
+    <div class="heading">
+      <span>Level: </span><span id="character-level"></span>
+      <span> Class: </span><span id="character-class"></span>
+    </div>
+    <div class="heading">Features:</div>
+    <div id="class-features"></div>
+  </template>
+  <script>
+    Polymer('class-features', {
+      update: function(character) {
+        this.$['character-class'].textContent = character.source.charClass;
+        this.$['character-level'].textContent = character.source.level;
+        var features = character.source.classFeatures;
+        this.$['class-features'].textContent = features ? 
+            '\u25aa ' + features.join('\n\u25aa ') : '';
+      }
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="racial-traits">
+  <template>
+    <style>
+      #racial-traits {
+        line-height: 1.5em;
+        padding-top: 5px;
+        white-space: pre-wrap;
+      }
+    </style>
+    <div id="racial-traits"></div>
+  </template>
+  <script>
+    Polymer('racial-traits', {
+      update: function(character) {
+        var traits = character.source.racialTraits;
+        this.$['racial-traits'].textContent = traits ?
+            '\u25aa ' + traits.join('\n\u25aa ') : '';
+      }
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="character-feats">
+  <template>
+    <style>
+      #feats {
+        line-height: 1.5em;
+        padding-top: 5px;
+        white-space: pre-wrap;
+      }
+    </style>
+    <div id="feats"></div>
+  </template>
+  <script>
+    Polymer('character-feats', {
+      update: function(character) {
+        var feats = character.source.feats;
+        this.$['feats'].textContent = feats ? 
+            '\u25aa ' + feats.join('\n\u25aa ') : '';
+      }
+    });
+  </script>
+</polymer-element>
+
+<!-- An element for displaying general charcter class and feat information -->
+<polymer-element name="character-general">
+  <template>
+    <style>
+     :host {
+       font: 12px 'sans';
+     }
+     table {
+       margin: 0 auto;
+     }
+     td:first-child {
+       text-align: right;
+       padding-right: 5px;
+     }
+    </style>
+    <tabbed-content id="general-tabs">
+      <div class="tab">Class</div>
+      <div class="tab">Racial</div>
+      <div class="tab">Feats</div>
+      <class-features id="Class"></class-features>
+      <racial-traits id="Racial"></racial-traits>
+      <character-feats id="Feats"></character-feats>
+    </tabbed-content>
+  </template>
+  <script>
+    Polymer('character-general', {
+      ready: function() {
+        var tabs = this.$['general-tabs'];
+        tabs.attachTabListeners();
+        tabs.selectTab("Class");
+      },
+
+      update: function(character) {
+        this.$['Class'].update(character);
+        this.$['Racial'].update(character);
+        this.$['Feats'].update(character);
+      },
+    });
+  </script>
+</polymer-element>
+
 <!-- An element for displaying character stats such as attributes and defenses
  -->
-<polymer-element name="character-stats">
+<polymer-element name="character-attributes">
   <template>
     <style>
      :host {
@@ -346,7 +464,7 @@
     </table>
   </template>
   <script>
-    Polymer('character-stats', {
+    Polymer('character-attributes', {
       update: function(character) {
         this.updateEntries(character, 'attributes');
         this.updateEntries(character, 'defenses');
@@ -388,6 +506,9 @@
     <style>
      :host {
        font: 12px 'sans';
+     }
+     table {
+       margin: 0 auto;
      }
      td:nth-child(even) {
        text-align: right;
@@ -456,6 +577,32 @@
       },
     });
   </script>
+</polymer-element>
+
+<polymer-element name="character-stats">
+  <template>
+    <style>
+    </style>
+    <tabbed-content id="stat-tabs">
+      <div class="tab">Attributes</div>
+      <div class="tab">Skills</div>
+      <character-attributes id="Attributes"></character-attributes>
+      <character-skills id="Skills"></character-skills>
+    </tabbed-content>
+  </template>
+  <script>
+    Polymer('character-stats', {
+      ready: function() {
+        var tabs = this.$['stat-tabs'];
+        tabs.attachTabListeners();
+        tabs.selectTab("Attributes");
+      },
+      update: function(character) {
+        this.$['Attributes'].update(character);
+        this.$['Skills'].update(character);
+      }
+    });
+ </script>
 </polymer-element>
 
 <polymer-element name="power-summary-badge">
@@ -811,9 +958,8 @@
         this.addContent(conditionTracker);
         var tabbedContent = document.createElement('tabbed-content');
         this.addContent(tabbedContent);
+        tabbedContent.addTab('General', 'character-general');
         tabbedContent.addTab('Stats', 'character-stats'); 
-        tabbedContent.addTab('Skills', 'character-skills');
-        // tabbedContent.addTab('Feats', 'div'); 
         tabbedContent.addTab('Powers', 'character-powers');
         tabbedContent.selectTab('Powers');
         this.style.width = '200px';
@@ -856,10 +1002,10 @@
         var conditionTracker =
             this.$.content.querySelector('condition-tracker');
         conditionTracker.update(this.character);
+        var charGeneral = this.$.content.querySelector('character-general');
+        charGeneral.update(this.character);
         var charStats = this.$.content.querySelector('character-stats');
         charStats.update(this.character);
-        var charSkills = this.$.content.querySelector('character-skills');
-        charSkills.update(this.character);
         var charPowers = this.$.content.querySelector('character-powers');
         charPowers.update(this.character);
       }

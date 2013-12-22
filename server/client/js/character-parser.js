@@ -48,9 +48,9 @@ dungeon.ParseCharacter = (function() {
        health: ['Hit Points', 'Bloodied', 'Surge Amount', 'Healing Surges'],
        other: ['Name', 'Class', 'Level', 'Power Source', 'Initiative', 'Speed', 
                'Passive Perception', 'Passive Insight', 'Size'],
-       racialTraits: extractRulesByType_(rules, 'Ratial Traits'),
-       classFeatures: extractRulesByType_(rules, 'Class Features'),
-       feats: extractRulesByType_(rules, 'Feats'),
+       racialTraits: extractRulesByType_(rules, 'Racial Trait'),
+       classFeatures: extractRulesByType_(rules, 'Class Feature'),
+       feats: extractRulesByType_(rules, 'Feat'),
        powers: extractPowers_(characterSheet, rules)
     };
     return json;
