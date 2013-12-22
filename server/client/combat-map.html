@@ -154,6 +154,8 @@
         this.resize();
 
         var client = dungeon.getClient();
+        client.addEventListener('select-character', 
+          this.onSelectCharacter.bind(this));
         client.addEventListener('select-power', this.onSelectPower.bind(this));
         client.addEventListener('dm-attack-result', 
                                 this.onDmAttackResultMsg.bind(this));
@@ -482,6 +484,7 @@
           if (i != this.selectedCharacter)
             this.drawCharacter(ctx, i, 'type');
           this.drawCharacter(ctx, i, 'effects');
+          this.drawCharacter(ctx, i, 'lastMove');
 
           var width = this.getCharacterWidthInTiles(i);
 
@@ -639,6 +642,24 @@
               x += radius / 2;
               y += radius / 2;
               radius = 0.4 * tw;
+            }
+            break;
+          case 'lastMove':
+            if (character.xFrom != undefined && character.yFrom != undefined) {
+              var xFrom = this.baseX + (character.xFrom - this.view.x1) * tw;
+              var yFrom = this.baseY + (character.yFrom - this.view.y1) * tw;
+              var isMonster = character.source.charClass == 'Monster';
+              ctx.strokeStyle = isMonster ? '#f00' : '#00f';
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(xFrom, yFrom);
+              ctx.lineTo(x, y);
+              ctx.stroke();
+              drawFill = true;
+              ctx.fillStyle = ctx.strokeStyle;
+              x = xFrom;
+              y = yFrom;
+              radius = 0.35*tw;
             }
             break;
         }
@@ -808,9 +829,15 @@
         // If no power is active and target square is empty, then move the
         // selected character.
         if (this.selectedCharacter !== undefined) {
+          var character = client.characterPlacement[this.selectedCharacter];
+          var charWidth = this.getCharacterWidthInTiles(this.selectedCharacter);
+          var xFrom = character.x + charWidth / 2;
+          var yFrom = character.y + charWidth / 2;
           client.sendEvent({
             x: pos.x,
             y: pos.y,
+            xFrom: xFrom,
+            yFrom: yFrom,
             type: 'move',
             index: this.selectedCharacter
           });
@@ -828,6 +855,7 @@
         } else {
           this.$['character-summary'].close();
         }
+        this.$['power-card'].close();
         this.targets = [];
         this.activePower = undefined;
         this.update();
@@ -835,11 +863,13 @@
 
       // Combat ---------------------------
 
+      onSelectCharacter: function(characterIndex) {
+        this.selectedCharacter = characterIndex;
+      },
+
       onSelectPower: function(power) {
         this.activePower = power;
         this.targets = [];
-        if (!power)
-          this.selectedCharacter = undefined;
         this.update();
       },
 

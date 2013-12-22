@@ -134,6 +134,8 @@ dungeon.Game.prototype = extend(dungeon.EventSource.prototype, {
       if (this.characterPlacement[eventData.index]) {
         this.characterPlacement[eventData.index].x = eventData.x;
         this.characterPlacement[eventData.index].y = eventData.y;
+        this.characterPlacement[eventData.index].xFrom = eventData.xFrom;
+        this.characterPlacement[eventData.index].yFrom = eventData.yFrom;
       }
     } else if (eventData.type == 'register-character-prototype') {
       // TODO(kellis): Check if character already registered.

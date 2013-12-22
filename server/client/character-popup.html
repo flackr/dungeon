@@ -723,16 +723,18 @@
       personal: false,
 
       onPointerDown: function(event) {
+        var selected = this.parentElement.querySelector('[active]');
+        this.armPowerToggle = (selected == this);
         var client = dungeon.getClient();
         client.dispatchEvent('select-power', this.details);
         var self = this;
         this.longPressTimer = this.asyncMethod(function() {
           if (self.longPressTimer) {
             self.resetLongPressTimer();
-            client.dispatchEvent('show-power-details', this.details);
+            client.dispatchEvent('show-power-details', self.details);
+            this.armPowerToggle = false;
           }
         }, null, LONGPRESS_DELAY_MSEC); 
-        var selected = this.parentElement.querySelector('[active]');
         if (selected && selected != this)
           selected.active = false;
         this.active = true;
@@ -740,6 +742,12 @@
 
       onPointerUp: function(event) {
         this.resetLongPressTimer();
+        if (this.armPowerToggle) {
+          // TODO: Handle cycling through augmentable powers.
+          var client = dungeon.getClient();
+          client.dispatchEvent('select-power', null);
+          this.active = false;
+        }
       },
 
       resetLongPressTimer: function() {
@@ -983,7 +991,7 @@
         client.removeEventListener('character-updated',
                                    this.characterUpdateListener);
         var client = dungeon.getClient();
-        client.dispatchEvent('select-power', null);
+        client.dispatchEvent('select-character', null);
         this.super();
       },
 
