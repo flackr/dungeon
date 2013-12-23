@@ -615,7 +615,7 @@
 </polymer-element>
 
 <polymer-element name="power-summary" attributes=
-    "active power label type usage healing melee ranged burst blast personal"
+    "active power label type usage healing melee ranged burst blast personal interrupt"
     on-pointerdown="{{onPointerDown}}" on-pointerup="{{onPointerUp}}">
   <template>
     <style>
@@ -713,6 +713,10 @@
        display: -webkit-box;
      }
 
+     :host[interrupt] #interrupt-badge {
+       -webkit-mask-image: url('images/interrupt-power.png');
+       display: -webkit-box;
+     }
     </style>
     <div part="button">
       <div part="name">{{label}}</div>
@@ -722,6 +726,7 @@
       <div part="badge" id="burst-badge"></div>
       <div part="badge" id="personal-badge"></div>
       <div part="badge" id="healing-badge"></div>
+      <div part="badge" id="interrupt-badge"></div>
     </div>
   </template>
   <script>
@@ -733,6 +738,7 @@
       blast: false,
       personal: false,
       healing: false,
+      interrupt: false,
 
       onPointerDown: function(event) {
         var selected = this.parentElement.querySelector('[active]');
@@ -909,8 +915,8 @@
           var typeContains = function(keyword) {
             return attackType.indexOf(keyword) >= 0;
           }
-          var keywordsContain = function(keyword) {
-            return !!keywords && keywords.toLowerCase().indexOf(keyword) >= 0;
+          var contains = function(value, keyword) {
+            return !!value && value.toLowerCase().indexOf(keyword) >= 0;
           }
           // use icons to provide quick synopsis of power usage.
           el.melee = typeContains('melee');
@@ -918,7 +924,8 @@
           el.burst = typeContains('burst');
           el.blast = typeContains('blast');
           el.personal = typeContains('personal');
-          el.healing = keywordsContain('healing');
+          el.healing = contains(keywords, 'healing');
+          el.interrupt = contains(el.action, 'interrupt');
           // TODO: interrupt, ...
         }
         list.appendChild(el);
