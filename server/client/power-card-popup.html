@@ -72,7 +72,7 @@
           <td id="attack-type"></td>
         </tr>
         <tr>
-          <td></td>
+          <td id="keywords"></td>
           <td id="targets"></td>
         </tr>
       </table>
@@ -135,6 +135,7 @@
         setSubtitle('attack-type', power.getAttackType());
         var targets = power['Targets'] ? 'Targets' : 'Target';
         setSubtitle('targets', power.getTargets());
+        setSubtitle('keywords', power.getValue('Keywords'));
         setSubtitle('description', power.getDescription());
 
         details.querySelectorAll('power-card-section').array().forEach(

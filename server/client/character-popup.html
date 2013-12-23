@@ -615,7 +615,7 @@
 </polymer-element>
 
 <polymer-element name="power-summary" attributes=
-    "active power label type usage tooltip melee ranged burst blast personal"
+    "active power label type usage healing melee ranged burst blast personal"
     on-pointerdown="{{onPointerDown}}" on-pointerup="{{onPointerUp}}">
   <template>
     <style>
@@ -679,28 +679,37 @@
        width: 16px;
      }
 
+     :host[usage="Daily"] ::part(badge) {
+       background-color: black;
+     }
+
      :host[melee] #melee-badge {
-       -webkit-filter: grayscale(100%);
-       background-image: url('images/Sword-Right-icon.png');
+       -webkit-mask-image: url('images/melee-attack.png');
        display: -webkit-box;
      }
 
      :host[ranged] #bow-badge {
-       -webkit-filter: grayscale(100%);
-       background-image: url('images/bow-icon.png');
+       -webkit-mask-image: url('images/range-attack.png');
        display: -webkit-box;
      }
 
      :host[blast] #blast-badge {
-       -webkit-filter: grayscale(100%);
-       background-image: url('images/blast-icon.png');
+       -webkit-mask-image:  url('images/blast-power.png');
        display: -webkit-box;
      }
 
      :host[burst] #burst-badge {
-       -webkit-filter: grayscale(100%) invert(100%);
-       background-color: #000;
-       background-image: url('images/burst-icon.png');
+       -webkit-mask-image: url('images/burst-power.png');
+       display: -webkit-box;
+     }
+
+     :host[personal] #personal-badge {
+       -webkit-mask-image: url('images/personal-use.png');
+       display: -webkit-box;
+     }
+
+     :host[healing] #healing-badge {
+       -webkit-mask-image: url('images/healing-power.png');
        display: -webkit-box;
      }
 
@@ -711,6 +720,8 @@
       <div part="badge" id="bow-badge"></div>
       <div part="badge" id="blast-badge"></div>
       <div part="badge" id="burst-badge"></div>
+      <div part="badge" id="personal-badge"></div>
+      <div part="badge" id="healing-badge"></div>
     </div>
   </template>
   <script>
@@ -721,6 +732,7 @@
       burst: false,
       blast: false,
       personal: false,
+      healing: false,
 
       onPointerDown: function(event) {
         var selected = this.parentElement.querySelector('[active]');
@@ -891,19 +903,23 @@
         el.action = power['Action Type'];
         el.usage = this.simplifyUsage(power['Power Usage']);
         var attackType = power['Attack Type'];
+        var keywords = power['Keywords'];
         if (attackType) {
           attackType = attackType.toLowerCase();
           var typeContains = function(keyword) {
             return attackType.indexOf(keyword) >= 0;
           }
+          var keywordsContain = function(keyword) {
+            return !!keywords && keywords.toLowerCase().indexOf(keyword) >= 0;
+          }
           // use icons to provide quick synopsis of power usage.
-          // TODO: Create icons similar to the roster icon.
-          el.melee = typeContains('melee') || typeContains('close');
+          el.melee = typeContains('melee');
           el.ranged = typeContains('ranged') || typeContains('within');
           el.burst = typeContains('burst');
           el.blast = typeContains('blast');
           el.personal = typeContains('personal');
-          // TODO: interrupt, heal, ...
+          el.healing = keywordsContain('healing');
+          // TODO: interrupt, ...
         }
         list.appendChild(el);
       },
