@@ -159,7 +159,7 @@
           this.setValue(null, 'url');
         }
         var weapons = power.getValue('weapons');
-        if (weapons && weapons.length > 0) {
+        if (weapons && weapons.length > 0 && power.requiresToHitRoll()) {
           details.$['weapon-group'].hidden = false;
           // TODO display combo-box to set weapon.
           // Default to 1st weapon in the list, which is the best choice.

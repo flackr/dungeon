@@ -302,6 +302,7 @@ dungeon.Power.prototype = {
           // TODO - script should contain targetting info as well as onCrit.
           this.parseStatement(line, activeList);
         }
+        this.sanitizeEffects();
       } catch(err) {
         console.log('Failure interpreting script for power ' + this.getName());
         console.log(err.message);
@@ -404,10 +405,66 @@ dungeon.Power.prototype = {
   },
 
   /**
+   * Handles common sources of rule misinterpretation. As the parser improves
+   * fewer errors should be caught here. 
+   */
+  sanitizeEffects: function() {
+    var pruneHealEffects = this.requiresToHitRoll() || this.powerDealsDamage();
+    var pruneSecondaryDamage = this.powerDealsDamage(this.onHitEffects_);
+    var pruneEffects = function(name, list) {
+      if (!list)
+        return;
+      for (var i = list.length - 1; i >= 0; i--) {
+        var effect = list[i];
+        if (effect['effect'] == name)
+          list.splice(i, 1);
+      }
+    };
+    if (pruneHealEffects) {
+      // Kind of self defeting to harm and heal the same target. These powers
+      // are often intended to heal nearby allies as a secondary result of an
+      // attack.  Ignore.
+      pruneEffects('heal', this.onHitEffects_);
+      pruneEffects('heal', this.generalEffects_);
+    }
+    if (pruneSecondaryDamage) {
+      // Secondary damage does not properly stack with primary.  In addition, it
+      // is often includes as a misparse of an effect where the next attack does
+      // +X damage rather than the current attack.  Ignore.
+      pruneEffects('damage', this.generalEffects_);
+    }
+
+    // Detect a duplicate effect type within the same list and prune. This most
+    // likely results from an effect followed by a more specialized version. In
+    // many cases the second version is incorrectly parsed.
+    var pruneDuplicateEffects = function(list) {
+      if (!list)
+        return;
+      var firstOccur = {};
+      for (var i = 0; i < list.length; i++) {
+        var effect = list[i];
+        var name = effect['effect'];
+        if (!firstOccur[name])
+          firstOccur[name] = i;
+      }
+      for (var i = list.length - 1; i >= 0; i--) {
+        var effect = list[i];
+        var name = effect['effect'];
+        if (firstOccur[name] != i)
+          list.splice(i, 1);
+      }
+    };
+    pruneDuplicateEffects(this.onHitEffects_);
+    pruneDuplicateEffects(this.generalEffects_);
+  },
+
+  /**
    * Indicates if the power deal damage.
+   * @param {Array=} opt_list Optional list to test. If not specified, checks
+  *    the onHit and general lists.
    * @return {boolean} True if the power deals damage to targets.
    */
-  powerDealsDamage: function() {
+  powerDealsDamage: function(opt_list) {
     var findDamageEffect = function(list) {
       if (list) {
         for (var i = 0; i < list.length; i++) {
@@ -418,8 +475,9 @@ dungeon.Power.prototype = {
       }
       return false;
     }
-    return findDamageEffect(this.onHitEffects_) ||
-      findDamageEffect(this.generalEffects_);
+    return opt_list ? findDamageEffect(opt_list) : 
+        findDamageEffect(this.onHitEffects_) ||
+        findDamageEffect(this.generalEffects_);
   },
 
   /**
@@ -562,14 +620,15 @@ dungeon.Power.prototype = {
 
   /**
    * Apply secondary effects that are are based on scoring a critical
-   *  with a to-hit roll.
+   * with a to-hit roll.
    * @param{number} targetIndex  Reference index of the target.
    * @param{Array.<string>} log List of log messages for DM.
    * @param{Array.<Object>} results List of updates resulting from power.
-   * @param{boolean} includeDamageEffects Whether to include damage when resolving
-   *     the effects.
+   * @param{boolean} includeDamageEffects Whether to include damage when
+   *     resolving the effects.
    */
-  applyEffects: function(targetIndex, effectsList, log, results, includeDamageEffects) {
+  applyEffects: function(targetIndex, effectsList, log, results,
+      includeDamageEffects) {
     var targetInfo = this.client_.getCharacter(targetIndex);
     var targetName = targetInfo.name;
     var healing = 0;

@@ -925,8 +925,8 @@
           el.blast = typeContains('blast');
           el.personal = typeContains('personal');
           el.healing = contains(keywords, 'healing');
-          el.interrupt = contains(el.action, 'interrupt');
-          // TODO: interrupt, ...
+          el.interrupt = contains(el.action, 'interrupt') ||
+              contains(el.action, 'opportunity');
         }
         list.appendChild(el);
       },

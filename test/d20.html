@@ -9,7 +9,8 @@ td {
 </style>
 </head>
 <body>
-<table>
+<h2>Distribution Test</h2>
+<table id="distribution">
   <tr>
     <th>Roll</th>
     <th>Observed</th>
@@ -24,9 +25,63 @@ td {
 </div>
 <div>Degrees of freedom = 19</div>
 <div>P = 0.05 cutoff = 30.14</div>
+<h2>Autocorrelation test</h2>
+<table id="autocorr">
+  <tr>
+    <th>lag</th>
+    <th>r<sub>n</sub></th>
+  </tr>
+</table>
 <script>
+  /**
+   * Computes the autocorrelation of a single.
+   * @param {Int32Array} signal The raw signal.
+   * @param {number} maxDelay Cutoff for the sample delay.
+   * @return {Float32Aray} The autocorrelation.
+   */
+  function autoCorrelation(signal, maxDelay) {
+    var autoCorr = new Float32Array(maxDelay + 1);
+    var avg = 0;
+    for (var i = 0; i < signal.length; i++) {
+      avg += signal[i];
+    }
+    avg /= signal.length;
+    for (var delay = 0; delay <= maxDelay; delay++) {
+      var samples = 0, sum = 0;
+      for (var i = delay; i < signal.length; i++) {
+        sum += (signal[i] - avg) * (signal[i - delay] - avg);
+      }
+      autoCorr[delay] = sum / (signal.length - delay);
+    }
+    for (var delta = maxDelay; delta >= 0; delta--) {
+      autoCorr[delta] /= autoCorr[0];
+    }
+    return autoCorr;
+  }
+
+  var rolls = new Int32Array(10000);
+  for (var i = 0; i < rolls.length; i++) {
+    rolls[i] = 1 + Math.floor(Math.random() * 20);
+  }
+  var autoCorr = autoCorrelation(rolls, 10);
+  var table = document.querySelector('#autocorr');
+  for (var i = 0; i < autoCorr.length; i++) {
+    var element = document.createElement('tr');
+    var lag = document.createElement('td');
+    lag.textContent = i;
+    element.appendChild(lag);
+    var r = document.createElement('td');
+    r.textContent = autoCorr[i].toFixed(2);
+    element.appendChild(r);
+    table.appendChild(element);
+  }
+
+  /**
+   * Pearson's cummulative test.
+   */
   var trials = 1000000;
   var tally = [];
+  var list = [];
   for (var i = 1; i <= 20; i++) {
     tally[i] = 0;
   }
@@ -36,7 +91,7 @@ td {
   }
   var sum = 0;
   var expectedTally = trials / 20;
-  var table = document.querySelector('table');
+  var table = document.querySelector('#distribution');
   for (var i = 1; i <= 20; i++) {
     var element = document.createElement('tr');
     var roll = document.createElement('td');
