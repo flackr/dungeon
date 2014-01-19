@@ -838,18 +838,19 @@
         if (this.selectedCharacter !== undefined) {
           var character = client.characterPlacement[this.selectedCharacter];
           var charWidth = this.getCharacterWidthInTiles(this.selectedCharacter);
-          if (character && character.x && character.y) {
-            var xFrom = character.x + charWidth / 2;
-            var yFrom = character.y + charWidth / 2;
-            client.sendEvent({
-              x: pos.x,
-              y: pos.y,
-              xFrom: xFrom,
-              yFrom: yFrom,
-              type: 'move',
-              index: this.selectedCharacter
-            });
+          var xFrom = undefined, yFrom = undefined;
+          if (character) {
+            xFrom = character.x + charWidth / 2;
+            yFrom = character.y + charWidth / 2;
           }
+          client.sendEvent({
+            x: pos.x,
+            y: pos.y,
+            xFrom: xFrom,
+            yFrom: yFrom,
+            type: 'move',
+            index: this.selectedCharacter
+          });
           this.selectedCharacter = undefined;
         }
       },
