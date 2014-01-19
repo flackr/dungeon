@@ -122,6 +122,7 @@
        */
       onUndo: function() {
         this.fire('map-update', {type: 'undo'});
+        this.close();
       },
 
       /**
@@ -129,6 +130,7 @@
        */
       onSave: function() {
         this.fire('save-map');
+        this.close();
       },
 
       /**
@@ -151,23 +153,32 @@
             }
           });
         }
+        this.close();
         this.fileSelector.click();
       },
 
       onViewRoster: function() {
         this.fire('show-popup', {popup: 'roster'});
+        this.close();
       },
 
       onViewMaps: function() {
         this.fire('show-popup', {popup: 'map-editor'});
+        this.close();
       },
 
       onStartCombat: function() {
         dungeon.startCombat();
+        this.close();
       },
 
       onStopCombat: function() {
         dungeon.stopCombat();
+        this.close();
+      },
+
+      close: function() {
+        this.parentNode.hide(this);
       },
 
       /**

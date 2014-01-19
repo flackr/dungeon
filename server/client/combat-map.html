@@ -14,7 +14,8 @@
     on-pointerdown="{{onPointerDown}}" on-pointermove="{{onPointerMove}}"
     on-pointerup="{{onPointerUp}}" on-contextmenu="{{onContextMenu}}"
     on-show-popup="{{onShowPopup}}" on-use-power="{{onUsePower}}"
-    on-map-drag="{{onMapDrag}}" on-scale-map="{{onScaleMap}}">
+    on-map-drag="{{onMapDrag}}" on-scale-map="{{onScaleMap}}"
+    touch-action="none">
   <template>
     <style>
       :host {
@@ -709,6 +710,8 @@
        * on whether a character is selected.
        */
       onPointerDown: function(e) {
+        e.stopPropagation();
+
         this.pointer.x1 = e.clientX;
         this.pointer.y1 = e.clientY;
         this.pointer.mapX = this.viewport.x;
@@ -745,6 +748,8 @@
        *
        */
       onPointerMove: function(e) {
+        e.stopPropagation();
+
         if (this.pointer.mode == PointerMode.DRAW) {
           this.updateMap(e);
           return;
@@ -775,6 +780,8 @@
        * as the contents of the selected square.
        */
       onPointerUp: function(e) {
+        e.stopPropagation();
+
         var mode = this.pointer.mode;
         this.pointer.mode = PointerMode.HOVER;
         this.resetLongPressTimer();
@@ -831,16 +838,18 @@
         if (this.selectedCharacter !== undefined) {
           var character = client.characterPlacement[this.selectedCharacter];
           var charWidth = this.getCharacterWidthInTiles(this.selectedCharacter);
-          var xFrom = character.x + charWidth / 2;
-          var yFrom = character.y + charWidth / 2;
-          client.sendEvent({
-            x: pos.x,
-            y: pos.y,
-            xFrom: xFrom,
-            yFrom: yFrom,
-            type: 'move',
-            index: this.selectedCharacter
-          });
+          if (character && character.x && character.y) {
+            var xFrom = character.x + charWidth / 2;
+            var yFrom = character.y + charWidth / 2;
+            client.sendEvent({
+              x: pos.x,
+              y: pos.y,
+              xFrom: xFrom,
+              yFrom: yFrom,
+              type: 'move',
+              index: this.selectedCharacter
+            });
+          }
           this.selectedCharacter = undefined;
         }
       },
@@ -874,7 +883,6 @@
       },
 
       selectTargets: function(pos) {
-        console.log('selectTargets: pos = ' + pos.x + ', ' + pos.y);
         var client = dungeon.getClient();
         if (this.selectedCharacter != undefined && this.activePower) {
           var power = this.activePower;

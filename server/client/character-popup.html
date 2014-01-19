@@ -616,7 +616,8 @@
 
 <polymer-element name="power-summary" attributes=
     "active power label type usage healing melee ranged burst blast personal interrupt"
-    on-pointerdown="{{onPointerDown}}" on-pointerup="{{onPointerUp}}">
+    on-pointerdown="{{onPointerDown}}" on-pointerup="{{onPointerUp}}"
+    touch-action="none">
   <template>
     <style>
      :host ::part(button)  {

@@ -151,9 +151,14 @@
           case Modal.AUTO_RELEASE:
             this.style.background = 'transparent';
             var self = this;
+            this.onPointerDownAction = function(e) {
+              self.armAutoRelease = true;
+            };
             this.onPointerUpAction = function(e) {
-              console.log('Auto-release overlay');
+              if (!self.armAutoRelease)
+                return;
               self.hideAll();
+              self.armAutoRelease = false;
             };
             break;
           case Modal.FALSE:

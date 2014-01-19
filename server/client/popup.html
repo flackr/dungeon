@@ -1,21 +1,37 @@
-<polymer-element name="popup-close-button" on-pointerup="{{onPointerUp}}">
+<polymer-element name="popup-close-button" 
+    on-pointerdown="{{onPointerDown}}" on-pointerup="{{onPointerUp}}"
+    on-click="{{onClick}}" touch-action="none">
   <template>
     <style>
-      :host {
+      :host #button {
         -webkit-box-flex: 0;
         background-image: url("./images/cancel.png");
         display: inline-block;
         height: 16px;
-        margin: 0 10px;
+        margin: 3px 10px;
         width: 16px;
       }
     </style>
-    <content></content>
+    <content><div id="button"></div></content>
   </template>
   <script>
     Polymer('popup-close-button', {
-      onPointerUp: function(event) {
+      /**
+       * Close the dialog in response to a button click.  Using click
+       * instead of pointer-up in order to take advantage of touch
+       * fuzzing.
+       */
+      onClick: function(event) {
+        var client = dungeon.getClient();
         this.fire('close-popup');
+        event.stopPropagation();
+      },
+
+      onPointerDown: function(event) {
+        event.stopPropagation();
+      },
+
+      onPointerUp: function(event) {
         event.stopPropagation();
       },
     });
@@ -23,7 +39,7 @@
 </polymer-element>
 
 <polymer-element name="popup-titlebar" attributes="label"
-    on-pointerdown="{{onPointerDown}}">
+    on-pointerdown="{{onPointerDown}}" touch-action="none">
   <template>
     <style>
       #titlebar {
