@@ -119,7 +119,8 @@
 
 <polymer-element name="popup-window" attributes="active header"
     on-close-popup="{{onClosePopup}}" on-move-popup="{{onMovePopup}}"
-    on-pointerdown="{{onPointerDown}}" on-pointerup="{{onPointerUp}}">
+    on-pointerdown="{{onPointerDown}}" on-pointerup="{{onPointerUp}}"
+    on-contextmenu="{{onContextMenu}}">
   <template>
     <style>
       :host {
@@ -233,6 +234,11 @@
           event.stopPropagation();
           this.consumePointerUp = false;
         }
+      },
+
+      onContextMenu: function(event) {
+        event.stopPropagation();
+        event.preventDefault();
       },
 
       close: function() {

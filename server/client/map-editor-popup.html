@@ -327,6 +327,12 @@
           this.super();
         },
 
+        close: function() {
+          this.activeTool = null;
+          this.activeTile = -1;
+          this.super();
+        },
+
         update: function() {
           var client = dungeon.getClient();
           var tiles = client.mapTiles;
