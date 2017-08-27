@@ -1,0 +1,11 @@
+{
+  "name" : "dungeon",
+  "description" : "A D&D based multiplayer role playing game.",
+  "homepage" : "https://github.com/flackr/dungeon",
+  "author" : "Rob Flack <flackr@chromium.org>",
+  "contributors" : [],
+  "dependencies" : ["socket.io"],
+  "repository" : {"type": "git", "url": "https://github.com/flackr/dungeon.git"},
+  "main" : "server/server.js",
+  "version" : "0.0.0"
+}
