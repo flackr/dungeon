@@ -69,7 +69,8 @@ function handler(req, res) {
         }
       });
     } else {
-      res.writeHead(404);
+        console.log('Request received for non-existant file: ' + filePath);
+        res.writeHead(404);
       res.end();
     }
   });
