@@ -1,5 +1,5 @@
 'use strict';
-
+//import { Layout } from './hexagon.js';
 class Dungeon {
   constructor(options) {
     this.options_ = options;
@@ -9,7 +9,15 @@ class Dungeon {
       {
         layers: [{
           objects: [
-            new ImageObj('https://drive.google.com/uc?export=download&id=1sovfuNsmMmwgGrJO7T96Xt5cetEX0TGf', 0, 0),
+       //     new ImageObj("assets/I1b-Man-Made Stone - D.png", 253-55, 730+390-55),
+         //   new ImageObj("assets/G1b-Man-Made Stone - D1.png", -55, 390-55),
+           // new ImageObj("assets/L1a-Man-Made Stone 1.png", 1612-55, -55),
+          ],//G1B, L1A
+        }, {
+          objects: [
+            //new ImageObj('https://drive.google.com/uc?export=download&id=1sovfuNsmMmwgGrJO7T96Xt5cetEX0TGf', 0, 0),
+            new ImageObj("assets/B1b-Earth - D.png", -55, -55),
+            new ImageObj("assets/B4b-Natural Stone - D.png", 830-55-55, -55),
           ],
         }, {
           objects: [
@@ -25,8 +33,23 @@ class Dungeon {
     this.resize();
     this.tick(performance.now());
     window.addEventListener('resize', this.resize_);
+    this.highlight_ = this.highlight.bind(this);
+    this.canvas_.addEventListener('mousemove', this.highlight_);
   }
+  highlight(event) {
+    var hexGrid = new Layout(Layout.pointy, new Point(112.0, 112.0), new Point(0, 0));
+    var hex = hexGrid.pixelToHex(new Point(event.offsetX, event.offsetY));
+    hex.q = Math.round(hex.q);
+    hex.r = Math.round(hex.r);
+    hex.s = Math.round(hex.s);
+    var corners = hexGrid.polygonCorners(hex);
+    this.context_.moveTo(corners[0].x, corners[0].y);
+    for (var c = 1; c < 6; c++) {
+      this.context_.lineTo(corners[c].x, corners[c].y);
+    }
+    this.context_.lineTo(corners[0].x, corners[0].y);
 
+  }
   resize() {
     this.canvas_.width = window.innerWidth * window.devicePixelRatio;
     this.canvas_.height = window.innerHeight * window.devicePixelRatio;
