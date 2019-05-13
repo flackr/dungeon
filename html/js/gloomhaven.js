@@ -62,6 +62,10 @@ gloomhaven_tiles = [
 { cachename: "M1a-Man-Made Stone.png",},
 { cachename: "M1b-Earth.png",},
 { cachename: "N1a-Natural Stone - U.png",},
-{ cachename: "N1b-Man-Made Stone - D.png",},
+  { cachename: "N1b-Man-Made Stone - D.png", },
+  {
+    url: "https://drive.google.com/uc?export=download&id=10UxwBp_oNBBq_R9tL8hYB6s9kYDpzDcQ",
+    cachename: "Corridor - Earth 1h.png"
+  }.
 ];
 
