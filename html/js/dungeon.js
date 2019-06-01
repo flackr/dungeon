@@ -84,6 +84,7 @@ class Dungeon {
       '(' + hex.q + ',' + hex.r + ',' + hex.s + ')',
       //"XXX",
       corners[0].x, corners[0].y);//      center.x, center.y);
+      this.context_.stroke();
     this.context_.fill();
     this.context_.restore();
     this.worlds_[0].layers[1].objects[2].hex = hex;
