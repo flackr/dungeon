@@ -27,6 +27,9 @@
             if (Math.round(q + r + s) !== 0)
                 throw "q + r + s must be 0";
         }
+        equals(b) {
+            return b && this.q == b.q && this.r == b.r && this.s == b.s;
+        }
         add(b) {
             return new Hex(this.q + b.q, this.r + b.r, this.s + b.s);
         }
