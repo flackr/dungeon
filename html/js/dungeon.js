@@ -4,6 +4,7 @@ var offsetY = 219;
 var scale = 97; // short distance of hex
 var scaleLong = scale / 2 * Math.sqrt(3); // long distance of hex
 
+var renderBoundingBoxes = false;
 class EventHandler {
   constructor() {
     this.listeners_ = {};
@@ -70,10 +71,12 @@ class GameObject extends EventHandler {
   draw(context, viewport) {
     for (let child of this.children_)
       child.draw(context, viewport);
-    context.beginPath();
-    context.strokeStyle = 'blue';
-    context.rect(this.x_, this.y_, this.width_, this.height_);
-    context.stroke();
+    if (renderBoundingBoxes) {
+      context.beginPath();
+      context.strokeStyle = 'blue';
+      context.rect(this.x_, this.y_, this.width_, this.height_);
+      context.stroke();
+    }
   }
 
   hitTest(event){
@@ -114,14 +117,15 @@ class Dungeon extends GameObject {
     this.canvas_ = this.options_.canvas;
     this.context_ = this.canvas_.getContext('2d');
     this.cursor_ = new HexGridCursor();
-    this.crosshair_ = new Crosshair();
     let children = [
       new Layer([
-            this.crosshair_,
             //new ImageObj('https://drive.google.com/uc?export=download&id=1sovfuNsmMmwgGrJO7T96Xt5cetEX0TGf', 0, 0),
             new ImageObj("assets/small.B1b-Earth - D.png", 0*scale - 19, 0*scaleLong - 32,1),
             new ImageObj("assets/small.B4b-Natural Stone - D.png", 4 * scale - 19, 0*scaleLong - 32,1),
-          ]),
+        ]),
+      new Layer([
+        new Rectangle(0,0,200,500),
+        ]),
       new Layer([
            // new Rectangle(10, 10, 50, 50),
            // new Crosshair(),
@@ -167,8 +171,6 @@ class Dungeon extends GameObject {
   }
   onpointermove(event) {
     event.preventDefault();
-    this.crosshair_.setBoundingBox(event.clientX - 50, event.clientY - 50, 100, 100);
-    this.setNeedsRedraw();
     let captureHandler = this.activeHandlers_[event.pointerId];
     if (captureHandler) {
       captureHandler.events[event.pointerId] = event;
@@ -260,15 +262,29 @@ class HexGridCursor extends GameObject {
 }
 class Rectangle extends GameObject {
   constructor(x, y, w, h) {
+    super();
     this.x_ = x;
     this.y_ = y;
     this.w_ = w;
     this.h_ = h;
+    let menu_scale = 0.2;
+    let children = [
+      new Layer([
+        //new ImageObj('https://drive.google.com/uc?export=download&id=1sovfuNsmMmwgGrJO7T96Xt5cetEX0TGf', 0, 0),
+        new ImageObj("assets/small.B1b-Earth - D.png", (0 * scale - 19) * menu_scale, (0 * scaleLong - 32) * menu_scale, menu_scale),
+        new ImageObj("assets/small.B4b-Natural Stone - D.png", (0 * scale - 19) * menu_scale, (5 * scaleLong - 32) * menu_scale, menu_scale),
+      ]),
+    ];
+    for (let child of children)
+      this.addChild(child);
   }
 
   draw(context, viewport) {
-    context.fillStyle = 'green';
+    context.fillStyle = 'white';
     context.fillRect(this.x_, this.y_, this.w_, this.h_);
+    super.draw(context, viewport);
+    //for (let child of this.children)
+      //child.draw(context,viewport);
   }
 }
 
@@ -394,8 +410,11 @@ class ClockTimer extends GameObject {
   draw(context, viewport) {
     context.strokeStyle = 'black';
     context.font = '50px serif';
-    context.strokeText(++this.drawCount_, 0.8 * viewport.width, 0.8 * viewport.height);
+    context.strokeText(++this.drawCount_, 0.8 * window.innerWidth, 0.8 * window.innerHeight);
   }
+}
+
+class ObjectPalette extends GameObject {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
