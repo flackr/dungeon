@@ -306,6 +306,8 @@ class ImagePalette extends GameObject {
     this.w_ = w;
     this.h_ = h;
     this.menu_scale_ = 0.2;
+    this.outline_ = true;
+    this.outline_colour_ = "green";
     this.resizeObserver_ = new ResizeObserver( entry => {
       let current = 0;
       for (let child of this.children_) {
@@ -313,8 +315,6 @@ class ImagePalette extends GameObject {
         current += child.height_ + 5;
       }});
 
-    //this.addImage("assets/small.B1b-Earth - D.png");
-    //this.addImage("assets/small.B4b-Natural Stone - D.png");
     let children = [
       new Layer([
         //new ImageObj('https://drive.google.com/uc?export=download&id=1sovfuNsmMmwgGrJO7T96Xt5cetEX0TGf', 0, 0),
@@ -325,21 +325,15 @@ class ImagePalette extends GameObject {
     for (let child of children)
       this.addChild(child);
   }
-
-  addImage(name) {
-    let image = new ImageObj(name, 0, this.next_, this.menu_scale_);
-    // image won't be loaded yet.... need to tap into ResizeObserver
-    this.addChild(image);
-///////// not a valid object. need to wire up an observer: https://www.dofactory.com/javascript/observer-design-pattern
-//    this.resizeObserver_.observe(image);
-  }
-
   draw(context, viewport) {
     context.fillStyle = 'white';
     context.fillRect(this.x_, this.y_, this.w_, this.h_);
+    if (this.outline_) {
+      context.strokeStyle = this.outline_colour_;
+      context.strokeRect(this.x_, this.y_, this.w_, this.h_);
+    }
+    // super.draw will render children
     super.draw(context, viewport);
-    //for (let child of this.children)
-      //child.draw(context,viewport);
   }
 }
 
