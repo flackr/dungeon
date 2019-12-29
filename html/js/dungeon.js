@@ -120,11 +120,13 @@ class Dungeon extends GameObject {
     let children = [
       new Layer([
             //new ImageObj('https://drive.google.com/uc?export=download&id=1sovfuNsmMmwgGrJO7T96Xt5cetEX0TGf', 0, 0),
-            new ImageObj("assets/small.B1b-Earth - D.png", 0*scale - 19, 0*scaleLong - 32,1),
-            new ImageObj("assets/small.B4b-Natural Stone - D.png", 4 * scale - 19, 0*scaleLong - 32,1),
+            /* This shows a sample image (two adjoining tiles)
+            new ImageObj("assets/small.B1b-Earth - D.png", 2*scale - 19, 0*scaleLong - 32,1),
+            new ImageObj("assets/small.B4b-Natural Stone - D.png", 6 * scale - 19, 0*scaleLong - 32,1),
+            */
         ]),
       new Layer([
-        new Rectangle(0,0,200,500),
+        new ImagePalette(0,0,200,500),
         ]),
       new Layer([
            // new Rectangle(10, 10, 50, 50),
@@ -167,7 +169,7 @@ class Dungeon extends GameObject {
     events[event.pointerId] = event;
     this.activeHandlers_[event.pointerId] = {events, target};
     target.dispatchEvent(event);
-    console.log('down', target);
+    ////console.log('down', target);
   }
   onpointermove(event) {
     event.preventDefault();
@@ -175,7 +177,7 @@ class Dungeon extends GameObject {
     if (captureHandler) {
       captureHandler.events[event.pointerId] = event;
       captureHandler.target.dispatchEvent(event);
-      console.log('move', captureHandler.target);
+      //console.log('move', captureHandler.target);
       return;
     }    
     let target = this.findTarget(event);
@@ -186,7 +188,7 @@ class Dungeon extends GameObject {
     let captureHandler = this.activeHandlers_[event.pointerId];
     if (captureHandler) {
       captureHandler.target.dispatchEvent(event);
-      console.log('up', captureHandler.target);
+      //console.log('up', captureHandler.target);
       delete captureHandler.events[event.pointerId];
       for (let key in captureHandler.events)
         return;
@@ -197,7 +199,8 @@ class Dungeon extends GameObject {
   handleClick(event) {
     var newToken = new HexObject("assets/small.Corridor - Earth 1h.png", 0, 0, 0.45);
     newToken.setPosition(this.hexGrid_.pixelToHex(
-      new Point(event.offsetX/window.devicePixelRatio, event.offsetY/window.devicePixelRatio)).round());
+      new Point(event.offsetX/window.devicePixelRatio, 
+        event.offsetY/window.devicePixelRatio)).round());
     this.children_[0].addChild(newToken);
     return true;
   }
@@ -260,23 +263,75 @@ class HexGridCursor extends GameObject {
     }
   }
 }
-class Rectangle extends GameObject {
+
+// Adds a click handler to the given target, calling it whenever the object is clicked
+class ClickHandler {
+  constructor(target) {
+    this.target_ = target;
+    this.target_.clickHandler = this;
+    this.target_.addEventListener('pointerdown', this.pointerdown.bind(this));
+    this.pointerup_ = this.pointerup.bind(this)
+    this.pointermove_ = this.pointermove.bind(this)
+  }
+  pointerdown(event) {
+    let result = true;
+    if (this.target_.pointerdown)
+      result = this.target_.pointerdown(event);
+
+    this.target_.addEventListener('pointerup', this.pointerup_);
+    this.target_.addEventListener('pointermove', this.pointermove_);
+    return result;
+  }
+  pointermove(event) {
+    let result = true;
+    if (this.target_.pointermove)
+      result = this.target_.pointermove(event);
+    return result;
+  }
+  pointerup(event) {
+    let result = true;
+    if (this.target_.pointerup)
+      result = this.target_.pointerup(event);
+    this.target_.removeEventListener('pointermove', this.pointermove_);
+    this.target_.removeEventListener('pointerup', this.pointerup_);
+    return result;
+  }
+}
+
+class ImagePalette extends GameObject {
   constructor(x, y, w, h) {
     super();
     this.x_ = x;
     this.y_ = y;
     this.w_ = w;
     this.h_ = h;
-    let menu_scale = 0.2;
+    this.menu_scale_ = 0.2;
+    this.resizeObserver_ = new ResizeObserver( entry => {
+      let current = 0;
+      for (let child of this.children_) {
+        child.x_ = this.x_ + current;
+        current += child.height_ + 5;
+      }});
+
+    //this.addImage("assets/small.B1b-Earth - D.png");
+    //this.addImage("assets/small.B4b-Natural Stone - D.png");
     let children = [
       new Layer([
         //new ImageObj('https://drive.google.com/uc?export=download&id=1sovfuNsmMmwgGrJO7T96Xt5cetEX0TGf', 0, 0),
-        new ImageObj("assets/small.B1b-Earth - D.png", (0 * scale - 19) * menu_scale, (0 * scaleLong - 32) * menu_scale, menu_scale),
-        new ImageObj("assets/small.B4b-Natural Stone - D.png", (0 * scale - 19) * menu_scale, (5 * scaleLong - 32) * menu_scale, menu_scale),
+        new ImageObj("assets/small.B1b-Earth - D.png", (0 * scale - 19) * this.menu_scale_, (0 * scaleLong - 32) * this.menu_scale_, this.menu_scale_),
+        new ImageObj("assets/small.B4b-Natural Stone - D.png", (0 * scale - 19) * this.menu_scale_, (5 * scaleLong - 32) * this.menu_scale_, this.menu_scale_),
       ]),
     ];
     for (let child of children)
       this.addChild(child);
+  }
+
+  addImage(name) {
+    let image = new ImageObj(name, 0, this.next_, this.menu_scale_);
+    // image won't be loaded yet.... need to tap into ResizeObserver
+    this.addChild(image);
+///////// not a valid object. need to wire up an observer: https://www.dofactory.com/javascript/observer-design-pattern
+//    this.resizeObserver_.observe(image);
   }
 
   draw(context, viewport) {
@@ -332,11 +387,8 @@ class HexObject extends ImageObj {
   constructor(url, x, y, scale) {
     super(url, x, y, scale);
     this.name = 'hex' + num++;
-    this.addEventListener('pointerdown', this.pointerdown.bind(this));
-    this.pointerup_ = this.pointerup.bind(this)
-    this.pointermove_ = this.pointermove.bind(this)
+    new ClickHandler(this);
   }
-
   setPosition(hex) {
     if (!hex.equals(this.hex_)) {
       this.hex_ = hex;
@@ -344,10 +396,6 @@ class HexObject extends ImageObj {
       this.setBoundingBox(location.x- 55, location.y - 60, this.width_, this.height_);
       dungeon.setNeedsRedraw();
     }
-  }
-  pointerdown(event) {
-    this.addEventListener('pointerup', this.pointerup_);
-    this.addEventListener('pointermove', this.pointermove_);
   }
   pointermove(event) {
     this.setPosition(
@@ -360,11 +408,8 @@ class HexObject extends ImageObj {
     this.setPosition(
       dungeon.hexGrid_.pixelToHex(new Point(event.offsetX/window.devicePixelRatio,
         event.offsetY/window.devicePixelRatio)).round());
-    this.removeEventListener('pointermove', this.pointermove_);
-    this.removeEventListener('pointerup', this.pointerup_);
     return true;
   }
-
 }
 
 class ImageCache {
