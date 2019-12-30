@@ -149,11 +149,11 @@ class Dungeon extends GameObject {
   //  this.canvas_.addEventListener('click', this.handleClick_);
     this.activeHandlers_ = [];
     this.canvas_.addEventListener('pointerdown', this.onpointerdown.bind(this));
-    this.canvas_.addEventListener('pointermove', this.onpointermove.bind(this));
-    this.canvas_.addEventListener('pointerup', this.onpointerup.bind(this));
+    this.pointermove_ = this.onpointermove.bind(this);
+    this.pointerup_ = this.onpointerup.bind(this);
     for (let eventType of ['touchstart', 'touchmove', 'touchend'])
       this.canvas_.addEventListener(eventType, this.preventDefault);
-    this.addEventListener('pointerup', this.handleClick.bind(this));
+   //// this.addEventListener('pointerup', this.handleClick.bind(this));
     this.hexGrid_ = new Layout(Layout.pointy, new Point(56, 56), new Point(8, -1));
   }
   preventDefault(event) {
@@ -163,6 +163,10 @@ class Dungeon extends GameObject {
     event.preventDefault();
     if (this.activeHandlers_){
       // consider expanding the active handler to make this a multi-touch event.
+    }
+    if (!this.activeHandlers_ || this.activeHandlers_.length == 0){
+      this.canvas_.addEventListener('pointermove', this.pointermove_);
+      this.canvas_.addEventListener('pointerup', this.pointerup_);
     }
     let target = this.findTarget(event);
     let events = {}
@@ -185,6 +189,7 @@ class Dungeon extends GameObject {
   }
   onpointerup(event){
     event.preventDefault();
+    this.handleClick(event);
     let captureHandler = this.activeHandlers_[event.pointerId];
     if (captureHandler) {
       captureHandler.target.dispatchEvent(event);
@@ -193,10 +198,22 @@ class Dungeon extends GameObject {
       for (let key in captureHandler.events)
         return;
       delete this.activeHandlers_[event.pointerId];
+      if (!this.activeHandlers_ || this.activeHandlers_.length == 0){
+        this.canvas_.removeEventListener('pointermove', this.pointermove_);
+        this.canvas_.removeEventListener('pointerup', this.pointerup_);
+      }
+  
       return;
     }
   }
+  // TODO: This should dispatch to other objects, not just to the HexObject
   handleClick(event) {
+    // let target = this.findTarget(event);
+    // if (target && !target.dispatchEvent(event)) {
+    //   return false;
+    // }
+    // event.preventDefault();
+
     var newToken = new HexObject("assets/small.Corridor - Earth 1h.png", 0, 0, 0.45);
     newToken.setPosition(this.hexGrid_.pixelToHex(
       new Point(event.offsetX/window.devicePixelRatio, 
@@ -266,6 +283,7 @@ class HexGridCursor extends GameObject {
 
 // Adds a click handler to the given target, calling it whenever the object is clicked
 class ClickHandler {
+  // TODO: Make multi-pointer-friendly
   constructor(target) {
     this.target_ = target;
     this.target_.clickHandler = this;
@@ -283,12 +301,14 @@ class ClickHandler {
     return result;
   }
   pointermove(event) {
+    // TODO: Check that this is the correct pointer event
     let result = true;
     if (this.target_.pointermove)
       result = this.target_.pointermove(event);
     return result;
   }
   pointerup(event) {
+    // TODO: Check that this is the correct pointer event
     let result = true;
     if (this.target_.pointerup)
       result = this.target_.pointerup(event);
@@ -324,6 +344,9 @@ class ImagePalette extends GameObject {
     ];
     for (let child of children)
       this.addChild(child);
+
+    // Handle our own clicks
+    new ClickHandler(this);
   }
   draw(context, viewport) {
     context.fillStyle = 'white';
@@ -334,6 +357,18 @@ class ImagePalette extends GameObject {
     }
     // super.draw will render children
     super.draw(context, viewport);
+  }
+  pointerup(/* event */) {
+    // this.setPosition(
+    //   dungeon.hexGrid_.pixelToHex(new Point(event.offsetX/window.devicePixelRatio,
+    //     event.offsetY/window.devicePixelRatio)).round());
+    return true;
+  }
+  pointerdown(/* event */) {
+    return true;
+  }
+  pointermove(/* event */) {
+    return true;
   }
 }
 
