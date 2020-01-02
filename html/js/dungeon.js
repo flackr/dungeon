@@ -4,6 +4,7 @@ var offsetY = 219;
 var scale = 97; // short distance of hex
 var scaleLong = scale / 2 * Math.sqrt(3); // long distance of hex
 
+var currentSelection = "Unknown";
 var renderBoundingBoxes = false;
 class EventHandler {
   constructor() {
@@ -88,8 +89,11 @@ class GameObject extends EventHandler {
       let target = this.children_[i].findTarget(event);
       if (target) return target;
     }
-    if (this.hitTest(event))
+    if (this.hitTest(event)) {
+      console.log(this);
+      currentSelection = this.type;
       return this;
+    }
     return null;
   }
   dispatchEvent(event) {
@@ -188,22 +192,25 @@ class Dungeon extends GameObject {
     target.dispatchEvent(event);
   }
   onpointerup(event){
+    console.log('Dungeon::pointerup');
     event.preventDefault();
-    this.handleClick(event);
     let captureHandler = this.activeHandlers_[event.pointerId];
     if (captureHandler) {
       captureHandler.target.dispatchEvent(event);
       //console.log('up', captureHandler.target);
       delete captureHandler.events[event.pointerId];
       for (let key in captureHandler.events)
-        return;
+        return; //???
       delete this.activeHandlers_[event.pointerId];
       if (!this.activeHandlers_ || this.activeHandlers_.length == 0){
         this.canvas_.removeEventListener('pointermove', this.pointermove_);
         this.canvas_.removeEventListener('pointerup', this.pointerup_);
       }
+      if (captureHandler.target === this) {
+        return this.handleClick(event);
+      }
   
-      return;
+      return;//???
     }
   }
   // TODO: This should dispatch to other objects, not just to the HexObject
@@ -308,6 +315,7 @@ class ClickHandler {
     return result;
   }
   pointerup(event) {
+    console.log('clickhandler::pointerup');
     // TODO: Check that this is the correct pointer event
     let result = true;
     if (this.target_.pointerup)
@@ -323,8 +331,8 @@ class ImagePalette extends GameObject {
     super();
     this.x_ = x;
     this.y_ = y;
-    this.w_ = w;
-    this.h_ = h;
+    this.w_ = this.width_ = w;
+    this.h_ = this.height_ = h;
     this.menu_scale_ = 0.2;
     this.outline_ = true;
     this.outline_colour_ = "green";
@@ -359,6 +367,7 @@ class ImagePalette extends GameObject {
     super.draw(context, viewport);
   }
   pointerup(/* event */) {
+    console.log('ImagePalette::pointerup');
     // this.setPosition(
     //   dungeon.hexGrid_.pixelToHex(new Point(event.offsetX/window.devicePixelRatio,
     //     event.offsetY/window.devicePixelRatio)).round());
@@ -484,7 +493,9 @@ class ClockTimer extends GameObject {
   draw(context, viewport) {
     context.strokeStyle = 'black';
     context.font = '50px serif';
-    context.strokeText(++this.drawCount_, 0.8 * window.innerWidth, 0.8 * window.innerHeight);
+    //
+    //context.strokeText(++this.drawCount_, 0.8 * window.innerWidth, 0.8 * window.innerHeight);
+    context.strokeText(currentSelection, 0.8 * window.innerWidth, 0.8 * window.innerHeight);
   }
 }
 
