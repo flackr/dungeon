@@ -8,7 +8,8 @@ Feature list:
  [x] enable click-to-place for the selected "template"
  [x] enable drag and drop
  [x] fix favicon
- [] imagepalette should eat clicks
+ [x] imagepalette should eat clicks
+ [] draw a highlight (on a tile)
  [] select a tile
  [] delete a tile
  [] show a selection of tiles in the palette

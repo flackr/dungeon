@@ -78,6 +78,10 @@ class GameObject extends EventHandler {
       context.rect(this.x_, this.y_, this.width_, this.height_);
       context.stroke();
     }
+    if (this.outline_) {
+      context.strokeStyle = this.outline_colour_;
+      context.strokeRect(this.x_, this.y_, this.width_, this.height_);
+    }
   }
 
   hitTest(event){
@@ -359,10 +363,6 @@ class ImagePalette extends GameObject {
   draw(context, viewport) {
     context.fillStyle = 'white';
     context.fillRect(this.x_, this.y_, this.w_, this.h_);
-    if (this.outline_) {
-      context.strokeStyle = this.outline_colour_;
-      context.strokeRect(this.x_, this.y_, this.w_, this.h_);
-    }
     // super.draw will render children
     super.draw(context, viewport);
   }
@@ -404,6 +404,8 @@ class ImageObj extends GameObject {
     this.scale_ = scale ? scale : 1;
     this.img = null;
     cache.getImage(url).then(this.onload.bind(this));
+    this.outline_ = true;
+    this.outline_colour_ = 'red';
   }
   onload(img) {
     this.img = img;
@@ -416,6 +418,12 @@ class ImageObj extends GameObject {
       return;
     context.drawImage(this.img, this.x_, this.y_, this.width_, this.height_);
     context.save();
+    // if (this.outline_){
+    //   //this.outline_.setPosition(this.location);
+    //   context.
+
+
+    // }
     super.draw(context, viewport);
   }
 }
