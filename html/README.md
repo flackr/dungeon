@@ -24,6 +24,7 @@ Challenges
   - need to figure out a strategy for caching or sharing these tile files.
 Known issues:
   - single tile objects show a white border. This is unfortunate.
+  - hex-drag gets confused in the corners. We should check for actual content in the pixels (in hit-test)
 
 Randomness
   - debugger causes a debugbreak in javascript. Fires into chrome debugger.

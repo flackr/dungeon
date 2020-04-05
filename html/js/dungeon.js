@@ -340,6 +340,7 @@ class ImagePalette extends GameObject {
     this.menu_scale_ = 0.2;
     this.outline_ = true;
     this.outline_colour_ = "green";
+    this.fill_style_ = 'white';
     this.resizeObserver_ = new ResizeObserver( entry => {
       let current = 0;
       for (let child of this.children_) {
@@ -361,7 +362,7 @@ class ImagePalette extends GameObject {
     new ClickHandler(this);
   }
   draw(context, viewport) {
-    context.fillStyle = 'white';
+    context.fillStyle = this.fill_style_;
     context.fillRect(this.x_, this.y_, this.w_, this.h_);
     // super.draw will render children
     super.draw(context, viewport);
@@ -371,9 +372,13 @@ class ImagePalette extends GameObject {
     // this.setPosition(
     //   dungeon.hexGrid_.pixelToHex(new Point(event.offsetX/window.devicePixelRatio,
     //     event.offsetY/window.devicePixelRatio)).round());
+    this.fill_style_ = 'white'; //invalidate???
+    dungeon.setNeedsRedraw();
     return true;
   }
   pointerdown(/* event */) {
+    this.fill_style_ = 'grey';//invalidate???
+    dungeon.setNeedsRedraw();
     return true;
   }
   pointermove(/* event */) {
@@ -404,7 +409,7 @@ class ImageObj extends GameObject {
     this.scale_ = scale ? scale : 1;
     this.img = null;
     cache.getImage(url).then(this.onload.bind(this));
-    this.outline_ = true;
+    this.outline_ = false;
     this.outline_colour_ = 'red';
   }
   onload(img) {
@@ -443,6 +448,11 @@ class HexObject extends ImageObj {
       dungeon.setNeedsRedraw();
     }
   }
+  pointerdown(event) {
+    this.outline_ = true;
+    this.outline_colour_ = 'red';
+    dungeon.setNeedsRedraw();
+  }
   pointermove(event) {
     this.setPosition(
       dungeon.hexGrid_.pixelToHex(new Point(event.offsetX/window.devicePixelRatio, 
@@ -454,6 +464,8 @@ class HexObject extends ImageObj {
     this.setPosition(
       dungeon.hexGrid_.pixelToHex(new Point(event.offsetX/window.devicePixelRatio,
         event.offsetY/window.devicePixelRatio)).round());
+    //this.outline_colour_ = 'black';
+    this.outline_ = false;
     return true;
   }
 }
