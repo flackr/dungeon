@@ -423,12 +423,6 @@ class ImageObj extends GameObject {
       return;
     context.drawImage(this.img, this.x_, this.y_, this.width_, this.height_);
     context.save();
-    // if (this.outline_){
-    //   //this.outline_.setPosition(this.location);
-    //   context.
-
-
-    // }
     super.draw(context, viewport);
   }
 }

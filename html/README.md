@@ -9,7 +9,7 @@ Feature list:
  [x] enable drag and drop
  [x] fix favicon
  [x] imagepalette should eat clicks
- [] draw a highlight (on a tile)
+ [X] draw a highlight (on a tile)
  [] select a tile
  [] delete a tile
  [] show a selection of tiles in the palette
